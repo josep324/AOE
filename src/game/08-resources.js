@@ -273,7 +273,6 @@ function updateSheep(n, dt) {
 
 /* ---------- Centre de Ciutat ---------- */
 function createTownCenter(x, z, team = PLAYER.id) {
-  const T = teamOf(team);
   const e = new Entity({
     kind: 'building', subtype: 'towncenter', name: 'Centre de Ciutat', icon: '🏰',
     team, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
@@ -284,119 +283,11 @@ function createTownCenter(x, z, team = PLAYER.id) {
   e.dropoffTypes = ['food', 'wood', 'gold', 'stone'];
   e.trainQueue = [];  // [{ kind, t }]
   e.rally = null;     // { point: Vector3, node: Entity|null }
-  const stone = mat(0x9b958a, { roughness: 0.92, flatShading: true });
-  const blue = mat(T.color, { roughness: 0.6 });
-  const blueLight = mat(T.colorLight, { roughness: 0.55 });
-  const blueDark = mat(T.colorDark, { roughness: 0.65 });
-  const wood = mat(0x4a2f1a, { roughness: 0.9 });
-  const goldTrim = mat(0xf2c14e, { metalness: 0.8, roughness: 0.3 });
-  const windowMat = mat(0x2a1a08, { emissive: 0xffb347, emissiveIntensity: 0.55, roughness: 0.4 });
-
-  const baseH = 0.6;
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(6.6, 6.9, baseH, 8), stone);
-  base.rotation.y = Math.PI / 8;
-  base.position.y = baseH / 2;
-  e.group.add(base);
-
-  const bodyH = 3.6;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(7, bodyH, 7), blue);
-  body.position.y = baseH + bodyH / 2;
-  e.group.add(body);
-
-  const trim = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.35, 7.4), blueDark);
-  trim.position.y = baseH + bodyH + 0.175;
-  e.group.add(trim);
-
-  const roofH = 3.4;
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(5.5, roofH, 4), blueDark);
-  roof.rotation.y = Math.PI / 4;
-  roof.position.y = baseH + bodyH + 0.35 + roofH / 2;
-  e.group.add(roof);
-
-  const roofTopY = baseH + bodyH + 0.35 + roofH;
-  const finial = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), goldTrim);
-  finial.position.y = roofTopY + 0.1;
-  e.group.add(finial);
-
-  // Torres a les cantonades
-  const towerGeo = new THREE.CylinderGeometry(0.85, 0.95, 5.3, 12);
-  const capGeo = new THREE.ConeGeometry(1.2, 1.5, 12);
-  const battlementGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) {
-      const tower = new THREE.Mesh(towerGeo, blueLight);
-      tower.position.set(sx * 3.6, baseH + 2.65, sz * 3.6);
-      const cap = new THREE.Mesh(capGeo, blueDark);
-      cap.position.set(sx * 3.6, baseH + 5.3 + 0.75, sz * 3.6);
-      e.group.add(tower, cap);
-      for (let k = 0; k < 6; k++) {
-        const a = (k / 6) * Math.PI * 2;
-        const b = new THREE.Mesh(battlementGeo, stone);
-        b.position.set(sx * 3.6 + Math.cos(a) * 0.9, baseH + 5.35, sz * 3.6 + Math.sin(a) * 0.9);
-        e.group.add(b);
-      }
-    }
-  }
-
-  // Porta i finestres
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.3, 0.25), wood);
-  door.position.set(0, baseH + 1.15, 3.52);
-  const doorArch = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.25, 16, 1, false, 0, Math.PI), wood);
-  // Eix del semicilindre → Z (cap a fora), meitat → amunt
-  doorArch.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-    new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
-  doorArch.position.set(0, baseH + 2.3, 3.52);
-  e.group.add(door, doorArch);
-  const winGeo = new THREE.BoxGeometry(0.7, 0.9, 0.12);
-  const winPositions = [
-    [-2.2, 3.52, 0], [2.2, 3.52, 0],
-    [-2.2, -3.52, 0], [2.2, -3.52, 0], [0, -3.52, 0],
-  ];
-  for (const [wx, wz] of winPositions) {
-    const w = new THREE.Mesh(winGeo, windowMat);
-    w.position.set(wx, baseH + 2.4, wz);
-    e.group.add(w);
-  }
-  for (const side of [-1, 1]) {
-    for (const off of [-1.8, 0, 1.8]) {
-      const w = new THREE.Mesh(winGeo, windowMat);
-      w.rotation.y = Math.PI / 2;
-      w.position.set(side * 3.52, baseH + 2.4, off);
-      e.group.add(w);
-    }
-  }
-
-  // Escales davant la porta
-  const steps = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 1.2), stone);
-  steps.position.set(0, 0.15, 6.4);
-  e.group.add(steps);
-
-  // Bandera onejant
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.2, 8), wood);
-  pole.position.set(0, roofTopY + 1.6, 0);
-  e.group.add(pole);
-  const flagGeo = new THREE.PlaneGeometry(1.9, 1.1, 12, 5);
-  flagGeo.translate(0.95, 0, 0);
-  const flagMat = fogify(new THREE.MeshStandardMaterial({ color: T.colorLight, side: THREE.DoubleSide, roughness: 0.7 }));
-  const flag = new THREE.Mesh(flagGeo, flagMat);
-  flag.position.set(0.06, roofTopY + 2.6, 0);
-  e.group.add(flag);
-  const flagOrig = Float32Array.from(flagGeo.attributes.position.array);
-  state.animated.push({
-    update(t) {
-      const p = flagGeo.attributes.position;
-      for (let i = 0; i < p.count; i++) {
-        const fx = flagOrig[i * 3];
-        const fy = flagOrig[i * 3 + 1];
-        p.setZ(i, Math.sin(fx * 3.2 - t * 6.0 + fy * 0.8) * 0.16 * (fx / 1.9));
-      }
-      p.needsUpdate = true;
-      flagGeo.computeVertexNormals();
-    },
-  });
-
+  const { model, height } = makeBuildingModel('towncenter', team);
+  e.model = model;
+  e.height = height;
+  e.group.add(model);
   e.group.position.set(x, 0, z);
-  swapModel(e, 'buildings/towncenter', { w: 13.5, d: 13.5 }, e.group);
   e.finalize();
   state.buildings.push(e);
   e.obstacle = { x, z, r: 6.9, entity: e };

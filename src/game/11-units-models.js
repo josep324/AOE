@@ -34,13 +34,13 @@ function setUnitStats(e, kind) {
   e.attack = d.attack + (M.attack[cat] || 0);
   e.range = (d.range || 0) + (d.range ? (M.range[cat] || 0) : 0);
   e.reach = d.reach || 0.45;
-  e.reload = d.reload;
+  e.reload = d.reload * (M.reloadMul[cat] || 1);
   const ma = cat === 'villager' ? M.villagerArmor : (M.armor[cat] || [0, 0]);
   e.armor = [d.armor[0] + ma[0], d.armor[1] + ma[1]];
   e.los = d.los;
-  e.vsBuilding = d.vsBuilding || 0;
+  e.vsBuilding = (d.vsBuilding || 0) + (M.vsBuilding[cat] || 0);
   e.bonusCav = d.bonusCav || 0;
-  const newMax = d.hp + (cat === 'villager' ? M.villagerHp : 0);
+  const newMax = Math.round(d.hp * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
   e.barH = cat === 'cavalry' ? 3.4 : cat === 'trade' ? 2.9 : 2.75;
@@ -380,4 +380,16 @@ function orderTrade(u, dest) {
   setMoveTarget(u, approachPoint(dest, u.position));
   setUnitState(u, STATE.TRADING);
   return true;
+}
+
+/* Torna a fer el model d'una unitat (p. ex. en triar la civilització) */
+function rebuildUnitModel(u) {
+  const n = u.subtype === 'villager' ? createVillager(u.position.x, u.position.z, u.team)
+    : u.subtype === 'tradecart' ? createTradeCart(u.position.x, u.position.z, u.team)
+    : createSoldier(u.subtype, u.position.x, u.position.z, u.team);
+  n.group.rotation.y = u.group.rotation.y;
+  state.units = state.units.filter(x => x !== u);
+  state.pickables = state.pickables.filter(m => m.userData.entity !== u);
+  scene.remove(u.group);
+  return n;
 }

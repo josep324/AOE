@@ -31,7 +31,7 @@ function serializeGame() {
     else if (u.gatherNode && idx.has(u.gatherNode)) d.gather = idx.get(u.gatherNode);
     else if (u.subtype === 'tradecart' && u.tradeDest && idx.has(u.tradeDest)) d.trade = idx.get(u.tradeDest);
   }
-  const team = (T) => ({ res: { ...T.res }, age: T.age, techs: [...T.techs], prices: { ...T.prices } });
+  const team = (T) => ({ res: { ...T.res }, age: T.age, techs: [...T.techs], prices: { ...T.prices }, civ: T.civ });
   let explored = '';
   for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
   return {
@@ -77,9 +77,12 @@ function loadGame(data) {
     Object.assign(T.res, d.res);
     T.prices = { ...d.prices };
     T.age = 0; T.techs = new Set(); T.mods = defaultMods();
+    T.civ = CIVS[d.civ] ? d.civ : (id === 1 ? 'franks' : 'saracens');
+    applyCivMods(T);
     for (const k of d.techs) applyTechEffect(id, k);
     T.age = d.age;
   }
+  updateCivLabels();
   createBuilding.batch = true;
   const made = [];
   for (const d of data.ents) {
@@ -274,7 +277,7 @@ function checkGameOver() {
   const mins = Math.floor(state.elapsed / 60), secs = Math.floor(state.elapsed % 60);
   document.getElementById('end-title').textContent = win ? 'VICTÒRIA' : 'DERROTA';
   document.getElementById('end-text').innerHTML = win
-    ? `Has destruït l'Imperi Vermell en <b>${mins}:${String(secs).padStart(2, '0')}</b> (dificultat ${AI.diff.label}).`
-    : `La Civilització Blava ha caigut després de <b>${mins}:${String(secs).padStart(2, '0')}</b>.`;
+    ? `Has derrotat els ${civOf(ENEMY.id).name} en <b>${mins}:${String(secs).padStart(2, '0')}</b> (dificultat ${AI.diff.label}).`
+    : `La teva civilització (${civOf(PLAYER.id).name}) ha caigut després de <b>${mins}:${String(secs).padStart(2, '0')}</b>.`;
   endScreen.classList.remove('hidden');
 }

@@ -80,7 +80,7 @@ function findTargetNear(u, radius) {
 
 function performAttack(u, t) {
   if (u.range > 0) {
-    spawnArrow(new THREE.Vector3(u.position.x, 1.6, u.position.z), t, computeDamage(u.attack, t, 1), u);
+    spawnArrow(new THREE.Vector3(u.position.x, 1.6, u.position.z), t, computeDamage(u.attack, t, 1, u.vsBuilding), u);
   } else {
     applyDamage(t, computeDamage(u.attack, t, 0, u.vsBuilding) + (t.category === 'cavalry' ? u.bonusCav || 0 : 0), u);
     const dir = new THREE.Vector3(t.position.x - u.position.x, 0, t.position.z - u.position.z).normalize();

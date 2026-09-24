@@ -179,7 +179,7 @@ function aiTick() {
         avail.forEach(u => { u.inWave = true; orderAttackMove(u, target.position.clone()); });
         AI.waveCount++;
         AI.nextWaveAt = now + D.interval;
-        toast(`⚠️ L'Imperi Vermell ataca! (onada ${AI.waveCount}: ${avail.length} unitats)`);
+        toast(`⚠️ L'enemic (${civOf(ENEMY.id).name}) ataca! (onada ${AI.waveCount}: ${avail.length} unitats)`);
       }
     }
   }

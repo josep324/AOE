@@ -136,7 +136,7 @@ function completeTech(team, kind) {
     updateAgeUI();
     updateSelectionUI();
   } else if (d.ageUp) {
-    toast(`📜 L'Imperi Vermell ha avançat a l'${d.name}`);
+    toast(`📜 L'enemic (${civOf(ENEMY.id).name}) ha avançat a l'${d.name}`);
   }
 }
 

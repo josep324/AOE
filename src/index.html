@@ -18,7 +18,9 @@
 <div id="start-screen" class="overlay">
   <div class="card glass">
     <h1>IMPERIS 3D</h1>
-    <h2>Civilització Blava contra l'Imperi Vermell</h2>
+    <h2>Tria la teva civilització</h2>
+    <div class="civ-grid" id="civ-choices"></div>
+    <div class="row enemy-civ" id="enemy-civ-choices"><span>Rival:</span></div>
     <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i destrueix tots els edificis i unitats de l'enemic.</p>
     <div class="row" id="diff-choices">
       <button class="choice" data-diff="easy">Fàcil</button>
@@ -110,7 +112,7 @@
 
 <div id="hud">
   <section class="panel" id="panel-resources">
-    <h3>Recursos <small>Civilització Blava</small></h3>
+    <h3>Recursos <small id="civ-label">Francs</small></h3>
     <div class="res-grid">
       <div class="res"><span class="ico food">🍖</span><div><div class="lbl">Aliment</div><div class="val" id="res-food">0</div></div></div>
       <div class="res"><span class="ico wood">🪵</span><div><div class="lbl">Fusta</div><div class="val" id="res-wood">0</div></div></div>

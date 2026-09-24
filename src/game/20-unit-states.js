@@ -484,7 +484,7 @@ function updateUnit(u, dt) {
           if (u.isOwn) { spawnFloater(`+${u.tradeLoaded} 🪙`, u.position, 3.2, 'gold'); updateResourcesUI(); }
           u.tradeLoaded = 0;
         } else {
-          u.tradeLoaded = tradeValue(home, dest);
+          u.tradeLoaded = Math.round(tradeValue(home, dest) * teamOf(u.team).mods.tradeMul);
         }
         u.cargo.visible = u.tradeLoaded > 0;
         u.tradeHome = dest;

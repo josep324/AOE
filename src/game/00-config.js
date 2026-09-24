@@ -5,6 +5,7 @@ import { TECHS } from '@data/techs.js';
 import { BUILD_KEYS } from '@data/hotkeys.js';
 import { BUILDINGS } from '@data/buildings.js';
 import { DIFFICULTY } from '@data/difficulty.js';
+import { CIVS } from '@data/civs.js';
 
 /* =====================================================================
    CONFIGURACIÓ GLOBAL
@@ -73,10 +74,26 @@ function defaultMods() {
     gather: {}, capacity: 0, villagerSpeed: 1, villagerHp: 0, villagerArmor: [0, 0], farmBonus: 0,
     attack: { infantry: 0, cavalry: 0, archer: 0 }, range: { archer: 0 }, buildingArrow: 0,
     armor: { infantry: [0, 0], cavalry: [0, 0], archer: [0, 0] },
+    hpMul: {}, reloadMul: {}, vsBuilding: {}, tradeMul: 1,
   };
 }
 for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }
 const teamOf = (id) => TEAMS[id] || PLAYER;
+PLAYER.civ = 'franks';
+ENEMY.civ = 'saracens';
+const civOf = (team) => CIVS[teamOf(team).civ] || CIVS.franks;
+const archOf = (team) => (team && TEAMS[team] ? civOf(team).arch : 'western');
+/* Bonificacions de civilització sobre els modificadors de l'equip (es criden en començar o carregar) */
+function applyCivMods(T) {
+  const C = CIVS[T.civ];
+  if (!C) return;
+  const m = C.mods || {};
+  for (const [k, v] of Object.entries(m.gather || {})) T.mods.gather[k] = (T.mods.gather[k] || 1) * v;
+  Object.assign(T.mods.hpMul, m.hpMul || {});
+  Object.assign(T.mods.reloadMul, m.reloadMul || {});
+  Object.assign(T.mods.vsBuilding, m.vsBuilding || {});
+  if (m.tradeMul) T.mods.tradeMul = m.tradeMul;
+}
 
 const state = {
   resources: { food: 0, wood: 0, gold: 0, stone: 0 },   // s'omple amb STARTING_RESOURCES

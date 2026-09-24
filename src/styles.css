@@ -195,7 +195,7 @@
     background: radial-gradient(circle at 50% 40%, rgba(20, 30, 50, 0.72), rgba(4, 6, 10, 0.9));
   }
   .overlay.hidden { display: none; }
-  .overlay .card { width: min(520px, calc(100vw - 32px)); padding: 26px 28px; text-align: center; }
+  .overlay .card { width: min(660px, calc(100vw - 32px)); padding: 26px 28px; text-align: center; }
   .overlay h1 { margin: 0 0 4px; font-family: 'Cinzel', serif; color: var(--gold); letter-spacing: 0.18em; font-size: 30px; }
   .overlay h2 { margin: 0 0 16px; font-weight: 500; font-size: 14px; color: var(--muted); }
   .overlay p { color: var(--text); font-size: 14px; line-height: 1.6; margin: 10px 0; }
@@ -210,6 +210,14 @@
     color: #1a1204; background: linear-gradient(180deg, #ffe39a, #d8a93a); border: 1px solid #fff2c4; box-shadow: 0 6px 20px rgba(216,178,90,0.35);
   }
   .overlay label { color: var(--muted); font-size: 13px; cursor: pointer; }
+  .civ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 6px; }
+  .civ-card { text-align: left; padding: 9px 10px; font-weight: 500; line-height: 1.35; }
+  .civ-card b { display: block; font: 700 14px 'Cinzel', serif; color: var(--gold); margin-bottom: 3px; }
+  .civ-card small { display: block; color: var(--muted); font-size: 11px; }
+  .civ-card ul { margin: 5px 0 0; padding-left: 14px; font-size: 11px; color: var(--text); }
+  .overlay .row.enemy-civ { align-items: center; margin: 6px 0; font-size: 13px; color: var(--muted); }
+  .enemy-civ .choice { padding: 6px 12px; font-size: 12px; }
+  @media (max-width: 560px) { .civ-grid { grid-template-columns: 1fr; } }
   .overlay .hidden { display: none; }
   .overlay input[type=password], .overlay textarea {
     width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; font: 12px 'Inter', monospace;
