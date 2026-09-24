@@ -128,7 +128,10 @@
     border: 1px solid rgba(110, 200, 255, 0.45); box-shadow: inset 0 0 18px rgba(0,0,0,0.6);
   }
   .portrait.neutral { background: radial-gradient(circle at 50% 35%, rgba(255, 220, 120, 0.3), rgba(40, 30, 10, 0.8)); border-color: rgba(255, 220, 120, 0.45); }
-  .sel-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+  .sel-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; justify-content: center; }
+  .sel-info > * { flex-shrink: 0; }
+  .sel-info .queue-row { margin-top: 0; }
+  .q-item { width: 27px; height: 27px; font-size: 15px; }
   .sel-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 17px; color: #fff; }
   .sel-owner { font-size: 12px; color: var(--muted); }
   .sel-owner .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--blue); margin-right: 5px; vertical-align: -1px; box-shadow: 0 0 6px var(--blue); }
@@ -189,6 +192,33 @@
   .state-tag.RETURNING { background: rgba(230, 180, 60, 0.2); border-color: rgba(255, 210, 100, 0.5); }
   .state-tag.MOVING { background: rgba(80, 150, 255, 0.2); border-color: rgba(120, 180, 255, 0.5); }
   .state-tag.BUILDING { background: rgba(200, 140, 70, 0.25); border-color: rgba(230, 170, 100, 0.55); }
+  .state-tag.ATTACKING { background: rgba(230, 60, 50, 0.25); border-color: rgba(255, 110, 100, 0.6); }
+  .state-tag.GARRISONED { background: rgba(160, 160, 160, 0.2); border-color: rgba(200, 200, 200, 0.5); }
+  .portrait.enemy { background: radial-gradient(circle at 50% 35%, rgba(255, 110, 90, 0.35), rgba(40, 10, 10, 0.85)); border-color: rgba(255, 110, 90, 0.5); }
+  #hpbars { position: fixed; inset: 0; pointer-events: none; z-index: 19; }
+
+  /* Pantalles d'inici, pausa i final */
+  .overlay {
+    position: fixed; inset: 0; z-index: 90; display: grid; place-items: center;
+    background: radial-gradient(circle at 50% 40%, rgba(20, 30, 50, 0.72), rgba(4, 6, 10, 0.9));
+  }
+  .overlay.hidden { display: none; }
+  .overlay .card { width: min(520px, calc(100vw - 32px)); padding: 26px 28px; text-align: center; }
+  .overlay h1 { margin: 0 0 4px; font-family: 'Cinzel', serif; color: var(--gold); letter-spacing: 0.18em; font-size: 30px; }
+  .overlay h2 { margin: 0 0 16px; font-weight: 500; font-size: 14px; color: var(--muted); }
+  .overlay p { color: var(--text); font-size: 14px; line-height: 1.6; margin: 10px 0; }
+  .overlay .row { display: flex; gap: 10px; justify-content: center; margin: 14px 0; flex-wrap: wrap; }
+  .choice {
+    padding: 10px 18px; border-radius: 9px; cursor: pointer; font: 600 14px 'Inter', sans-serif; color: #fff;
+    background: linear-gradient(180deg, #34466e, #1c2640); border: 1px solid rgba(216, 178, 90, 0.5);
+  }
+  .choice.on { border-color: var(--gold); box-shadow: 0 0 14px rgba(216,178,90,0.5); background: linear-gradient(180deg, #4a5f8f, #26345a); }
+  .big-btn {
+    margin-top: 8px; padding: 12px 30px; border-radius: 10px; cursor: pointer; font: 700 16px 'Cinzel', serif; letter-spacing: 0.1em;
+    color: #1a1204; background: linear-gradient(180deg, #ffe39a, #d8a93a); border: 1px solid #fff2c4; box-shadow: 0 6px 20px rgba(216,178,90,0.35);
+  }
+  .overlay label { color: var(--muted); font-size: 13px; cursor: pointer; }
+  .overlay .legend { text-align: left; font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-top: 14px; }
   .bar.build > i { background: linear-gradient(180deg, #9fd6ff, #2f7fe0); }
   .action-btn.small { width: 58px; height: 54px; gap: 0; font-size: 10px; padding: 2px; border-radius: 8px; }
   .action-btn.small .big { font-size: 19px; }
@@ -245,6 +275,37 @@
 <div id="loading">IMPERIS 3D<small>Carregant el motor (Three.js)…</small></div>
 
 <div id="selection-box"></div>
+<canvas id="hpbars"></canvas>
+
+<div id="start-screen" class="overlay">
+  <div class="card glass">
+    <h1>IMPERIS 3D</h1>
+    <h2>Civilització Blava contra l'Imperi Vermell</h2>
+    <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i destrueix tots els edificis i unitats de l'enemic.</p>
+    <div class="row" id="diff-choices">
+      <button class="choice" data-diff="easy">Fàcil</button>
+      <button class="choice on" data-diff="normal">Normal</button>
+      <button class="choice" data-diff="hard">Difícil</button>
+    </div>
+    <label><input type="checkbox" id="fog-toggle" checked> Boira de guerra</label>
+    <div><button class="big-btn" id="start-btn">COMENÇAR</button></div>
+    <div class="legend">
+      ⚔️ <b>Caserna</b>: Milícia (bona contra edificis), Llancer (sense or) i Arquer (a distància).<br>
+      🔔 <b>Campana</b> (<kbd>B</kbd>): els aldeans es refugien al Centre i aquest dispara més fletxes.<br>
+      ⏸️ <kbd>P</kbd> pausa · <kbd>Clic dret</kbd> sobre un enemic: atacar.
+    </div>
+  </div>
+</div>
+<div id="pause-screen" class="overlay hidden">
+  <div class="card glass"><h1>PAUSA</h1><p>Prem <kbd>P</kbd> per continuar.</p></div>
+</div>
+<div id="end-screen" class="overlay hidden">
+  <div class="card glass">
+    <h1 id="end-title">VICTÒRIA</h1>
+    <p id="end-text"></p>
+    <button class="big-btn" id="restart-btn">TORNAR A JUGAR</button>
+  </div>
+</div>
 <div id="floaters"></div>
 
 <div id="help" class="glass">
@@ -261,6 +322,7 @@
     <li><kbd>Shift</kbd>+<kbd>clic dret</kbd> encadenar ordres · <b>Minimapa</b>: clic mou càmera, clic dret mou unitats</li>
     <li>Centre seleccionat + <kbd>clic dret</kbd>: <b>punt de reunió</b></li>
     <li>Aldeans: botons de <b>construcció</b> · <kbd>Shift</kbd> col·locar-ne més · <kbd>Supr</kbd> enderrocar</li>
+    <li><kbd>Clic dret</kbd> enemic: <b>atacar</b> · <kbd>B</kbd> campana · <kbd>P</kbd> pausa</li>
   </ul>
 </div>
 
@@ -350,9 +412,19 @@ const CONFIG = {
   },
   POP_CAP: 200,
   STARTING_RESOURCES: { food: 200, wood: 200, gold: 100, stone: 200 },   // com a l'AoE II
+  // armor = [cos a cos, projectils]; range 0 = cos a cos
   UNITS: {
-    villager: { name: 'Aldeà', icon: '🧑‍🌾', cost: { food: 50 }, time: 12 },
+    villager: { name: 'Aldeà', icon: '🧑‍🌾', cost: { food: 50 }, time: 12, hp: 25, attack: 3, range: 0, reload: 2.0,
+                armor: [0, 0], speed: 5.5, los: 10 },
+    militia:  { name: 'Milícia', icon: '🗡️', cost: { food: 60, gold: 20 }, time: 14, hp: 45, attack: 5, range: 0, reload: 2.0,
+                armor: [1, 1], speed: 5.2, los: 11, vsBuilding: 2, desc: 'Infanteria resistent. Bona contra edificis' },
+    spearman: { name: 'Llancer', icon: '🔱', cost: { food: 35, wood: 25 }, time: 12, hp: 45, attack: 3, range: 0, reach: 1.1, reload: 2.4,
+                armor: [0, 0], speed: 5.4, los: 11, desc: 'Barat i sense or. Abast llarg cos a cos' },
+    archer:   { name: 'Arquer', icon: '🏹', cost: { wood: 25, gold: 45 }, time: 16, hp: 30, attack: 4, range: 12, reload: 2.0,
+                armor: [0, 0], speed: 5.6, los: 14, desc: 'Ataca a distància' },
   },
+  TC_ARROWS: { range: 16, reload: 2.0, damage: 5 },   // fletxes del Centre de Ciutat (+1 per aldeà refugiat)
+  GARRISON_MAX: 15,
   QUEUE_MAX: 15,
   TC_POP: 5,                 // població que dona el Centre de Ciutat
   // Edificis construïbles pels aldeans (mida en cel·les de la graella; 1 cel·la = 1 unitat)
@@ -368,21 +440,28 @@ const CONFIG = {
     farm:       { name: 'Granja', short: 'Granja', icon: '🌱', cost: { wood: 60 }, size: [6, 6], hp: 480, time: 10, walkable: true, food: 175, requires: 'mill',
                   desc: "175 d'aliment. Un sol granger. Requereix un Molí" },
     barracks:   { name: 'Caserna', short: 'Caserna', icon: '⚔️', cost: { wood: 175 }, size: [7, 7], hp: 1200, time: 30,
-                  desc: 'Unitats militars (Fase 3B)' },
+                  trains: ['militia', 'spearman', 'archer'], desc: 'Entrena Milícia, Llancers i Arquers' },
   },
   TIME_SCALE: 1,             // velocitat de simulació (útil per depurar: RTS.CONFIG.TIME_SCALE = 3)
   DOUBLE_CLICK_MS: 350,
   DRAG_THRESHOLD: 6,
 };
 
-const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING', BUILDING: 'BUILDING' });
-const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'A descarregar', BUILDING: 'Construint' };
+const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING', BUILDING: 'BUILDING',
+                              ATTACKING: 'ATTACKING', GARRISONED: 'GARRISONED' });
+const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'A descarregar', BUILDING: 'Construint',
+                      ATTACKING: 'Atacant', GARRISONED: 'Refugiat' };
 const RES_LABEL = { wood: 'Fusta', gold: 'Or', food: 'Aliment', stone: 'Pedra' };
 const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 
 const PLAYER = { id: 1, name: 'Civilització Blava', color: 0x2f6fe0, colorLight: 0x5b93ff, colorDark: 0x1c3d8f };
 const SEL_COLOR_OWN = 0x6ef2ff;
 const SEL_COLOR_NEUTRAL = 0xffe07a;
+const SEL_COLOR_ENEMY = 0xff4a3a;
+const ENEMY = { id: 2, name: 'Imperi Vermell', color: 0xc8352b, colorLight: 0xe8604f, colorDark: 0x7a1a14,
+                res: { food: 0, wood: 0, gold: 0, stone: 0 } };
+const TEAMS = { 1: PLAYER, 2: ENEMY };
+const teamOf = (id) => TEAMS[id] || PLAYER;
 
 const state = {
   resources: { food: 0, wood: 0, gold: 0, stone: 0 },   // s'omple amb STARTING_RESOURCES
@@ -398,8 +477,13 @@ const state = {
   particles: [],
   floaters: [],
   dying: [],          // recursos esgotats fent l'animació de desaparició
+  projectiles: [],
+  pings: [],          // avisos d'atac al minimapa
   elapsed: 0,
+  paused: true,       // la partida comença en prémer «Començar»
+  over: false,
 };
+PLAYER.res = state.resources;
 
 /* Generador pseudoaleatori amb llavor (layout reproduïble) */
 function mulberry32(seed) {
@@ -526,11 +610,39 @@ function updateSun() {
 /* =====================================================================
    UTILITATS DE MATERIALS I SOROLL
    ===================================================================== */
+/* ---------- Boira de guerra: tots els materials enfosqueixen segons una textura del mapa ----------
+   r = 1 visible · ~0.4 explorat · 0 inexplorat (negre) */
+const FOG_UNIFORMS = {
+  uFogTex: { value: null },
+  uFogOrigin: { value: new THREE.Vector2(-CONFIG.MAP_LIMIT, -CONFIG.MAP_LIMIT) },
+  uFogSize: { value: CONFIG.MAP_LIMIT * 2 },
+};
+function fogify(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uFogTex = FOG_UNIFORMS.uFogTex;
+    shader.uniforms.uFogOrigin = FOG_UNIFORMS.uFogOrigin;
+    shader.uniforms.uFogSize = FOG_UNIFORMS.uFogSize;
+    shader.vertexShader = 'uniform vec2 uFogOrigin;\nuniform float uFogSize;\nvarying vec2 vFogUv;\n' +
+      shader.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>
+        vec4 fogWP = vec4(transformed, 1.0);
+        #ifdef USE_INSTANCING
+          fogWP = instanceMatrix * fogWP;
+        #endif
+        fogWP = modelMatrix * fogWP;
+        vFogUv = (fogWP.xz - uFogOrigin) / uFogSize;`);
+    shader.fragmentShader = 'uniform sampler2D uFogTex;\nvarying vec2 vFogUv;\n' +
+      shader.fragmentShader.replace('#include <fog_fragment>', `gl_FragColor.rgb *= texture2D(uFogTex, vFogUv).r;
+        #include <fog_fragment>`);
+  };
+  material.customProgramCacheKey = () => 'fog-of-war';
+  return material;
+}
+
 const matCache = new Map();
 function mat(color, opts = {}) {
   const key = color + JSON.stringify(opts);
   if (!matCache.has(key)) {
-    matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.0, ...opts }));
+    matCache.set(key, fogify(new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.0, ...opts })));
   }
   return matCache.get(key);
 }
@@ -595,7 +707,7 @@ function createGround() {
     colors[i * 3 + 2] = c.b + jitter * 0.5;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }));
+  ground = new THREE.Mesh(geo, fogify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 })));
   ground.receiveShadow = true;
   ground.name = 'ground';
   scene.add(ground);
@@ -656,11 +768,13 @@ class Entity {
     this.selected = false;
     this.group = new THREE.Group();
     this.group.userData.entity = this;
-    this.selection = makeSelectionIndicator(selRadius ?? radius * 1.3, team === PLAYER.id ? SEL_COLOR_OWN : SEL_COLOR_NEUTRAL);
+    this.selection = makeSelectionIndicator(selRadius ?? radius * 1.3,
+      team === PLAYER.id ? SEL_COLOR_OWN : team === 0 ? SEL_COLOR_NEUTRAL : SEL_COLOR_ENEMY);
     this.group.add(this.selection);
   }
   get position() { return this.group.position; }
   get isOwn() { return this.team === PLAYER.id; }
+  isEnemyOf(other) { return !!other && this.team !== 0 && other.team !== 0 && this.team !== other.team; }
   finalize() {
     this.group.traverse(o => {
       if (!o.isMesh) return;
@@ -668,6 +782,7 @@ class Entity {
       if (!o.userData.noPick) { o.userData.entity = this; state.pickables.push(o); }
     });
     scene.add(this.group);
+    this.group.updateMatrixWorld(true);   // seleccionable des del primer instant
   }
   setSelected(v) {
     this.selected = v;
@@ -944,19 +1059,22 @@ function updateSheep(n, dt) {
 }
 
 /* ---------- Centre de Ciutat ---------- */
-function createTownCenter(x, z) {
+function createTownCenter(x, z, team = PLAYER.id) {
+  const T = teamOf(team);
   const e = new Entity({
     kind: 'building', subtype: 'towncenter', name: 'Centre de Ciutat', icon: '🏰',
-    team: PLAYER.id, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
+    team, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
   });
+  e.armor = [3, 5];
+  e.los = 18;
   e.dropoff = true;   // accepta tots els recursos
   e.dropoffTypes = ['food', 'wood', 'gold', 'stone'];
   e.trainQueue = [];  // [{ kind, t }]
   e.rally = null;     // { point: Vector3, node: Entity|null }
   const stone = mat(0x9b958a, { roughness: 0.92, flatShading: true });
-  const blue = mat(PLAYER.color, { roughness: 0.6 });
-  const blueLight = mat(PLAYER.colorLight, { roughness: 0.55 });
-  const blueDark = mat(PLAYER.colorDark, { roughness: 0.65 });
+  const blue = mat(T.color, { roughness: 0.6 });
+  const blueLight = mat(T.colorLight, { roughness: 0.55 });
+  const blueDark = mat(T.colorDark, { roughness: 0.65 });
   const wood = mat(0x4a2f1a, { roughness: 0.9 });
   const goldTrim = mat(0xf2c14e, { metalness: 0.8, roughness: 0.3 });
   const windowMat = mat(0x2a1a08, { emissive: 0xffb347, emissiveIntensity: 0.55, roughness: 0.4 });
@@ -1046,7 +1164,7 @@ function createTownCenter(x, z) {
   e.group.add(pole);
   const flagGeo = new THREE.PlaneGeometry(1.9, 1.1, 12, 5);
   flagGeo.translate(0.95, 0, 0);
-  const flagMat = new THREE.MeshStandardMaterial({ color: PLAYER.colorLight, side: THREE.DoubleSide, roughness: 0.7 });
+  const flagMat = fogify(new THREE.MeshStandardMaterial({ color: T.colorLight, side: THREE.DoubleSide, roughness: 0.7 }));
   const flag = new THREE.Mesh(flagGeo, flagMat);
   flag.position.set(0.06, roofTopY + 2.6, 0);
   e.group.add(flag);
@@ -1067,7 +1185,8 @@ function createTownCenter(x, z) {
   e.group.position.set(x, 0, z);
   e.finalize();
   state.buildings.push(e);
-  state.obstacles.push({ x, z, r: 6.9, entity: e });
+  e.obstacle = { x, z, r: 6.9, entity: e };
+  state.obstacles.push(e.obstacle);
   return e;
 }
 
@@ -1086,15 +1205,16 @@ function cy(g, rt, rb, h, seg, material, x, y, z) {
   g.add(m);
   return m;
 }
-function buildingMats() {
+function buildingMats(team = PLAYER.id) {
+  const T = teamOf(team);
   return {
     stone: mat(0x9b958a, { roughness: 0.92, flatShading: true }),
     wall: mat(0xe6d6b0, { roughness: 0.9 }),
     wood: mat(0x8a5a32, { roughness: 0.9 }),
     woodDark: mat(0x5a3a1e, { roughness: 0.9 }),
     log: mat(0x7a4a24, { roughness: 0.95 }),
-    roof: mat(PLAYER.color, { roughness: 0.6 }),
-    roofDark: mat(PLAYER.colorDark, { roughness: 0.65 }),
+    roof: mat(T.color, { roughness: 0.6 }),
+    roofDark: mat(T.colorDark, { roughness: 0.65 }),
     window: mat(0x2a1a08, { emissive: 0xffb347, emissiveIntensity: 0.5, roughness: 0.4 }),
     soil: mat(0x6b4a2b, { roughness: 1 }),
     crop: mat(0xd6c14a, { roughness: 0.8 }),
@@ -1108,8 +1228,8 @@ function buildingMats() {
 }
 
 /* Retorna { model, height } per a cada tipus d'edifici. El model mira cap a +Z. */
-function makeBuildingModel(type) {
-  const M = buildingMats();
+function makeBuildingModel(type, team = PLAYER.id) {
+  const M = buildingMats(team);
   const g = new THREE.Group();
   let height = 3;
   const shed = () => {
@@ -1265,20 +1385,23 @@ function makeScaffold(w, d, h) {
   return g;
 }
 
-function createBuilding(type, x, z, complete = false) {
+function createBuilding(type, x, z, complete = false, team = PLAYER.id) {
   const def = CONFIG.BUILDINGS[type];
   const [sw, sd] = def.size;
   const e = new Entity({
-    kind: 'building', subtype: type, name: def.name, icon: def.icon, team: PLAYER.id,
+    kind: 'building', subtype: type, name: def.name, icon: def.icon, team,
     radius: Math.max(sw, sd) / 2, selRadius: Math.max(sw, sd) * 0.62, hp: 1, maxHp: def.hp,
   });
   e.def = def;
+  e.armor = def.armor || [2, 6];
+  e.los = def.los || 8;
+  if (def.trains) { e.trainQueue = []; e.rally = null; }
   e.footprint = def.walkable ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };
   e.cells = { w: sw, d: sd };
   e.underConstruction = !complete;
   e.progress = complete ? 1 : 0;
   e.dropoffTypes = def.dropoff || null;
-  const { model, height } = makeBuildingModel(type);
+  const { model, height } = makeBuildingModel(type, team);
   e.model = model;
   e.height = height;
   e.group.add(model);
@@ -1323,7 +1446,7 @@ function completeBuilding(b, silent = false) {
     state.buildings = state.buildings.filter(x => x !== b);
     state.resourceNodes.push(b);
   }
-  if (!silent) {
+  if (!silent && b.isOwn) {
     toast(`🏗️ ${b.name} completat${b.def.pop ? ` (+${b.def.pop} població)` : ''}`);
     spawnParticles(new THREE.Vector3(b.position.x, 1.2, b.position.z), 0xc8b28a, 14, null);
   }
@@ -1348,7 +1471,7 @@ function updateConstruction(dt) {
 /* Enderrocar un edifici propi (un fonament sense començar retorna tot el cost) */
 function demolishBuilding(b) {
   if (!b || b.subtype === 'towncenter' || !b.isOwn || b.dead) return;
-  if (b.underConstruction && b.progress < 0.02) applyCost(b.def.cost, +1);
+  if (b.underConstruction && b.progress < 0.02) applyCost(b.def.cost, +1, b.team);
   b.dead = true;
   b.depleted = true;
   state.buildings = state.buildings.filter(x => x !== b);
@@ -1357,6 +1480,7 @@ function demolishBuilding(b) {
   state.pickables = state.pickables.filter(m => m.userData.entity !== b);
   if (b.selected) { removeFromSelection(b); onSelectionChanged(); }
   b.dieT = 0;
+  b.deathKind = 'building';
   state.dying.push(b);
   spawnParticles(new THREE.Vector3(b.position.x, 1.0, b.position.z), 0x9b958a, 16, null);
   rebuildNav();
@@ -1388,13 +1512,13 @@ const placing = { type: null, ghost: null, meshes: [], fpMat: null, overlay: nul
 function builders() {
   return state.selected.filter(s => s.kind === 'unit' && s.isOwn && s.subtype === 'villager');
 }
-function hasCompleted(subtype) {
-  return state.buildings.some(b => b.subtype === subtype && b.isOwn && !b.underConstruction);
+function hasCompleted(subtype, team = PLAYER.id) {
+  return state.buildings.some(b => b.subtype === subtype && b.team === team && !b.underConstruction);
 }
-function buildBlockReason(type) {
+function buildBlockReason(type, team = PLAYER.id) {
   const def = CONFIG.BUILDINGS[type];
-  if (def.requires && !hasCompleted(def.requires)) return `Requereix: ${CONFIG.BUILDINGS[def.requires].name}`;
-  if (!canAfford(def.cost)) return `Recursos insuficients: cal ${costText(def.cost)}`;
+  if (def.requires && !hasCompleted(def.requires, team)) return `Requereix: ${CONFIG.BUILDINGS[def.requires].name}`;
+  if (!canAfford(def.cost, team)) return `Recursos insuficients: cal ${costText(def.cost)}`;
   return null;
 }
 function startPlacement(type) {
@@ -1520,14 +1644,35 @@ const CARRY_MATERIALS = {
 };
 const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
 
-function createVillager(x, z) {
+function applyUnitStats(e, kind) {
+  const d = CONFIG.UNITS[kind];
+  e.unitKind = kind;
+  e.speed = d.speed;
+  e.attack = d.attack;
+  e.range = d.range || 0;
+  e.reach = d.reach || 0.45;
+  e.reload = d.reload;
+  e.armor = d.armor.slice();
+  e.los = d.los;
+  e.vsBuilding = d.vsBuilding || 0;
+  e.isMilitary = kind !== 'villager';
+  e.attackTarget = null;
+  e.attackCooldown = 0;
+  e.scanTimer = rand() * 0.5;
+  e.chaseTimer = 0;
+  e.attackMove = null;
+  e.garrisoned = null;
+  e.garrisonTarget = null;
+  e.swingT = 0;
+}
+
+function createVillager(x, z, team = PLAYER.id) {
   const e = new Entity({
     kind: 'unit', subtype: 'villager', name: 'Aldeà', icon: '🧑‍🌾',
-    team: PLAYER.id, radius: CONFIG.VILLAGER.radius, selRadius: 0.78,
+    team, radius: CONFIG.VILLAGER.radius, selRadius: 0.78,
     hp: CONFIG.VILLAGER.hp, maxHp: CONFIG.VILLAGER.hp,
   });
-  e.speed = CONFIG.VILLAGER.speed;
-  e.attack = CONFIG.VILLAGER.attack;
+  applyUnitStats(e, 'villager');
   e.target = null;
   e.walkPhase = rand() * 10;
   e.spawnT = 1;
@@ -1548,7 +1693,7 @@ function createVillager(x, z) {
   e.workPhase = 0;
 
   const model = new THREE.Group();
-  const clothes = mat(PLAYER.color, { roughness: 0.7 });
+  const clothes = mat(teamOf(team).color, { roughness: 0.7 });
   const pants = mat(0x3b2a1c, { roughness: 0.9 });
   const skin = mat(0xf1c27d, { roughness: 0.8 });
   const straw = mat(0xd9b35b, { roughness: 0.9 });
@@ -1602,6 +1747,100 @@ function createVillager(x, z) {
   e.pickHead = pickHead;
   e.hammerHead = hammerHead;
   e.carryMesh = carryMesh;
+  e.group.position.set(x, 0, z);
+  e.finalize();
+  state.units.push(e);
+  return e;
+}
+
+/* ---------- Soldats: Milícia, Llancer i Arquer ---------- */
+const soldierGeo = {
+  helmet: new THREE.SphereGeometry(0.29, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+  nasal: new THREE.BoxGeometry(0.05, 0.16, 0.05),
+  blade: new THREE.BoxGeometry(0.06, 0.75, 0.02),
+  guard: new THREE.BoxGeometry(0.26, 0.05, 0.06),
+  shield: new THREE.CylinderGeometry(0.34, 0.34, 0.06, 14),
+  spear: new THREE.CylinderGeometry(0.025, 0.025, 2.4, 6),
+  spearTip: new THREE.ConeGeometry(0.06, 0.25, 6),
+  bow: new THREE.TorusGeometry(0.5, 0.025, 5, 16, Math.PI),
+  quiver: new THREE.CylinderGeometry(0.1, 0.09, 0.6, 8),
+  hood: new THREE.ConeGeometry(0.3, 0.4, 10),
+};
+function createSoldier(kind, x, z, team = PLAYER.id) {
+  const d = CONFIG.UNITS[kind];
+  const T = teamOf(team);
+  const e = new Entity({ kind: 'unit', subtype: kind, name: d.name, icon: d.icon, team, radius: 0.45, selRadius: 0.8, hp: d.hp, maxHp: d.hp });
+  applyUnitStats(e, kind);
+  e.target = null;
+  e.path = null;
+  e.walkPhase = rand() * 10;
+  e.spawnT = 1;
+  e.state = STATE.IDLE;
+  e.orderQueue = [];
+  e.gatherNode = null; e.dropTarget = null; e.buildTarget = null; e.buildAngle = null; e.gatherAngle = null;
+  e.approachTries = 0; e.lastResourceType = null; e.lastNodePos = new THREE.Vector3();
+  e.carry = { type: null, amount: 0 };
+  e.workPhase = 0;
+  // Objectes buits perquè la lògica compartida amb els aldeans funcioni
+  e.tool = { visible: false }; e.axeHead = { visible: false }; e.pickHead = { visible: false }; e.hammerHead = { visible: false };
+  e.carryMesh = { visible: false };
+
+  const model = new THREE.Group();
+  const clothes = mat(T.color, { roughness: 0.7 });
+  const dark = mat(T.colorDark, { roughness: 0.7 });
+  const pants = mat(0x3b2a1c, { roughness: 0.9 });
+  const skin = mat(0xf1c27d, { roughness: 0.8 });
+  const metal = mat(0xa8adb5, { metalness: 0.8, roughness: 0.3 });
+  const wood = mat(0x6b4423, { roughness: 0.9 });
+  const legL = new THREE.Mesh(villagerGeo.leg, pants); legL.position.set(-0.15, 0.72, 0);
+  const legR = new THREE.Mesh(villagerGeo.leg, pants); legR.position.set(0.15, 0.72, 0);
+  const torso = new THREE.Mesh(villagerGeo.torso, kind === 'militia' ? metal : clothes); torso.position.y = 1.15;
+  const tabard = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.62, 0.08), clothes); tabard.position.set(0, 1.12, 0.33);
+  const belt = new THREE.Mesh(villagerGeo.belt, dark); belt.position.y = 0.82;
+  const armL = new THREE.Mesh(villagerGeo.arm, clothes); armL.position.set(-0.4, 1.52, 0); armL.rotation.z = -0.12;
+  const armR = new THREE.Mesh(villagerGeo.arm, clothes); armR.position.set(0.4, 1.52, 0); armR.rotation.z = 0.12;
+  const head = new THREE.Mesh(villagerGeo.head, skin); head.position.y = 1.84;
+  model.add(legL, legR, torso, tabard, belt, armL, armR, head);
+  if (kind === 'archer') {
+    const hood = new THREE.Mesh(soldierGeo.hood, dark); hood.position.y = 2.12;
+    const bow = new THREE.Mesh(soldierGeo.bow, wood); bow.rotation.set(0, Math.PI / 2, Math.PI / 2); bow.position.set(0, -0.55, 0.15);
+    armL.add(bow);
+    const quiver = new THREE.Mesh(soldierGeo.quiver, mat(0x5a3a1e)); quiver.position.set(0.15, 1.35, -0.35); quiver.rotation.x = 0.3;
+    model.add(hood, quiver);
+  } else {
+    const helmet = new THREE.Mesh(soldierGeo.helmet, metal); helmet.position.y = 1.88;
+    const nasal = new THREE.Mesh(soldierGeo.nasal, metal); nasal.position.set(0, 1.86, 0.27);
+    model.add(helmet, nasal);
+  }
+  if (kind === 'militia') {
+    const sword = new THREE.Group();
+    const blade = new THREE.Mesh(soldierGeo.blade, metal); blade.position.y = 0.42;
+    const guard = new THREE.Mesh(soldierGeo.guard, wood);
+    sword.add(blade, guard);
+    sword.rotation.x = Math.PI / 2;
+    sword.position.set(0, -0.58, 0.05);
+    armR.add(sword);
+    const shield = new THREE.Mesh(soldierGeo.shield, clothes);
+    shield.rotation.z = Math.PI / 2;
+    shield.position.set(-0.1, -0.35, 0.05);
+    armL.add(shield);
+  }
+  if (kind === 'spearman') {
+    const spear = new THREE.Group();
+    const shaft = new THREE.Mesh(soldierGeo.spear, wood);
+    const tip = new THREE.Mesh(soldierGeo.spearTip, metal); tip.position.y = 1.3;
+    spear.add(shaft, tip);
+    spear.rotation.x = Math.PI / 2 - 0.25;
+    spear.position.set(0, -0.58, 0.4);
+    armR.add(spear);
+  }
+  const hit = new THREE.Mesh(villagerGeo.hit, hitMaterial);
+  hit.position.y = 1.2;
+  hit.userData.noShadow = true;
+  e.group.add(model, hit);
+  e.model = model;
+  e.legs = [legL, legR];
+  e.arms = [armL, armR];
   e.group.position.set(x, 0, z);
   e.finalize();
   state.units.push(e);
@@ -1851,7 +2090,7 @@ function createDecorations() {
   const grassCount = 2600;
   const grass = new THREE.InstancedMesh(
     new THREE.ConeGeometry(0.16, 0.7, 4).translate(0, 0.35, 0),
-    new THREE.MeshStandardMaterial({ color: 0x4f8f2f, roughness: 1 }),
+    fogify(new THREE.MeshStandardMaterial({ color: 0x4f8f2f, roughness: 1 })),
     grassCount
   );
   const tint = new THREE.Color();
@@ -1878,7 +2117,7 @@ function createDecorations() {
   const rockCount = 70;
   const rocks = new THREE.InstancedMesh(
     new THREE.DodecahedronGeometry(0.5, 0),
-    new THREE.MeshStandardMaterial({ color: 0x8a867d, roughness: 0.95, flatShading: true }),
+    fogify(new THREE.MeshStandardMaterial({ color: 0x8a867d, roughness: 0.95, flatShading: true })),
     rockCount
   );
   let ri = 0;
@@ -1920,11 +2159,23 @@ createGoldMine(23, 11);
 // Pedra
 createStoneMine(-24, 17);
 createStoneMine(46, -38);
+// ---- Base de l'Imperi Vermell (cantonada oposada) ----
+[[80, 46], [83, 52], [86, 58], [79, 63], [84, 67], [88, 48], [76, 72], [90, 62], [82, 40], [87, 73], [91, 54]]
+  .forEach(([x, z]) => createTree(x + randRange(-1, 1), z + randRange(-1, 1), randRange(0.9, 1.25)));
+createGoldMine(44, 74);
+createGoldMine(70, 86);
+[[70, 36], [72.6, 37.4], [69.2, 39], [72.2, 40.4], [74.8, 39.2]].forEach(([x, z]) => createBerryBush(x, z));
+[[50, 52], [52.5, 49], [48, 47]].forEach(([x, z]) => createSheep(x, z));
+createStoneMine(34, 86);
+const enemyTC = createTownCenter(62, 60, ENEMY.id);
 createDecorations();
 // Tres aldeans inicials (com als RTS clàssics)
 createVillager(-2.5, 9.5);
 createVillager(0, 10.2);
 createVillager(2.5, 9.5);
+createVillager(59.5, 69.5, ENEMY.id);
+createVillager(62, 70.2, ENEMY.id);
+createVillager(64.5, 69.5, ENEMY.id);
 
 /* =====================================================================
    RAYCASTING
@@ -1940,7 +2191,7 @@ function pickEntity(x, y) {
   const hits = raycaster.intersectObjects(state.pickables, false);
   for (const h of hits) {
     const ent = h.object.userData.entity;
-    if (ent) return ent;
+    if (ent && ent.group.visible && !ent.dead) return ent;
   }
   return null;
 }
@@ -2015,7 +2266,7 @@ function selectAllOnScreen(subtype, additive) {
   const list = additive ? state.selected.filter(s => s.kind === 'unit') : [];
   const maxY = window.innerHeight - hudHeight();
   for (const u of state.units) {
-    if (!u.isOwn || u.subtype !== subtype) continue;
+    if (!u.isOwn || u.subtype !== subtype || u.garrisoned) continue;
     const s = worldToScreen(u.position, 1);
     if (s.visible && s.x >= 0 && s.x <= window.innerWidth && s.y >= 0 && s.y <= maxY && !list.includes(u)) list.push(u);
   }
@@ -2029,7 +2280,7 @@ function boxSelect(x1, y1, x2, y2, additive) {
   const found = [];
   // Projecció a pantalla (equivalent al test de frustum de la caixa)
   for (const u of state.units) {
-    if (!u.isOwn) continue;
+    if (!u.isOwn || u.garrisoned) continue;
     const pFeet = worldToScreen(u.position, 0.2);
     const pHead = worldToScreen(u.position, 1.9);
     if (!pFeet.visible) continue;
@@ -2116,6 +2367,10 @@ function enqueueOrder(u, order) {
   else u.orderQueue.push(order);
 }
 function runOrder(u, order) {
+  if (order.type === 'attack') {
+    if (isAttackable(order.target)) orderAttack(u, order.target, false);
+    return;
+  }
   if (order.type === 'build') {
     if (order.building && !order.building.dead && order.building.underConstruction) orderBuild(u, order.building, null);
     return;
@@ -2130,6 +2385,9 @@ function commandStop(units) {
   for (const u of units) {
     u.orderQueue.length = 0;
     setMoveTarget(u, null);
+    u.attackTarget = null;
+    u.attackMove = null;
+    u.garrisonTarget = null;
     u.buildTarget = null;
     u.gatherNode = null;
     u.dropTarget = null;
@@ -2230,17 +2488,33 @@ function issueRightClick(x, y, queued = false) {
     return;
   }
 
+  // Enemic: atacar (tothom)
+  if (targetEnt && targetEnt.team && targetEnt.team !== PLAYER.id && isAttackable(targetEnt)) {
+    commandAttack(units, targetEnt, queued);
+    spawnMoveMarker(targetEnt.position, 0xff4a3a, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
+    return;
+  }
+  const vills = units.filter(u => u.subtype === 'villager');
+  const soldiers = units.filter(u => u.subtype !== 'villager');
+  const soldiersTo = (pos) => { if (soldiers.length) commandMove(soldiers, pos, queued); };
   // Fonament propi: ajudar a construir
-  if (targetEnt && targetEnt.kind === 'building' && targetEnt.isOwn && targetEnt.underConstruction) {
-    if (queued) units.forEach(u => enqueueOrder(u, { type: 'build', building: targetEnt }));
-    else commandBuild(units, targetEnt);
+  if (vills.length && targetEnt && targetEnt.kind === 'building' && targetEnt.isOwn && targetEnt.underConstruction) {
+    if (queued) vills.forEach(u => enqueueOrder(u, { type: 'build', building: targetEnt }));
+    else commandBuild(vills, targetEnt);
+    soldiersTo(approachPoint(targetEnt, soldiers.length ? soldiers[0].position : targetEnt.position));
     spawnMoveMarker(targetEnt.position, 0x6ef2ff, targetEnt.radius * 0.8);
     return;
   }
-  if (targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted) {
-    if (queued) units.forEach(u => enqueueOrder(u, { type: 'gather', node: targetEnt }));
-    else commandGather(units, targetEnt);
+  if (vills.length && targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted) {
+    if (queued) vills.forEach(u => enqueueOrder(u, { type: 'gather', node: targetEnt }));
+    else commandGather(vills, targetEnt);
+    soldiersTo(approachPoint(targetEnt, soldiers.length ? soldiers[0].position : targetEnt.position));
     spawnMoveMarker(targetEnt.position, 0xffd84a, targetEnt.radius + 0.9);
+    return;
+  }
+  // Aldeans cap al Centre de Ciutat amb la campana tocada: s'hi refugien
+  if (vills.length && targetEnt && targetEnt.subtype === 'towncenter' && targetEnt.isOwn && targetEnt.garrison && targetEnt.garrison.length && !soldiers.length) {
+    vills.forEach(u => orderGarrison(u, targetEnt));
     return;
   }
   if (targetEnt && targetEnt.kind === 'building' && targetEnt.isOwn) {
@@ -2296,7 +2570,7 @@ function updateMarkers(dt) {
    CREACIÓ D'ALDEANS DES DEL CENTRE DE CIUTAT
    ===================================================================== */
 function findSpawnSpot(building) {
-  const base = building.radius + 1.3;
+  const base = (building.footprint ? Math.max(building.footprint.hw, building.footprint.hd) : building.radius) + 1.3;
   for (let ring = 0; ring < 8; ring++) {
     const r = base + ring * 1.4;
     const n = Math.max(8, Math.floor((2 * Math.PI * r) / 1.4));
@@ -2320,52 +2594,66 @@ function findSpawnSpot(building) {
   return { x: building.position.x, z: building.position.z + base, angle: 0 };
 }
 
-function canAfford(cost) {
-  return Object.entries(cost).every(([k, v]) => state.resources[k] >= v);
+function resOf(team) { return teamOf(team).res; }
+function canAfford(cost, team = PLAYER.id) {
+  const r = resOf(team);
+  return Object.entries(cost).every(([k, v]) => r[k] >= v);
 }
-function applyCost(cost, sign = -1) {
-  for (const [k, v] of Object.entries(cost)) state.resources[k] += sign * v;
-  updateResourcesUI();
+function applyCost(cost, sign = -1, team = PLAYER.id) {
+  const r = resOf(team);
+  for (const [k, v] of Object.entries(cost)) r[k] += sign * v;
+  if (team === PLAYER.id) updateResourcesUI();
 }
 function costText(cost) {
   return Object.entries(cost).map(([k, v]) => `${RES_ICON[k]} ${v}`).join(' ');
 }
-function popCap() {
+function popCap(team = PLAYER.id) {
   let cap = 0;
   for (const b of state.buildings) {
-    if (!b.isOwn || b.underConstruction) continue;
+    if (b.team !== team || b.underConstruction) continue;
     cap += b.subtype === 'towncenter' ? CONFIG.TC_POP : ((b.def && b.def.pop) || 0);
   }
   return Math.min(CONFIG.POP_CAP, cap);
 }
-function popUsed() {
+function unitCount(team = PLAYER.id) {
+  let n = 0;
+  for (const u of state.units) if (u.team === team) n++;
+  return n;
+}
+function popUsed(team = PLAYER.id) {
   let queued = 0;
-  for (const b of state.buildings) if (b.isOwn && b.trainQueue) queued += b.trainQueue.length;
-  return state.units.filter(u => u.isOwn).length + queued;
+  for (const b of state.buildings) if (b.team === team && b.trainQueue) queued += b.trainQueue.length;
+  return unitCount(team) + queued;
 }
 
-/* Afegeix un aldeà a la cua del Centre de Ciutat (el cost es paga en encuar) */
-function queueVillager(building) {
-  const def = CONFIG.UNITS.villager;
-  if (building.trainQueue.length >= CONFIG.QUEUE_MAX) { toast(`Cua plena (màxim ${CONFIG.QUEUE_MAX})`); return false; }
-  if (!canAfford(def.cost)) {
-    const missing = Object.entries(def.cost).filter(([k, v]) => state.resources[k] < v).map(([k]) => RES_LABEL[k].toLowerCase());
-    toast(`Recursos insuficients: cal ${costText(def.cost)} (falta ${missing.join(', ')})`);
+/* Afegeix una unitat a la cua d'un edifici (el cost es paga en encuar) */
+function queueUnit(building, kind) {
+  const def = CONFIG.UNITS[kind];
+  const own = building.team === PLAYER.id;
+  if (!building.trainQueue || building.underConstruction || building.dead) return false;
+  if (building.trainQueue.length >= CONFIG.QUEUE_MAX) { if (own) toast(`Cua plena (màxim ${CONFIG.QUEUE_MAX})`); return false; }
+  if (!canAfford(def.cost, building.team)) {
+    if (own) {
+      const r = resOf(building.team);
+      const missing = Object.entries(def.cost).filter(([k, v]) => r[k] < v).map(([k]) => RES_LABEL[k].toLowerCase());
+      toast(`Recursos insuficients: cal ${costText(def.cost)} (falta ${missing.join(', ')})`);
+    }
     return false;
   }
-  if (popUsed() >= CONFIG.POP_CAP) { toast('Límit de població assolit'); return false; }
-  applyCost(def.cost);
-  building.trainQueue.push({ kind: 'villager', t: 0 });
+  if (popUsed(building.team) >= CONFIG.POP_CAP) { if (own) toast('Límit de població assolit'); return false; }
+  applyCost(def.cost, -1, building.team);
+  building.trainQueue.push({ kind, t: 0 });
   if (state.selected.includes(building)) updateSelectionUI(true);
   return true;
 }
+function queueVillager(building) { return queueUnit(building, 'villager'); }
 
 /* Cancel·la un element de la cua i en retorna el cost */
 function cancelQueued(building, idx) {
   const item = building.trainQueue[idx];
   if (!item) return;
   building.trainQueue.splice(idx, 1);
-  applyCost(CONFIG.UNITS[item.kind].cost, +1);
+  applyCost(CONFIG.UNITS[item.kind].cost, +1, building.team);
   if (state.selected.includes(building)) updateSelectionUI(true);
 }
 
@@ -2374,34 +2662,39 @@ function updateTraining(dt) {
     if (!b.trainQueue || !b.trainQueue.length) continue;
     const item = b.trainQueue[0];
     const def = CONFIG.UNITS[item.kind];
-    item.blocked = state.units.filter(u => u.isOwn).length >= popCap();
+    if (b.underConstruction || b.dead) continue;
+    item.blocked = unitCount(b.team) >= popCap(b.team);
     if (item.blocked) {
-      if (!item.warned) { item.warned = true; toast('🏠 Població plena: construeix més cases'); }
+      if (!item.warned && b.isOwn) { item.warned = true; toast('🏠 Població plena: construeix més cases'); }
       continue;
     }
     item.t += dt;
     if (item.t >= def.time) {
       b.trainQueue.shift();
-      spawnVillager(b);
+      spawnUnit(b, item.kind);
     }
   }
 }
 
-function spawnVillager(building) {
+function spawnUnit(building, kind) {
   const spot = findSpawnSpot(building);
-  const v = createVillager(spot.x, spot.z);
+  const v = kind === 'villager' ? createVillager(spot.x, spot.z, building.team) : createSoldier(kind, spot.x, spot.z, building.team);
   v.group.rotation.y = spot.angle;
   v.spawnT = 0;
   v.group.scale.setScalar(0.01);
   // Punt de reunió: si és un recurs, l'aldeà s'hi posa a treballar directament
   const rally = building.rally;
   if (rally) {
-    if (rally.node && !rally.node.depleted) commandGather([v], rally.node);
-    else orderMove(v, rally.point.clone().add(new THREE.Vector3(randRange(-1, 1), 0, randRange(-1, 1))));
+    if (rally.node && !rally.node.depleted && kind === 'villager') commandGather([v], rally.node);
+    else orderMove(v, (rally.node ? rally.node.position : rally.point).clone().add(new THREE.Vector3(randRange(-1, 1), 0, randRange(-1, 1))));
   }
-  toast('🧑‍🌾 Nou aldeà creat');
-  updatePopulationUI();
+  if (building.isOwn) {
+    toast(`${CONFIG.UNITS[kind].icon} Nova unitat: ${CONFIG.UNITS[kind].name}`);
+    updatePopulationUI();
+  }
   if (state.selected.includes(building)) updateSelectionUI(true);
+  if (building.onSpawn) building.onSpawn(v);
+  return v;
 }
 
 /* ---------- Bandera del punt de reunió ---------- */
@@ -2459,8 +2752,10 @@ function separateUnits() {
   const units = state.units;
   for (let i = 0; i < units.length; i++) {
     const a = units[i];
+    if (a.garrisoned) continue;
     for (let j = i + 1; j < units.length; j++) {
       const b = units[j];
+      if (b.garrisoned) continue;
       if (a.target && b.target) continue;
       const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
       const min = a.radius + b.radius;
@@ -2500,6 +2795,10 @@ function setUnitState(u, st) {
     u.axeHead.visible = false;
     u.pickHead.visible = false;
     u.hammerHead.visible = true;
+  } else if (st === STATE.ATTACKING && !u.isMilitary) {
+    u.tool.visible = true;           // l'aldeà es defensa amb la destral
+    u.axeHead.visible = true;
+    u.pickHead.visible = false;
   }
 }
 
@@ -2538,13 +2837,13 @@ function approachPoint(ent, fromPos, angleOffset = 0) {
   return approachPointAt(ent, Math.atan2(fromPos.x - ent.position.x, fromPos.z - ent.position.z) + angleOffset);
 }
 
-function acceptsDropoff(b, type) {
-  return b && !b.dead && b.isOwn && !b.underConstruction && b.dropoffTypes && (!type || b.dropoffTypes.includes(type));
+function acceptsDropoff(b, type, team = PLAYER.id) {
+  return b && !b.dead && b.team === team && !b.underConstruction && b.dropoffTypes && (!type || b.dropoffTypes.includes(type));
 }
-function nearestDropoff(pos, type = null) {
+function nearestDropoff(pos, type = null, team = PLAYER.id) {
   let best = null, bestD = Infinity;
   for (const b of state.buildings) {
-    if (!acceptsDropoff(b, type)) continue;
+    if (!acceptsDropoff(b, type, team)) continue;
     const d = entSurfaceDist(b, pos.x, pos.z);
     if (d < bestD) { bestD = d; best = b; }
   }
@@ -2555,6 +2854,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
   for (const n of state.resourceNodes) {
     if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
     if (farmTaken(n, forUnit)) continue;
+    if (n.subtype === 'farm' && forUnit && n.team !== forUnit.team) continue;
     const d = hDist(n.position, pos);
     if (d < bestD) { bestD = d; best = n; }
   }
@@ -2565,11 +2865,15 @@ function orderMove(u, point) {
   u.gatherNode = null;
   u.dropTarget = null;
   u.buildTarget = null;
+  u.attackTarget = null;
+  u.attackMove = null;
+  u.garrisonTarget = null;
   setMoveTarget(u, point);
   setUnitState(u, STATE.MOVING);
 }
 
 function orderBuild(u, b, angle = null) {
+  u.attackTarget = null;
   u.gatherNode = null;
   u.dropTarget = null;
   u.buildTarget = b;
@@ -2634,6 +2938,7 @@ function orderGather(u, node, angle = null) {
   u.gatherAngle = angle;
   u.dropTarget = null;
   u.buildTarget = null;
+  u.attackTarget = null;
   u.approachTries = 0;
   u.lastResourceType = node.resourceType;
   u.lastNodePos.copy(node.position);
@@ -2651,7 +2956,7 @@ function goToResource(u) {
 
 function goToDropoff(u, building = null) {
   // El magatzem més proper que accepti el tipus de càrrega (Centre, Serradora, Campament miner, Molí)
-  const tc = acceptsDropoff(building, u.carry.type) ? building : nearestDropoff(u.position, u.carry.type);
+  const tc = acceptsDropoff(building, u.carry.type, u.team) ? building : nearestDropoff(u.position, u.carry.type, u.team);
   if (!tc) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); return; }
   u.dropTarget = tc;
   setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06));
@@ -2690,9 +2995,11 @@ function depositCarry(u) {
   if (u.carry.amount > 0 && u.carry.type) {
     const amt = u.carry.amount;
     const type = u.carry.type;
-    state.resources[type] += amt;
-    spawnFloater(`+${amt} ${RES_ICON[type]}`, u.position, 3.0, type);
-    updateResourcesUI();
+    resOf(u.team)[type] += amt;
+    if (u.isOwn) {
+      spawnFloater(`+${amt} ${RES_ICON[type]}`, u.position, 3.0, type);
+      updateResourcesUI();
+    }
   }
   u.carry.amount = 0;
   u.carry.type = null;
@@ -2762,7 +3069,7 @@ function gatherTick(u, dt) {
     node.name = 'Ovella (carn)';
   }
 
-  u.gatherProgress += (CONFIG.GATHER.rates[node.subtype] ?? 1) * dt;
+  u.gatherProgress += (CONFIG.GATHER.rates[node.subtype] ?? 1) * (u.team === AI.team ? AI.diff.gather : 1) * dt;
   while (u.gatherProgress >= 1 && u.carry.amount < CONFIG.GATHER.capacity && node.amount > 0) {
     u.gatherProgress -= 1;
     u.carry.amount += 1;
@@ -2784,6 +3091,9 @@ function gatherTick(u, dt) {
 }
 
 function updateUnit(u, dt) {
+  if (u.dead || u.garrisoned) return;
+  u.attackCooldown = Math.max(0, u.attackCooldown - dt);
+  u.swingT = Math.max(0, u.swingT - dt);
   // Animació d'aparició
   if (u.spawnT < 1) {
     u.spawnT = Math.min(1, u.spawnT + dt / 0.35);
@@ -2793,6 +3103,20 @@ function updateUnit(u, dt) {
   let walking = false;
   switch (u.state) {
     case STATE.MOVING: {
+      if (u.garrisonTarget) {
+        const g = u.garrisonTarget;
+        if (g.dead) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); break; }
+        if (entSurfaceDist(g, u.position.x, u.position.z) - u.radius <= 1.0) { enterGarrison(u, g); break; }
+      }
+      // Moviment amb atac (IA): si troba enemics pel camí, els ataca
+      if (u.attackMove && u.isMilitary) {
+        u.scanTimer -= dt;
+        if (u.scanTimer <= 0) {
+          u.scanTimer = 0.4;
+          const t = findTargetNear(u, u.los);
+          if (t) { orderAttack(u, t); break; }
+        }
+      }
       const bt = u.buildTarget;
       if (bt) {
         if (bt.dead) { u.buildTarget = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
@@ -2811,7 +3135,47 @@ function updateUnit(u, dt) {
           if (inReach(u, bt)) startBuilding(u); else retryApproach(u);
         } else if (node) {
           if (inReach(u, node)) startGathering(u); else retryApproach(u);
+        } else if (u.garrisonTarget) {
+          if (++u.approachTries > 4) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); }
+          else setMoveTarget(u, approachPoint(u.garrisonTarget, u.position, 0.6 * u.approachTries));
         } else {
+          u.attackMove = null;
+          setUnitState(u, STATE.IDLE);
+        }
+      }
+      break;
+    }
+    case STATE.ATTACKING: {
+      const t = u.attackTarget;
+      u.inRange = false;
+      if (!isAttackable(t) || (t.group && !t.group.visible && u.isOwn && t.kind === 'unit')) {
+        u.attackTarget = null;
+        setMoveTarget(u, null);
+        u.scanTimer = 0;
+        if (u.attackMove) { setMoveTarget(u, u.attackMove); setUnitState(u, STATE.MOVING); }
+        else setUnitState(u, STATE.IDLE);
+        break;
+      }
+      if (inAttackRange(u, t)) {
+        u.inRange = true;
+        if (u.target) setMoveTarget(u, null);
+        const face = Math.atan2(t.position.x - u.position.x, t.position.z - u.position.z);
+        u.group.rotation.y = lerpAngle(u.group.rotation.y, face, 1 - Math.exp(-12 * dt));
+        if (u.attackCooldown <= 0) {
+          u.attackCooldown = u.reload;
+          performAttack(u, t);
+        }
+      } else {
+        // Perseguir l'objectiu (es recalcula el camí cada mig segon)
+        u.chaseTimer -= dt;
+        if (!u.target || u.chaseTimer <= 0) {
+          u.chaseTimer = 0.5;
+          setMoveTarget(u, t.kind === 'unit' ? t.position.clone() : approachPoint(t, u.position));
+        }
+        walking = !stepTowardsTarget(u, dt);
+        // Les unitats militars abandonen una persecució massa llarga
+        if (u.isMilitary && t.kind === 'unit' && hDist(u.position, t.position) > u.los * 2.5) {
+          u.attackTarget = null;
           setUnitState(u, STATE.IDLE);
         }
       }
@@ -2833,7 +3197,7 @@ function updateUnit(u, dt) {
     }
     case STATE.RETURNING: {
       const tc = u.dropTarget;
-      if (!acceptsDropoff(tc, u.carry.type)) { goToDropoff(u); break; }
+      if (!acceptsDropoff(tc, u.carry.type, u.team)) { goToDropoff(u); break; }
       if (inReach(u, tc)) { depositCarry(u); break; }
       const arrived = stepTowardsTarget(u, dt);
       walking = !arrived;
@@ -2850,7 +3214,16 @@ function updateUnit(u, dt) {
     case STATE.IDLE:
     default:
       if (u.target) setMoveTarget(u, null);
-      if (u.orderQueue.length) runOrder(u, u.orderQueue.shift());
+      if (u.orderQueue.length) { runOrder(u, u.orderQueue.shift()); break; }
+      // Les unitats militars ataquen automàticament l'enemic que veuen
+      if (u.isMilitary) {
+        u.scanTimer -= dt;
+        if (u.scanTimer <= 0) {
+          u.scanTimer = 0.5;
+          const t = findTargetNear(u, u.los);
+          if (t) orderAttack(u, t);
+        }
+      }
       break;
   }
 
@@ -2891,6 +3264,20 @@ function updateUnit(u, dt) {
       if (u.state === STATE.BUILDING) onBuildStrike(u, u.buildTarget);
       else onToolStrike(u, u.gatherNode);
     }
+  } else if (u.state === STATE.ATTACKING && u.inRange) {
+    // Combat: preparació del cop (o tensar l'arc) i descàrrega ràpida
+    const prep = u.reload ? 1 - u.attackCooldown / u.reload : 1;
+    for (const l of u.legs) l.rotation.x *= (1 - k);
+    u.model.position.y = 0;
+    if (u.range > 0) {
+      u.arms[0].rotation.x = -1.5;
+      u.arms[1].rotation.x = -1.3 - Math.min(1, prep * 1.3) * 0.35;
+    } else {
+      const arm = u.swingT > 0 ? THREE.MathUtils.lerp(-0.3, -2.5, u.swingT / 0.22) : THREE.MathUtils.lerp(-0.4, -2.5, Math.min(1, prep * 1.2));
+      u.arms[1].rotation.x = arm;
+      u.arms[0].rotation.x = -0.6;
+      u.model.rotation.x = u.swingT > 0 ? 0.12 : -0.05 * prep;
+    }
   } else {
     for (const l of u.legs) l.rotation.x *= (1 - k);
     for (const a of u.arms) a.rotation.x *= (1 - k);
@@ -2905,6 +3292,498 @@ function updateUnit(u, dt) {
     u.carryMesh.position.y = 2.72 + Math.sin(state.elapsed * 4 + u.id) * 0.05;
     u.carryMesh.rotation.y += dt * 1.5;
   }
+}
+
+/* =====================================================================
+   IA ENEMIGA: economia, construcció, exèrcit i onades d'atac
+   ===================================================================== */
+const DIFFICULTY = {
+  easy:   { label: 'Fàcil',   villagers: 12, firstWave: 420, interval: 210, waveBase: 3, bonusRes: 0,   gather: 0.85, maxBarracks: 1 },
+  normal: { label: 'Normal',  villagers: 17, firstWave: 300, interval: 170, waveBase: 4, bonusRes: 100, gather: 1.0,  maxBarracks: 1 },
+  hard:   { label: 'Difícil', villagers: 22, firstWave: 210, interval: 130, waveBase: 5, bonusRes: 300, gather: 1.25, maxBarracks: 2 },
+};
+const AI = { team: ENEMY.id, enabled: true, diff: DIFFICULTY.normal, timer: 0, nextWaveAt: 300, waveCount: 0, alert: null, alertTime: -99, armyCycle: 0 };
+
+function aiAlert(attacker) {
+  if (!attacker || attacker.dead) return;
+  AI.alert = attacker;
+  AI.alertTime = state.elapsed;
+}
+function canPlaceRect(x, z, w, d) {
+  const L = CONFIG.MAP_LIMIT, N = NAV.N;
+  if (Math.abs(x) + w / 2 > L - 1 || Math.abs(z) + d / 2 > L - 1) return false;
+  for (let j = navCell(z - d / 2 + 0.01); j <= navCell(z + d / 2 - 0.01); j++)
+    for (let i = navCell(x - w / 2 + 0.01); i <= navCell(x + w / 2 - 0.01); i++)
+      if (NAV.build[j * N + i]) return false;
+  return true;
+}
+/* Busca un lloc lliure en anells al voltant d'un punt (deixant un passadís al voltant de l'edifici) */
+function findBuildSpot(type, near, minR, maxR) {
+  const [sw, sd] = CONFIG.BUILDINGS[type].size;
+  const gap = type === 'farm' ? 0 : 2;
+  for (let r = minR; r <= maxR; r += 1.5) {
+    const steps = Math.max(10, Math.floor(r * 1.4));
+    for (let k = 0; k < steps; k++) {
+      const a = (k / steps) * Math.PI * 2 + r * 0.37;
+      const x = snapToGrid(near.x + Math.sin(a) * r, sw), z = snapToGrid(near.z + Math.cos(a) * r, sd);
+      if (canPlace(type, x, z) && canPlaceRect(x, z, sw + gap, sd + gap)) return { x, z };
+    }
+  }
+  return null;
+}
+function aiPickBuilders(n, near) {
+  const vills = state.units.filter(u => u.team === AI.team && u.subtype === 'villager' && !u.garrisoned
+    && u.state !== STATE.BUILDING && !u.buildTarget && u.carry.amount < 5);
+  vills.sort((a, b) => hDist(a.position, near) - hDist(b.position, near));
+  return vills.slice(0, n);
+}
+function aiBuild(type, near, minR, maxR, builders = 1) {
+  const def = CONFIG.BUILDINGS[type];
+  if (buildBlockReason(type, AI.team)) return false;
+  const spot = findBuildSpot(type, near, minR, maxR);
+  if (!spot) return false;
+  const who = aiPickBuilders(builders, near);
+  if (!who.length) return false;
+  applyCost(def.cost, -1, AI.team);
+  const b = createBuilding(type, spot.x, spot.z, false, AI.team);
+  commandBuild(who, b);
+  return true;
+}
+function nearestPlayerTarget(pos) {
+  let best = null, bestD = Infinity;
+  for (const u of state.units) if (u.isOwn && !u.garrisoned) { const d = hDist(u.position, pos); if (d < bestD) { bestD = d; best = u; } }
+  for (const b of state.buildings) if (b.isOwn) { const d = hDist(b.position, pos) * 0.8; if (d < bestD) { bestD = d; best = b; } }
+  return best;
+}
+
+function aiTick() {
+  if (!AI.enabled) return;
+  const T = AI.team, D = AI.diff, res = ENEMY.res;
+  const blds = state.buildings.filter(b => b.team === T);
+  const tc = blds.find(b => b.subtype === 'towncenter');
+  const villagers = state.units.filter(u => u.team === T && u.subtype === 'villager');
+  const army = state.units.filter(u => u.team === T && u.isMilitary);
+  const has = (type, includeFoundations = true) => blds.some(b => b.subtype === type && (includeFoundations || !b.underConstruction));
+  const count = (type) => blds.filter(b => b.subtype === type).length;
+  const now = state.elapsed;
+
+  if (!tc) {
+    // Sense Centre de Ciutat: tot l'exèrcit a l'atac
+    for (const u of army) if (u.state === STATE.IDLE) { const t = nearestPlayerTarget(u.position); if (t) orderAttackMove(u, t.position.clone()); }
+    return;
+  }
+
+  // 1) Aldeans
+  if (villagers.length + tc.trainQueue.length < D.villagers && tc.trainQueue.length < 2) queueUnit(tc, 'villager');
+
+  // 2) Cases (amb marge perquè la producció no s'aturi)
+  const cap = popCap(T);
+  if (popUsed(T) >= cap - 3 && cap < CONFIG.POP_CAP && !blds.some(b => b.subtype === 'house' && b.underConstruction)) {
+    aiBuild('house', tc.position, 10, 28);
+  }
+
+  // 3) Edificis econòmics i militars
+  if (villagers.length >= 6 && !has('lumbercamp')) {
+    const tree = nearestResource('wood', tc.position, 60);
+    if (tree) aiBuild('lumbercamp', tree.position, 4, 10);
+  }
+  if (villagers.length >= 8 && !has('barracks')) aiBuild('barracks', tc.position, 13, 26, 2);
+  if (villagers.length >= 9 && !has('mill')) {
+    const food = nearestResource('food', tc.position, 45);
+    aiBuild('mill', food ? food.position : tc.position, food ? 4 : 10, food ? 10 : 22);
+  }
+  if (villagers.length >= 11 && !has('miningcamp')) {
+    const gold = nearestResource('gold', tc.position, 60);
+    if (gold) aiBuild('miningcamp', gold.position, 4, 10);
+  }
+  if (villagers.length >= 14 && count('barracks') < D.maxBarracks && res.wood > 250) aiBuild('barracks', tc.position, 13, 30, 2);
+  // Granges quan s'acaba l'aliment salvatge
+  const wildFood = state.resourceNodes.some(n => n.resourceType === 'food' && n.subtype !== 'farm' && hDist(n.position, tc.position) < 45);
+  const farms = state.resourceNodes.filter(n => n.subtype === 'farm' && n.team === T).length + blds.filter(b => b.subtype === 'farm').length;
+  if (!wildFood && hasCompleted('mill', T) && farms < Math.ceil(villagers.length * 0.4)) {
+    const mill = blds.find(b => b.subtype === 'mill' && !b.underConstruction);
+    aiBuild('farm', mill.position, 5, 16);
+  }
+
+  // 4) Exèrcit
+  for (const b of blds) {
+    if (b.subtype !== 'barracks' || b.underConstruction || b.trainQueue.length >= 2) continue;
+    const order = ['militia', 'archer', 'spearman', 'militia', 'spearman'];
+    for (let k = 0; k < order.length; k++) {
+      const kind = order[(AI.armyCycle + k) % order.length];
+      if (canAfford(CONFIG.UNITS[kind].cost, T) && queueUnit(b, kind)) { AI.armyCycle++; break; }
+    }
+  }
+
+  // 5) Aldeans inactius → a treballar segons les necessitats
+  const gatherers = { food: 0, wood: 0, gold: 0, stone: 0 };
+  for (const u of villagers) { const t = u.gatherNode ? u.gatherNode.resourceType : null; if (t) gatherers[t]++; }
+  const want = has('barracks') ? { food: 0.42, wood: 0.33, gold: 0.25 } : { food: 0.5, wood: 0.5, gold: 0 };
+  for (const u of villagers) {
+    if (u.state !== STATE.IDLE || u.garrisoned || u.orderQueue.length) continue;
+    const types = Object.keys(want).sort((a, b) => (gatherers[a] - want[a] * villagers.length) - (gatherers[b] - want[b] * villagers.length));
+    for (const type of types) {
+      if (!want[type]) continue;
+      const node = nearestResource(type, tc.position, 65, u);
+      if (node) { orderGather(u, node, null); gatherers[type]++; break; }
+    }
+  }
+
+  // 6) Defensa: si hi ha intrusos a prop de la base, l'exèrcit que no és en onada respon
+  let intruder = null;
+  if (AI.alert && !AI.alert.dead && now - AI.alertTime < 10) intruder = AI.alert;
+  if (!intruder) {
+    for (const u of state.units) if (u.isOwn && !u.garrisoned && hDist(u.position, tc.position) < 30) { intruder = u; break; }
+  }
+  if (intruder) {
+    for (const u of army) if (!u.inWave && (u.state === STATE.IDLE || u.state === STATE.MOVING)) orderAttack(u, intruder);
+  }
+
+  // 7) Onades d'atac
+  if (now >= AI.nextWaveAt) {
+    const avail = army.filter(u => !u.inWave);
+    const need = D.waveBase + AI.waveCount * 2;
+    if (avail.length >= need) {
+      const target = nearestPlayerTarget(tc.position);
+      if (target) {
+        avail.forEach(u => { u.inWave = true; orderAttackMove(u, target.position.clone()); });
+        AI.waveCount++;
+        AI.nextWaveAt = now + D.interval;
+        toast(`⚠️ L'Imperi Vermell ataca! (onada ${AI.waveCount}: ${avail.length} unitats)`);
+      }
+    }
+  }
+  // Les unitats de l'onada que queden inactives busquen el següent objectiu
+  for (const u of army) {
+    if (!u.inWave || u.state !== STATE.IDLE) continue;
+    const t = nearestPlayerTarget(u.position);
+    if (t) orderAttackMove(u, t.kind === 'unit' ? t.position.clone() : approachPoint(t, u.position));
+  }
+}
+
+/* =====================================================================
+   BOIRA DE GUERRA (graella de 2 unitats: explorat / visible ara)
+   ===================================================================== */
+const FOG = { enabled: true, cell: 2, N: 0, explored: null, visible: null, data: null, tex: null, canvas: null, ctx: null, img: null };
+function fogInit() {
+  const N = Math.ceil((CONFIG.MAP_LIMIT * 2) / FOG.cell);
+  FOG.N = N;
+  FOG.explored = new Uint8Array(N * N);
+  FOG.visible = new Uint8Array(N * N);
+  FOG.data = new Uint8Array(N * N * 4);
+  FOG.tex = new THREE.DataTexture(FOG.data, N, N, THREE.RGBAFormat);
+  FOG.tex.magFilter = THREE.LinearFilter;
+  FOG.tex.minFilter = THREE.LinearFilter;
+  FOG.tex.wrapS = FOG.tex.wrapT = THREE.ClampToEdgeWrapping;
+  FOG.tex.needsUpdate = true;
+  FOG_UNIFORMS.uFogTex.value = FOG.tex;
+  FOG.canvas = document.createElement('canvas');
+  FOG.canvas.width = FOG.canvas.height = N;
+  FOG.ctx = FOG.canvas.getContext('2d');
+  FOG.img = FOG.ctx.createImageData(N, N);
+}
+function fogIndex(x, z) {
+  const N = FOG.N;
+  const i = Math.min(N - 1, Math.max(0, Math.floor((x + CONFIG.MAP_LIMIT) / FOG.cell)));
+  const j = Math.min(N - 1, Math.max(0, Math.floor((z + CONFIG.MAP_LIMIT) / FOG.cell)));
+  return j * N + i;
+}
+function isVisibleAt(x, z) { return !!FOG.visible[fogIndex(x, z)]; }
+function isExploredAt(x, z) { return !!FOG.explored[fogIndex(x, z)]; }
+function revealCircle(x, z, r) {
+  const N = FOG.N, c = FOG.cell, L = CONFIG.MAP_LIMIT;
+  const i0 = Math.max(0, Math.floor((x - r + L) / c)), i1 = Math.min(N - 1, Math.floor((x + r + L) / c));
+  const j0 = Math.max(0, Math.floor((z - r + L) / c)), j1 = Math.min(N - 1, Math.floor((z + r + L) / c));
+  const r2 = r * r;
+  for (let j = j0; j <= j1; j++) {
+    const cz = -L + (j + 0.5) * c - z;
+    for (let i = i0; i <= i1; i++) {
+      const cx = -L + (i + 0.5) * c - x;
+      if (cx * cx + cz * cz <= r2) { FOG.visible[j * N + i] = 1; FOG.explored[j * N + i] = 1; }
+    }
+  }
+}
+function entityVisible(e) {
+  if (e.footprint) {
+    const { hw, hd } = e.footprint;
+    return isVisibleAt(e.position.x, e.position.z) || isVisibleAt(e.position.x - hw, e.position.z - hd) || isVisibleAt(e.position.x + hw, e.position.z + hd)
+      || isVisibleAt(e.position.x - hw, e.position.z + hd) || isVisibleAt(e.position.x + hw, e.position.z - hd);
+  }
+  const r = e.radius || 0;
+  return isVisibleAt(e.position.x, e.position.z) || (r > 2 && (isVisibleAt(e.position.x + r, e.position.z) || isVisibleAt(e.position.x - r, e.position.z)
+    || isVisibleAt(e.position.x, e.position.z + r) || isVisibleAt(e.position.x, e.position.z - r)));
+}
+function updateFog() {
+  const N = FOG.N;
+  FOG.visible.fill(0);
+  if (!FOG.enabled) { FOG.visible.fill(1); FOG.explored.fill(1); }
+  else {
+    for (const u of state.units) if (u.isOwn && !u.garrisoned) revealCircle(u.position.x, u.position.z, u.los || 10);
+    for (const b of state.buildings) if (b.isOwn) revealCircle(b.position.x, b.position.z, (b.underConstruction ? 6 : (b.los || 8)) + (b.footprint ? b.footprint.hw : b.radius));
+  }
+  const d = FOG.data, im = FOG.img.data;
+  for (let k = 0; k < N * N; k++) {
+    const v = FOG.visible[k] ? 255 : FOG.explored[k] ? 100 : 0;
+    d[k * 4] = v; d[k * 4 + 1] = v; d[k * 4 + 2] = v; d[k * 4 + 3] = 255;
+    im[k * 4] = 8; im[k * 4 + 1] = 10; im[k * 4 + 2] = 14;
+    im[k * 4 + 3] = FOG.visible[k] ? 0 : FOG.explored[k] ? 120 : 255;
+  }
+  FOG.tex.needsUpdate = true;
+  FOG.ctx.putImageData(FOG.img, 0, 0);
+  // Visibilitat de les entitats que no són del jugador
+  for (const u of state.units) {
+    if (u.isOwn) continue;
+    const vis = entityVisible(u);
+    u.group.visible = vis && !u.garrisoned;
+    if (!vis && u.selected) { removeFromSelection(u); onSelectionChanged(); }
+  }
+  for (const b of state.buildings) {
+    if (b.isOwn) continue;
+    if (entityVisible(b)) b.seen = true;       // els edificis enemics es recorden un cop vistos
+    b.group.visible = !!b.seen;
+  }
+  for (const n of state.resourceNodes) {
+    const ex = isExploredAt(n.position.x, n.position.z) || (n.footprint && entityVisible(n));
+    if (n.subtype === 'sheep') n.group.visible = entityVisible(n) || (ex && n.killed);
+    else n.group.visible = ex;
+  }
+}
+
+/* =====================================================================
+   COMBAT: ATAC, PROJECTILS, MORT, REFUGI AL CENTRE DE CIUTAT
+   ===================================================================== */
+function computeDamage(attack, target, type, vsBuilding = 0) {
+  const armor = (target.armor || [0, 0])[type] || 0;
+  let d = attack - armor;
+  if (target.kind === 'building') d += vsBuilding;
+  return Math.max(1, d);
+}
+function inAttackRange(u, t) {
+  const d = entSurfaceDist(t, u.position.x, u.position.z) - u.radius;
+  return d <= (u.range > 0 ? u.range : u.reach);
+}
+function isAttackable(t) {
+  return t && !t.dead && !t.garrisoned && (t.kind === 'unit' || t.kind === 'building' || (t.subtype === 'farm' && t.team));
+}
+
+function orderAttack(u, target, keepAttackMove = true) {
+  if (!isAttackable(target) || target.team === u.team) return;
+  u.gatherNode = null;
+  u.dropTarget = null;
+  u.buildTarget = null;
+  u.garrisonTarget = null;
+  if (!keepAttackMove) u.attackMove = null;
+  u.attackTarget = target;
+  u.chaseTimer = 0;
+  setUnitState(u, STATE.ATTACKING);
+}
+function commandAttack(units, target, queued = false) {
+  for (const u of units) {
+    if (queued) { enqueueOrder(u, { type: 'attack', target }); continue; }
+    u.orderQueue.length = 0;
+    orderAttack(u, target, false);
+  }
+}
+function orderAttackMove(u, point) {
+  orderMove(u, point);
+  u.attackMove = point.clone();
+}
+
+/* Busca l'enemic més proper dins d'un radi (prioritza unitats militars) */
+function findTargetNear(u, radius) {
+  let best = null, bestD = Infinity;
+  for (const e of state.units) {
+    if (e.team === u.team || e.team === 0 || e.dead || e.garrisoned) continue;
+    const d = hDist(e.position, u.position) * (e.isMilitary ? 1 : 1.25);
+    if (d < radius && d < bestD) { bestD = d; best = e; }
+  }
+  if (best) return best;
+  for (const b of state.buildings) {
+    if (b.team === u.team || b.dead) continue;
+    const d = entSurfaceDist(b, u.position.x, u.position.z);
+    if (d < radius && d < bestD) { bestD = d; best = b; }
+  }
+  return best;
+}
+
+function performAttack(u, t) {
+  if (u.range > 0) {
+    spawnArrow(new THREE.Vector3(u.position.x, 1.6, u.position.z), t, computeDamage(u.attack, t, 1), u);
+  } else {
+    applyDamage(t, computeDamage(u.attack, t, 0, u.vsBuilding), u);
+    const dir = new THREE.Vector3(t.position.x - u.position.x, 0, t.position.z - u.position.z).normalize();
+    spawnParticles(new THREE.Vector3(u.position.x + dir.x * 0.8, 1.1, u.position.z + dir.z * 0.8),
+      t.kind === 'building' ? 0x9b958a : 0xb02020, 3, dir);
+  }
+  u.swingT = 0.22;
+}
+
+let lastAttackAlert = -99;
+function applyDamage(target, amount, attacker) {
+  if (!target || target.dead) return;
+  target.hp -= amount;
+  target.lastHitT = state.elapsed;
+  if (target.hp <= 0) { killEntity(target, attacker); return; }
+  // Les unitats militars inactives responen l'atac
+  if (target.kind === 'unit' && target.isMilitary && attacker && !attacker.dead
+      && (target.state === STATE.IDLE || (target.state === STATE.ATTACKING && target.attackTarget && target.attackTarget.kind === 'building'))) {
+    orderAttack(target, attacker);
+  }
+  if (target.team === ENEMY.id && attacker) aiAlert(attacker);
+  if (target.isOwn && state.elapsed - lastAttackAlert > 12) {
+    lastAttackAlert = state.elapsed;
+    toast(`⚔️ T'estan atacant! (${target.name})`);
+    state.pings.push({ x: target.position.x, z: target.position.z, t: 0 });
+  }
+}
+
+function killEntity(e, killer) {
+  if (e.dead) return;
+  e.dead = true;
+  e.hp = 0;
+  if (e.kind === 'unit') {
+    state.units = state.units.filter(u => u !== e);
+    e.deathKind = 'unit';
+    e.model.rotation.set(0, 0, 0);
+    e.fallDir = rand() < 0.5 ? -1 : 1;
+  } else {
+    // Edifici (o granja): els refugiats surten, s'allibera el terreny
+    if (e.garrison && e.garrison.length) ungarrison(e);
+    e.depleted = true;
+    state.buildings = state.buildings.filter(b => b !== e);
+    state.resourceNodes = state.resourceNodes.filter(n => n !== e);
+    state.obstacles = state.obstacles.filter(o => o.entity !== e);
+    rebuildNav();
+    e.deathKind = 'building';
+    spawnParticles(new THREE.Vector3(e.position.x, 2, e.position.z), 0x8a8378, 20, null);
+    if (e.isOwn) toast(`💥 Hem perdut: ${e.name}`);
+    else if (e.group.visible) toast(`🔥 Edifici enemic destruït: ${e.name}`);
+  }
+  state.pickables = state.pickables.filter(m => m.userData.entity !== e);
+  if (e.selected) { removeFromSelection(e); onSelectionChanged(); }
+  e.selection.visible = false;
+  e.dieT = 0;
+  state.dying.push(e);
+  if (e.isOwn) updatePopulationUI();
+}
+
+/* ---------- Fletxes ---------- */
+const arrowGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.9, 4).rotateX(Math.PI / 2);
+const arrowTipGeo = new THREE.ConeGeometry(0.06, 0.18, 4).rotateX(Math.PI / 2).translate(0, 0, 0.5);
+function aimPoint(t) {
+  const y = t.kind === 'unit' ? 1.2 : (t.height ? t.height * 0.5 : 3);
+  return new THREE.Vector3(t.position.x, y, t.position.z);
+}
+function spawnArrow(from, target, dmg, shooter, delay = 0) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(arrowGeo, mat(0x6b4423)), new THREE.Mesh(arrowTipGeo, mat(0x777777)));
+  g.visible = false;
+  scene.add(g);
+  const end = aimPoint(target);
+  const dist = from.distanceTo(end);
+  state.projectiles.push({ g, start: from.clone(), end, target, dmg, shooter, t: -delay, T: Math.max(0.2, dist / 30), dist });
+}
+function updateProjectiles(dt) {
+  const prev = new THREE.Vector3();
+  for (let i = state.projectiles.length - 1; i >= 0; i--) {
+    const p = state.projectiles[i];
+    p.t += dt;
+    if (p.t < 0) continue;
+    if (p.target && !p.target.dead && !p.target.garrisoned) p.end.copy(aimPoint(p.target));
+    const k = Math.min(1, p.t / p.T);
+    prev.copy(p.g.position);
+    p.g.position.lerpVectors(p.start, p.end, k);
+    p.g.position.y += Math.sin(k * Math.PI) * p.dist * 0.12;
+    if (p.g.visible) p.g.lookAt(p.g.position.clone().multiplyScalar(2).sub(prev));
+    // Les fletxes es veuen si el tirador o l'objectiu són visibles
+    p.g.visible = (p.shooter && p.shooter.group.visible) || (p.target && p.target.group && p.target.group.visible);
+    if (k >= 1) {
+      if (p.target && !p.target.dead && !p.target.garrisoned) applyDamage(p.target, p.dmg, p.shooter);
+      scene.remove(p.g);
+      state.projectiles.splice(i, 1);
+    }
+  }
+}
+
+/* ---------- Centre de Ciutat: fletxes i refugi ---------- */
+function updateDefensiveBuildings(dt) {
+  for (const b of state.buildings) {
+    if (b.subtype !== 'towncenter' || b.dead) continue;
+    // Els refugiats es curen lentament
+    if (b.garrison) for (const u of b.garrison) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5);
+    b.arrowCooldown = (b.arrowCooldown ?? 0) - dt;
+    if (b.arrowCooldown > 0) continue;
+    const C = CONFIG.TC_ARROWS;
+    let target = null, bestD = Infinity;
+    for (const u of state.units) {
+      if (u.team === b.team || u.team === 0 || u.dead || u.garrisoned) continue;
+      const d = entSurfaceDist(b, u.position.x, u.position.z);
+      if (d <= C.range && d < bestD) { bestD = d; target = u; }
+    }
+    if (!target) {
+      for (const e of state.buildings) {
+        if (e.team === b.team || e.dead) continue;
+        const d = hDist(e.position, b.position) - b.radius - (e.footprint ? e.footprint.hw : e.radius);
+        if (d <= C.range && d < bestD) { bestD = d; target = e; }
+      }
+    }
+    if (!target) { b.arrowCooldown = 0.3; continue; }
+    b.arrowCooldown = C.reload;
+    const arrows = 1 + Math.min(10, b.garrison ? b.garrison.length : 0);
+    for (let i = 0; i < arrows; i++) {
+      const from = new THREE.Vector3(b.position.x + randRange(-3.5, 3.5), 5.5 + rand(), b.position.z + randRange(-3.5, 3.5));
+      spawnArrow(from, target, computeDamage(C.damage, target, 1), b, i * 0.12);
+    }
+  }
+}
+
+function orderGarrison(u, b) {
+  u.garrisonPrev = { node: u.gatherNode, type: u.lastResourceType, build: u.buildTarget };
+  u.gatherNode = null; u.dropTarget = null; u.buildTarget = null; u.attackTarget = null;
+  u.garrisonTarget = b;
+  setMoveTarget(u, approachPoint(b, u.position));
+  setUnitState(u, STATE.MOVING);
+}
+function enterGarrison(u, b) {
+  if (!b.garrison) b.garrison = [];
+  if (b.garrison.length >= CONFIG.GARRISON_MAX || b.dead) {
+    u.garrisonTarget = null;
+    setUnitState(u, STATE.IDLE);
+    return;
+  }
+  u.garrisonTarget = null;
+  u.garrisoned = b;
+  b.garrison.push(u);
+  setMoveTarget(u, null);
+  setUnitState(u, STATE.GARRISONED);
+  u.group.visible = false;
+  if (u.selected) { removeFromSelection(u); onSelectionChanged(); }
+}
+function ungarrison(b) {
+  if (!b.garrison) return;
+  for (const u of b.garrison) {
+    if (u.dead) continue;
+    const spot = findSpawnSpot(b);
+    u.position.set(spot.x, 0, spot.z);
+    u.garrisoned = null;
+    u.group.visible = true;
+    setUnitState(u, STATE.IDLE);
+    // Tornar a la feina anterior
+    const prev = u.garrisonPrev;
+    if (prev && prev.build && !prev.build.dead && prev.build.underConstruction) orderBuild(u, prev.build, null);
+    else if (prev && prev.node && !prev.node.depleted) orderGather(u, prev.node, null);
+    else if (prev && prev.type) { u.lastResourceType = prev.type; u.lastNodePos.copy(u.position); findNextResource(u); }
+  }
+  b.garrison = [];
+  if (b.selected) updateSelectionUI();
+}
+function ringTownBell(tc) {
+  if (!tc) return;
+  if (tc.garrison && tc.garrison.length) { ungarrison(tc); toast('🔔 Tornem a la feina!'); return; }
+  const vills = state.units.filter(u => u.team === tc.team && u.subtype === 'villager' && !u.garrisoned && hDist(u.position, tc.position) < 45);
+  vills.forEach(u => orderGarrison(u, tc));
+  if (tc.isOwn) toast(`🔔 Campana! ${vills.length} aldeans es refugien al Centre de Ciutat`);
+  if (tc.selected) updateSelectionUI();
 }
 
 /* =====================================================================
@@ -2974,7 +3853,20 @@ function updateResourceNodes(dt) {
   for (let i = state.dying.length - 1; i >= 0; i--) {
     const n = state.dying[i];
     n.dieT += dt;
-    if (n.resourceType === 'wood') {
+    if (n.deathKind === 'unit') {
+      // La unitat cau d'esquena, s'hi queda una estona i s'enfonsa
+      const f = Math.min(1, n.dieT / 0.45);
+      n.model.rotation.x = -Math.PI / 2 * f * f * n.fallDir;
+      n.model.position.y = 0.2 * f;
+      if (n.dieT > 3) n.group.position.y -= dt * 0.6;
+      if (n.dieT > 5) removeDead(n, i);
+    } else if (n.deathKind === 'building') {
+      const f = Math.min(1, n.dieT / 2.2);
+      n.group.position.y = -f * f * (n.height || 9);
+      n.group.rotation.z = Math.sin(n.dieT * 30) * 0.01 * (1 - f);
+      if (Math.random() < dt * 12) spawnParticles(new THREE.Vector3(n.position.x + randRange(-3, 3), 0.5, n.position.z + randRange(-3, 3)), 0x9b958a, 2, null);
+      if (n.dieT > 2.4) removeDead(n, i);
+    } else if (n.resourceType === 'wood') {
       // L'arbre cau i després s'enfonsa
       const f = Math.min(1, n.dieT / 0.9);
       n.model.rotation.set(0, n.fallDir, 0);
@@ -3091,7 +3983,7 @@ function updateResourcesUI() {
   }
 }
 function updatePopulationUI() {
-  const used = state.units.filter(u => u.isOwn).length, cap = popCap();
+  const used = unitCount(PLAYER.id), cap = popCap();
   document.getElementById('pop-val').textContent = used;
   document.getElementById('pop-cap').textContent = cap;
   document.querySelector('#panel-resources .pop').classList.toggle('full', used >= cap);
@@ -3102,15 +3994,16 @@ function hpBar(e, cls = '') {
   return `<div class="bar ${cls}"><i style="width:${pct}%"></i><span>${e.hp} / ${e.maxHp}</span></div>`;
 }
 function ownerLine(e) {
-  return e.isOwn
-    ? `<div class="sel-owner"><span class="dot"></span>${PLAYER.name}</div>`
-    : `<div class="sel-owner">Natura · Recurs neutral</div>`;
+  if (e.team === 0) return `<div class="sel-owner">Natura · Recurs neutral</div>`;
+  const T = teamOf(e.team);
+  return `<div class="sel-owner"><span class="dot" style="background:#${T.color.toString(16).padStart(6, '0')};box-shadow:0 0 6px #${T.color.toString(16).padStart(6, '0')}"></span>${T.name}${e.isOwn ? '' : ' · <b style="color:#ff8a7a">enemic</b>'}</div>`;
 }
 
 function unitTaskLine(u) {
   const tag = `<span class="state-tag ${u.state}">${STATE_LABEL[u.state]}</span>`;
   let detail = '';
-  if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
+  if (u.state === STATE.ATTACKING && u.attackTarget) detail = ` ${u.attackTarget.name}`;
+  else if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
   else if (u.state === STATE.MOVING && u.gatherNode) detail = ` cap a ${u.gatherNode.name.toLowerCase()}`;
   else if (u.state === STATE.RETURNING) detail = u.dropTarget ? ` (${u.dropTarget.name})` : '';
   else if (u.state === STATE.BUILDING && u.buildTarget) detail = ` ${u.buildTarget.name}`;
@@ -3125,8 +4018,8 @@ function carryLine(u) {
 /* Signatura de l'estat visible: si canvia, es refà el panell de selecció */
 function selectionSignature() {
   return state.selected.map(e => e.kind === 'unit'
-    ? `${e.id}:${e.state}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
-    : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
+    ? `${e.id}:${e.state}:${Math.ceil(e.hp)}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
+    : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.garrison ? e.garrison.length : 0}:${Math.ceil(e.hp / 50)}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
 }
 let lastSelSignature = '';
 
@@ -3146,11 +4039,13 @@ function updateSelectionUI(panelOnly = false) {
   if (sel.length === 1) {
     let stats = '';
     if (first.kind === 'unit') {
-      stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${carryLine(first)}</div>
-        <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>0/0</b></span><span>👟 Velocitat <b>${first.speed.toFixed(1)}</b></span></div>`;
+      stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.isMilitary || !first.isOwn ? '' : carryLine(first)}</div>
+        <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>🎯 Abast <b>${first.range ? first.range : 'cos a cos'}</b></span><span>👁 Visió <b>${first.los}</b></span></div>`;
     } else if (first.kind === 'building') {
-      if (first.subtype === 'towncenter') {
-        stats = `<div class="stats"><span>👥 Població <b>${state.units.filter(u => u.isOwn).length}/${popCap()}</b></span><span>🚩 Reunió <b>${first.rally ? (first.rally.node ? first.rally.node.name : 'terreny') : 'cap'}</b></span></div>`;
+      if (!first.isOwn) {
+        stats = `<div class="stats"><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>${first.underConstruction ? 'En construcció' : ''}</span></div>`;
+      } else if (first.subtype === 'towncenter') {
+        stats = `<div class="stats"><span>👥 Població <b>${unitCount()}/${popCap()}</b></span><span>🔔 Refugiats <b>${first.garrison ? first.garrison.length : 0}/${CONFIG.GARRISON_MAX}</b></span><span>🏹 Fletxes <b>${1 + Math.min(10, first.garrison ? first.garrison.length : 0)}</b></span><span>🚩 Reunió <b>${first.rally ? (first.rally.node ? first.rally.node.name : 'terreny') : 'cap'}</b></span></div>`;
       } else if (first.underConstruction) {
         const n = state.units.filter(u => u.state === STATE.BUILDING && u.buildTarget === first).length;
         stats = `<div class="stats"><span>🔨 Constructors <b>${n}</b></span><span>${first.def.desc}</span></div>`;
@@ -3160,10 +4055,10 @@ function updateSelectionUI(panelOnly = false) {
         if (d.pop) parts.push(`<span>🏠 Població <b>+${d.pop}</b></span>`);
         if (d.dropoff) parts.push(`<span>📦 Magatzem <b>${d.dropoff.map(t => RES_ICON[t]).join(' ')}</b></span>`);
         if (first.subtype === 'mill') parts.push('<span>🌱 Permet construir <b>granges</b></span>');
-        if (first.subtype === 'barracks') parts.push('<span>⚔️ Unitats militars: <b>Fase 3B</b></span>');
+        if (first.subtype === 'barracks') parts.push(`<span>🚩 Reunió <b>${first.rally ? 'establert' : 'cap'}</b></span>`);
         stats = `<div class="stats">${parts.join('')}</div>`;
       }
-      if (first.trainQueue) {
+      if (first.trainQueue && first.isOwn && !first.underConstruction) {
         const items = first.trainQueue.map((it, i) =>
           `<div class="q-item" data-idx="${i}" title="Clic: cancel·lar (retorna ${costText(CONFIG.UNITS[it.kind].cost)})">${CONFIG.UNITS[it.kind].icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
         stats += `<div class="queue-row"><div class="queue" id="train-queue">${items || '<span class="q-empty">Cua buida</span>'}</div><div class="train-status" id="train-status"></div></div>`;
@@ -3177,7 +4072,7 @@ function updateSelectionUI(panelOnly = false) {
         ? `<div class="bar build"><i style="width:${first.progress * 100}%"></i><span>Construcció: ${Math.floor(first.progress * 100)}%</span></div>`
         : hpBar(first);
     selContent.innerHTML = `
-      <div class="portrait ${first.isOwn ? '' : 'neutral'}">${first.icon}</div>
+      <div class="portrait ${first.isOwn ? '' : first.team ? 'enemy' : 'neutral'}">${first.icon}</div>
       <div class="sel-info">
         <div class="sel-name">${first.name}</div>
         ${ownerLine(first)}
@@ -3186,7 +4081,7 @@ function updateSelectionUI(panelOnly = false) {
       </div>`;
   } else {
     const shown = sel.slice(0, 24);
-    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨' };
+    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨', ATTACKING: '⚔️', GARRISONED: '🏰' };
     const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
     const counts = {};
     sel.forEach(u => { counts[u.state] = (counts[u.state] || 0) + 1; });
@@ -3197,7 +4092,7 @@ function updateSelectionUI(panelOnly = false) {
     selContent.innerHTML = `
       <div class="portrait">${first.icon}</div>
       <div class="sel-info" style="justify-content:flex-start">
-        <div class="sel-name">${sel.length} Aldeans</div>
+        <div class="sel-name">${sel.length} ${sel.every(u => u.subtype === 'villager') ? 'Aldeans' : 'Unitats'}</div>
         <div class="stats">${summary}<span>🎒 ${Object.keys(carried).filter(k => carried[k]).map(k => `${RES_ICON[k]} <b>${carried[k]}</b>`).join(' · ') || '<b>buida</b>'}</span></div>
         <div class="multi-grid">${minis}${more}</div>
       </div>`;
@@ -3218,11 +4113,29 @@ function updateSelectionUI(panelOnly = false) {
   if (first.kind === 'building' && first.subtype === 'towncenter' && first.isOwn) {
     const def = CONFIG.UNITS.villager;
     const btn = makeActionButton(def.icon, 'Crear Aldeà', `${costText(def.cost)} · ${def.time}s`, 'C', () => queueVillager(first));
-    btn.dataset.action = 'villager';
+    btn.dataset.train = 'villager';
+    btn.title = "Clic a la cua per cancel·lar.\nClic dret: punt de reunió (sobre un recurs: hi treballaran).";
     actionsEl.appendChild(btn);
+    const inside = first.garrison && first.garrison.length;
+    const bell = makeActionButton(inside ? '🚪' : '🔔', inside ? 'A la feina' : 'Campana', inside ? `${first.garrison.length} refugiats` : 'Refugiar aldeans', 'B', () => ringTownBell(first));
+    bell.title = 'Campana: els aldeans propers es refugien al Centre (+1 fletxa per aldeà).\nTorna-la a prémer perquè tornin a la feina.';
+    actionsEl.appendChild(bell);
+  } else if (first.kind === 'building' && first.subtype === 'barracks' && first.isOwn && !first.underConstruction) {
+    actionsEl.classList.add('compact');
+    for (const kind of first.def.trains) {
+      const d = CONFIG.UNITS[kind];
+      const b = makeActionButton(d.icon, d.name, costText(d.cost), '', () => queueUnit(first, kind), true);
+      b.dataset.train = kind;
+      b.title = `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}`;
+      actionsEl.appendChild(b);
+    }
+    actionsEl.appendChild(makeActionButton('🗑️', 'Enderrocar', 'Supr', '', () => demolishBuilding(first), true));
+  } else if (first.kind === 'unit' && first.isOwn && !builders().length) {
+    // Només militars
+    actionsEl.appendChild(makeActionButton('✋', 'Aturar', "Cancel·la l'ordre", 'X', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }));
     const hint = document.createElement('div');
     hint.className = 'action-hint';
-    hint.innerHTML = 'Clic a la cua per cancel·lar.<br><kbd>Clic dret</kbd>: punt de reunió<br>(sobre un recurs: hi treballaran).';
+    hint.innerHTML = '<kbd>Clic dret</kbd> enemic: atacar<br><kbd>Clic dret</kbd> terreny: moure<br>Inactives, ataquen el que veuen.';
     actionsEl.appendChild(hint);
   } else if (first.kind === 'unit' && first.isOwn) {
     // Menú de construcció de l'aldeà
@@ -3245,6 +4158,8 @@ function updateSelectionUI(panelOnly = false) {
       ? 'Selecciona aldeans i fes<br><kbd>clic dret</kbd> al fonament<br>per ajudar a construir.'
       : (first.dropoffTypes ? `Els aldeans hi poden<br>descarregar ${first.dropoffTypes.map(t => RES_ICON[t]).join(' ')}.` : first.def.desc);
     actionsEl.appendChild(hint);
+  } else if (first.team && !first.isOwn) {
+    actionsEl.innerHTML = `<div class="action-hint">${first.kind === 'unit' ? 'Unitat' : 'Edifici'} de l'<b style="color:#ff8a7a">${teamOf(first.team).name}</b>.<br>Selecciona unitats i fes <kbd>clic dret</kbd><br>per atacar-lo.</div>`;
   } else if (first.kind === 'resource' && first.subtype === 'farm') {
     actionsEl.innerHTML = `<div class="action-hint">Granja: ${first.amount} d'aliment.<br>Un sol granger hi pot treballar.<br>Descarrega al Molí o al Centre.</div>`;
   } else if (first.kind === 'resource') {
@@ -3269,8 +4184,9 @@ function onSelectionChanged() {
 function updateTrainingUI() {
   // Botons de construcció: en vermell si no es poden pagar o falta un requisit
   actionsEl.querySelectorAll('[data-build]').forEach(btn => btn.classList.toggle('cant', !!buildBlockReason(btn.dataset.build)));
+  actionsEl.querySelectorAll('[data-train]').forEach(btn => btn.classList.toggle('cant', !canAfford(CONFIG.UNITS[btn.dataset.train].cost)));
   const b = state.selected.length === 1 ? state.selected[0] : null;
-  if (!b || !b.trainQueue) return;
+  if (!b || !b.trainQueue || !b.isOwn) return;
   const prog = document.querySelector('#train-queue .q-prog');
   const status = document.getElementById('train-status');
   const item = b.trainQueue[0];
@@ -3281,8 +4197,7 @@ function updateTrainingUI() {
       ? '<b>🏠 Població plena: calen cases</b>'
       : `Entrenant ${CONFIG.UNITS[item.kind].name.toLowerCase()}… <b>${Math.floor(f * 100)}%</b> · ${Math.ceil(CONFIG.UNITS[item.kind].time - item.t)}s`;
   } else if (status) status.textContent = '';
-  const btn = actionsEl.querySelector('[data-action="villager"]');
-  if (btn) btn.classList.toggle('cant', !canAfford(CONFIG.UNITS.villager.cost));
+  actionsEl.querySelectorAll('[data-train]').forEach(btn => btn.classList.toggle('cant', !canAfford(CONFIG.UNITS[btn.dataset.train].cost)));
 }
 // Delegació: clic sobre un element de la cua = cancel·lar-lo
 selContent.addEventListener('click', (e) => {
@@ -3393,10 +4308,11 @@ window.addEventListener('keydown', (e) => {
       if (b && b.kind === 'building') demolishBuilding(b);
       break;
     }
-    case 'KeyH':
-      setSelection([townCenter]);
-      centerOn(townCenter.position);
+    case 'KeyH': {
+      const tc = state.buildings.find(b => b.isOwn && b.subtype === 'towncenter');
+      if (tc) { setSelection([tc]); centerOn(tc.position); }
       break;
+    }
     case 'KeyC': {
       const tc = state.selected.find(s => s.subtype === 'towncenter');
       if (tc) queueVillager(tc);
@@ -3407,6 +4323,18 @@ window.addEventListener('keydown', (e) => {
       if (units.length) { commandStop(units); updateSelectionUI(); }
       break;
     }
+    case 'KeyB': {
+      const tc = state.buildings.find(b => b.isOwn && b.subtype === 'towncenter');
+      ringTownBell(state.selected.find(s => s.subtype === 'towncenter' && s.isOwn) || tc);
+      break;
+    }
+    case 'KeyP':
+      togglePause();
+      break;
+    case 'F9':
+      FOG.enabled = !FOG.enabled;
+      toast(FOG.enabled ? 'Boira de guerra activada' : 'Boira de guerra desactivada (mapa revelat)');
+      break;
     case 'Period':
     case 'NumpadDecimal':
       selectNextIdle();
@@ -3536,6 +4464,7 @@ function drawMinimap() {
   ctx.stroke();
   // Recursos
   for (const n of state.resourceNodes) {
+    if (!n.group.visible) continue;
     if (n.footprint) { mmRect(ctx, n, ax, n.selected ? '#ffffff' : MM_COLORS.farm, null); continue; }
     const [x, y] = worldToMM(n.position.x, n.position.z, ax);
     ctx.fillStyle = MM_COLORS[n.subtype] || '#fff';
@@ -3544,22 +4473,50 @@ function drawMinimap() {
   }
   // Edificis
   for (const b of state.buildings) {
+    if (!b.group.visible) continue;
+    const col = b.isOwn ? '#2f6fe0' : '#e0402f';
     if (b.footprint) {
-      mmRect(ctx, b, ax, b.selected ? '#ffffff' : (b.underConstruction ? 'rgba(90,150,255,0.55)' : '#2f6fe0'), '#0b1a3a');
+      mmRect(ctx, b, ax, b.selected ? '#ffffff' : (b.underConstruction ? (b.isOwn ? 'rgba(90,150,255,0.55)' : 'rgba(255,110,90,0.55)') : col), '#0b1a3a');
       continue;
     }
     const [x, y] = worldToMM(b.position.x, b.position.z, ax);
     const r = Math.max(3.5, b.radius * mm.scale * 0.8);
-    ctx.fillStyle = b.selected ? '#ffffff' : '#2f6fe0';
+    ctx.fillStyle = b.selected ? '#ffffff' : col;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
     ctx.strokeStyle = '#0b1a3a'; ctx.lineWidth = 1;
     ctx.strokeRect(x - r, y - r, r * 2, r * 2);
   }
+  // Boira de guerra (textura girada igual que el minimapa)
+  if (FOG.enabled) {
+    ctx.save();
+    ctx.beginPath();
+    corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.clip();
+    const c0 = mm.size / 2;
+    ctx.transform(ax.rx * mm.scale, -ax.fx * mm.scale, ax.rz * mm.scale, -ax.fz * mm.scale, c0, c0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(FOG.canvas, -L, -L, 2 * L, 2 * L);
+    ctx.restore();
+    ctx.setTransform(mm.dpr, 0, 0, mm.dpr, 0, 0);
+  }
   // Unitats
   for (const u of state.units) {
+    if (!u.group.visible) continue;
     const [x, y] = worldToMM(u.position.x, u.position.z, ax);
-    ctx.fillStyle = u.selected ? '#ffffff' : '#5ab0ff';
+    ctx.fillStyle = u.selected ? '#ffffff' : u.isOwn ? '#5ab0ff' : '#ff5a4a';
     ctx.fillRect(x - 1.6, y - 1.6, 3.2, 3.2);
+  }
+  // Avisos d'atac (cercles vermells que parpellegen)
+  for (let i = state.pings.length - 1; i >= 0; i--) {
+    const pg = state.pings[i];
+    if (pg.t > 4) { state.pings.splice(i, 1); continue; }
+    const [x, y] = worldToMM(pg.x, pg.z, ax);
+    ctx.strokeStyle = `rgba(255,70,50,${1 - pg.t / 4})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 4 + (pg.t % 1) * 10, 0, Math.PI * 2);
+    ctx.stroke();
   }
   // Àrea visible per la càmera (projecció de les cantonades de la vista sobre el terra)
   const mapBottom = window.innerHeight - hudHeight();
@@ -3665,6 +4622,93 @@ function updateHoverCursor() {
 }
 
 /* =====================================================================
+   BARRES DE VIDA (canvas 2D superposat)
+   ===================================================================== */
+const hpCanvas = document.getElementById('hpbars');
+const hpCtx = hpCanvas.getContext('2d');
+function resizeHpCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  hpCanvas.width = window.innerWidth * dpr;
+  hpCanvas.height = window.innerHeight * dpr;
+  hpCanvas.style.width = window.innerWidth + 'px';
+  hpCanvas.style.height = window.innerHeight + 'px';
+  hpCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeHpCanvas);
+function drawBar(x, y, w, f, color) {
+  hpCtx.fillStyle = 'rgba(0,0,0,0.65)';
+  hpCtx.fillRect(x - w / 2 - 1, y - 1, w + 2, 6);
+  hpCtx.fillStyle = color;
+  hpCtx.fillRect(x - w / 2, y, w * Math.max(0, Math.min(1, f)), 4);
+}
+function drawHealthBars() {
+  hpCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  const maxY = window.innerHeight - hudHeight();
+  const recent = (e) => e.lastHitT !== undefined && state.elapsed - e.lastHitT < 6;
+  for (const u of state.units) {
+    if (!u.group.visible || u.garrisoned) continue;
+    if (!u.selected && !(u.hp < u.maxHp && (recent(u) || u.isOwn))) continue;
+    const sp = worldToScreen(u.position, 2.75);
+    if (!sp.visible || sp.y > maxY || sp.x < -20 || sp.x > window.innerWidth + 20) continue;
+    const f = u.hp / u.maxHp;
+    drawBar(sp.x, sp.y, 26, f, u.isOwn ? (f > 0.5 ? '#5fe070' : f > 0.25 ? '#f0c040' : '#ff5040') : '#ff4a3a');
+  }
+  for (const b of state.buildings) {
+    if (!b.group.visible) continue;
+    const show = b.selected || b.hp < b.maxHp && recent(b) || (b.underConstruction && b.isOwn);
+    if (!show) continue;
+    const sp = worldToScreen(b.position, (b.height || 10) + 1.2);
+    if (!sp.visible || sp.y > maxY) continue;
+    if (b.underConstruction) drawBar(sp.x, sp.y, 60, b.progress, '#6ab8ff');
+    else drawBar(sp.x, sp.y, 64, b.hp / b.maxHp, b.isOwn ? '#5fe070' : '#ff4a3a');
+  }
+}
+
+/* =====================================================================
+   PAUSA, INICI I FINAL DE PARTIDA
+   ===================================================================== */
+const startScreen = document.getElementById('start-screen');
+const pauseScreen = document.getElementById('pause-screen');
+const endScreen = document.getElementById('end-screen');
+let chosenDiff = 'normal';
+document.querySelectorAll('#diff-choices .choice').forEach(btn => btn.addEventListener('click', () => {
+  chosenDiff = btn.dataset.diff;
+  document.querySelectorAll('#diff-choices .choice').forEach(b => b.classList.toggle('on', b === btn));
+}));
+document.getElementById('start-btn').addEventListener('click', () => {
+  AI.diff = DIFFICULTY[chosenDiff];
+  AI.nextWaveAt = AI.diff.firstWave;
+  for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;
+  FOG.enabled = document.getElementById('fog-toggle').checked;
+  startScreen.classList.add('hidden');
+  state.paused = false;
+  canvas.focus();
+  toast(`Dificultat: ${AI.diff.label}. Recursos inicials: 200 🍖 · 200 🪵 · 100 🪙 · 200 🪨`);
+});
+function togglePause() {
+  if (state.over || !startScreen.classList.contains('hidden')) return;
+  state.paused = !state.paused;
+  pauseScreen.classList.toggle('hidden', !state.paused);
+}
+document.getElementById('restart-btn').addEventListener('click', () => location.reload());
+function teamAlive(team) {
+  return state.units.some(u => u.team === team) || state.buildings.some(b => b.team === team && !b.underConstruction);
+}
+function checkGameOver() {
+  if (state.over) return;
+  const win = !teamAlive(ENEMY.id), lose = !teamAlive(PLAYER.id);
+  if (!win && !lose) return;
+  state.over = true;
+  state.paused = true;
+  const mins = Math.floor(state.elapsed / 60), secs = Math.floor(state.elapsed % 60);
+  document.getElementById('end-title').textContent = win ? 'VICTÒRIA' : 'DERROTA';
+  document.getElementById('end-text').innerHTML = win
+    ? `Has destruït l'Imperi Vermell en <b>${mins}:${String(secs).padStart(2, '0')}</b> (dificultat ${AI.diff.label}).`
+    : `La Civilització Blava ha caigut després de <b>${mins}:${String(secs).padStart(2, '0')}</b>.`;
+  endScreen.classList.remove('hidden');
+}
+
+/* =====================================================================
    BUCLE PRINCIPAL
    ===================================================================== */
 window.addEventListener('resize', () => {
@@ -3677,16 +4721,17 @@ const clock = new THREE.Clock();
 const clockEl = document.getElementById('clock');
 const fpsEl = document.getElementById('fps');
 let fpsFrames = 0, fpsTime = 0, lastClockSec = -1;
-let uiTimer = 0;
+let uiTimer = 0, fogTimer = 0, aiTimer = 0, overTimer = 0, fogReady = false;
 const idleCountEl = document.getElementById('idle-count');
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05) * CONFIG.TIME_SCALE;
+  const realDt = Math.min(clock.getDelta(), 0.05);
+  const dt = state.paused ? 0 : realDt * CONFIG.TIME_SCALE;
   state.elapsed += dt;
   const t = state.elapsed;
 
-  updateCameraControls(dt);
+  updateCameraControls(realDt);
 
   separateUnits();
   for (const u of state.units) updateUnit(u, dt);
@@ -3696,14 +4741,23 @@ function animate() {
   updateFloaters(dt);
   updateTraining(dt);
   updateConstruction(dt);
+  updateProjectiles(dt);
+  updateDefensiveBuildings(dt);
+  for (const pg of state.pings) pg.t += dt;
+  fogTimer += dt;
+  if (fogTimer >= 0.2 || !fogReady) { fogTimer = 0; fogReady = true; updateFog(); }
+  aiTimer += dt;
+  if (aiTimer >= 0.5) { aiTimer = 0; aiTick(); }
+  overTimer += dt;
+  if (overTimer >= 1) { overTimer = 0; checkGameOver(); }
   updatePlacement();
   updateTrainingUI();
   updateRallyFlag(t);
-  mm.timer += dt;
+  mm.timer += realDt;
   if (mm.timer >= 0.1) { mm.timer = 0; drawMinimap(); }
 
   // Refresc periòdic del HUD (estat dels aldeans, càrrega, recurs restant)
-  uiTimer += dt;
+  uiTimer += realDt;
   if (uiTimer >= 0.2) {
     uiTimer = 0;
     if (selectionSignature() !== lastSelSignature) updateSelectionUI(true);
@@ -3725,9 +4779,10 @@ function animate() {
   updateHoverCursor();
 
   renderer.render(scene, camera);
+  drawHealthBars();
 
   // Rellotge i FPS
-  fpsFrames++; fpsTime += dt;
+  fpsFrames++; fpsTime += realDt;
   if (fpsTime >= 0.5) {
     fpsEl.textContent = Math.round(fpsFrames / fpsTime);
     fpsFrames = 0; fpsTime = 0;
@@ -3743,8 +4798,12 @@ function animate() {
    INICI
    ===================================================================== */
 Object.assign(state.resources, CONFIG.STARTING_RESOURCES);
+for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;
 navInit();
 rebuildNav();
+fogInit();
+updateFog();
+resizeHpCanvas();
 mmResize();
 updateCamera();
 updateSun();
@@ -3757,10 +4816,10 @@ window.__RTS_READY = true;
 const loadingEl = document.getElementById('loading');
 loadingEl.style.opacity = '0';
 setTimeout(() => loadingEl.remove(), 500);
-toast('Benvingut! Recursos inicials: 200 🍖 · 200 🪵 · 100 🪙 · 200 🪨');
 
 // Exposem l'estat per depurar des de la consola
-window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, townCenter, mouse, NAV, createBuilding, commandBuild, startPlacement, placing, findPath, popCap };
+window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, queueUnit, townCenter, enemyTC, mouse, NAV, createBuilding,
+  commandBuild, startPlacement, placing, findPath, popCap, createSoldier, commandAttack, AI, FOG, ENEMY, DIFFICULTY, ringTownBell, kill: (e) => killEntity(e, null) };
 </script>
 </body>
 </html>
