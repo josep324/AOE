@@ -171,6 +171,26 @@
   .action-btn:disabled { filter: grayscale(0.9) brightness(0.6); cursor: not-allowed; }
   .action-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
 
+  #floaters { position: fixed; inset: 0; pointer-events: none; z-index: 22; overflow: hidden; }
+  .floater {
+    position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+    font-weight: 700; font-size: 16px; color: #fff3c4;
+    text-shadow: 0 2px 3px rgba(0,0,0,0.85), 0 0 10px rgba(255, 200, 80, 0.55);
+  }
+  .floater.wood { color: #ffd9a8; }
+  .floater.gold { color: #ffe066; }
+  #topbar .stat.idle { cursor: pointer; }
+  #topbar .stat.idle:hover b { color: var(--cyan); }
+  .state-tag {
+    display: inline-block; padding: 1px 7px; border-radius: 9px; font-size: 11px; font-weight: 600;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: var(--text);
+  }
+  .state-tag.GATHERING { background: rgba(80, 200, 90, 0.2); border-color: rgba(120, 230, 120, 0.5); }
+  .state-tag.RETURNING { background: rgba(230, 180, 60, 0.2); border-color: rgba(255, 210, 100, 0.5); }
+  .state-tag.MOVING { background: rgba(80, 150, 255, 0.2); border-color: rgba(120, 180, 255, 0.5); }
+  .mini .st { position: absolute; top: 1px; right: 2px; font-size: 9px; }
+  .mini { position: relative; }
+
   #loading {
     position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; text-align: center;
     background: radial-gradient(circle at 50% 40%, #1c2a3e, #07090d); font-family: 'Cinzel', serif; color: var(--gold);
@@ -192,16 +212,18 @@
 <div id="loading">IMPERIS 3D<small>Carregant el motor (Three.js)…</small></div>
 
 <div id="selection-box"></div>
+<div id="floaters"></div>
 
 <div id="help" class="glass">
   <div class="title">CONTROLS <span id="help-toggle">amagar ▲</span></div>
   <ul>
     <li><kbd>Clic esq.</kbd> <b>Seleccionar</b> · <kbd>Arrossegar</kbd> selecció múltiple</li>
     <li><kbd>Shift</kbd>+clic afegir/treure · <kbd>Doble clic</kbd> tots els del tipus</li>
-    <li><kbd>Clic dret</kbd> <b>Moure</b> els aldeans seleccionats</li>
+    <li><kbd>Clic dret</kbd> terreny: <b>moure</b> · sobre arbre/or: <b>recol·lectar</b></li>
     <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / fletxes / vores: <b>desplaçar càmera</b></li>
     <li><kbd>Roda</kbd> zoom · <kbd>Q</kbd><kbd>E</kbd> girar · <kbd>Espai</kbd> centrar selecció</li>
     <li><kbd>H</kbd> Centre de Ciutat · <kbd>C</kbd> crear aldeà · <kbd>X</kbd> aturar · <kbd>Esc</kbd> desseleccionar</li>
+    <li><kbd>.</kbd> següent aldeà inactiu · càmera avall: ratolí a la vora inferior del <b>mapa</b></li>
   </ul>
 </div>
 
@@ -209,6 +231,8 @@
   <span class="age">EDAT FOSCA</span>
   <span class="sep"></span>
   <span class="stat">⏱ <b id="clock">00:00</b></span>
+  <span class="sep"></span>
+  <span class="stat idle" id="idle-btn" title="Seleccionar aldeà inactiu (.)">💤 Inactius <b id="idle-count">0</b></span>
   <span class="sep"></span>
   <span class="stat">FPS <b id="fps">--</b></span>
 </div>
@@ -272,13 +296,26 @@ const CONFIG = {
     zoomStep: 0.14,
     panSpeed: 1.05,          // multiplicat per la distància (pan proporcional al zoom)
     edge: 14,                // píxels de vora per al pan amb el ratolí
+    bottomEdge: 28,          // franja inferior del MAPA (just a sobre del HUD) per baixar
     rotSpeed: 1.9,
   },
   VILLAGER: { speed: 5.5, radius: 0.45, hp: 25, attack: 3 },
+  GATHER: {
+    capacity: 10,                         // càrrega màxima per viatge
+    rates: { wood: 1.25, gold: 0.95 },    // unitats per segon
+    reach: 0.75,                          // distància extra per començar a treballar
+    autoSearchRadius: 32,                 // radi per buscar un recurs nou quan s'esgota
+  },
   POP_CAP: 200,
+  TIME_SCALE: 1,             // velocitat de simulació (útil per depurar: RTS.CONFIG.TIME_SCALE = 3)
   DOUBLE_CLICK_MS: 350,
   DRAG_THRESHOLD: 6,
 };
+
+const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING' });
+const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'Tornant al Centre' };
+const RES_LABEL = { wood: 'Fusta', gold: 'Or', food: 'Aliment', stone: 'Pedra' };
+const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 
 const PLAYER = { id: 1, name: 'Civilització Blava', color: 0x2f6fe0, colorLight: 0x5b93ff, colorDark: 0x1c3d8f };
 const SEL_COLOR_OWN = 0x6ef2ff;
@@ -294,6 +331,9 @@ const state = {
   selected: [],
   markers: [],
   animated: [],       // objectes amb update(t, dt) propi (bandera, etc.)
+  particles: [],
+  floaters: [],
+  dying: [],          // recursos esgotats fent l'animació de desaparició
   elapsed: 0,
 };
 
@@ -372,7 +412,7 @@ scene.add(sky);
    ===================================================================== */
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.5, 4000);
 const camState = {
-  target: new THREE.Vector3(0, 0, 10),
+  target: new THREE.Vector3(5, 0, 5),
   yaw: CONFIG.CAM.yaw,
   pitch: CONFIG.CAM.pitch,
   dist: CONFIG.CAM.dist,
@@ -591,10 +631,16 @@ function createTree(x, z, scale = 1) {
   const crown3 = new THREE.Mesh(treeGeo.crownSmall, mat(0x267532, { roughness: 0.85 }));
   crown3.position.set(-0.8, 5.25, -0.55); crown3.scale.setScalar(0.85);
 
-  e.group.add(trunk, crown, crown2, crown3);
+  // Subgrup del model: permet sacsejar-lo o fer-lo caure sense moure l'anell de selecció
+  e.model = new THREE.Group();
+  e.model.add(trunk, crown, crown2, crown3);
+  e.group.add(e.model);
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
   e.group.scale.setScalar(scale);
+  e.shakeT = 0;
+  e.depleted = false;
+  e.particleColor = 0x9a6a3a;
   e.finalize();
 
   state.resourceNodes.push(e);
@@ -607,11 +653,18 @@ function createGoldMine(x, z) {
   const e = new Entity({ kind: 'resource', subtype: 'gold', name: "Veta d'Or", icon: '⛏️', radius: 2.3, selRadius: 3.1 });
   e.resourceType = 'gold';
   e.amount = 800; e.maxAmount = 800;
+  e.depleted = false;
+  e.shakeT = 0;
+  e.particleColor = 0xffd24a;
+  e.model = new THREE.Group();
+  e.nuggets = new THREE.Group();
+  e.model.add(e.nuggets);
+  e.group.add(e.model);
 
   const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1, 0), mat(0x7d7468, { roughness: 0.95, flatShading: true }));
   rock.scale.set(1.15, 0.42, 1.0);
   rock.position.y = 0.35;
-  e.group.add(rock);
+  e.model.add(rock);
 
   const goldMat = mat(0xffc53a, { metalness: 0.75, roughness: 0.28, emissive: 0x3d2a00, emissiveIntensity: 0.6 });
   const goldDark = mat(0xe0a018, { metalness: 0.7, roughness: 0.35, emissive: 0x2a1c00, emissiveIntensity: 0.5 });
@@ -623,7 +676,7 @@ function createGoldMine(x, z) {
     const r = randRange(0.1, 1.55);
     box.position.set(Math.cos(a) * r, 0.55 + s * 0.4 + (1.55 - r) * 0.35, Math.sin(a) * r);
     box.rotation.set(rand() * Math.PI, rand() * Math.PI, rand() * Math.PI);
-    e.group.add(box);
+    e.nuggets.add(box);
   }
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
@@ -640,6 +693,7 @@ function createTownCenter(x, z) {
     kind: 'building', subtype: 'towncenter', name: 'Centre de Ciutat', icon: '🏰',
     team: PLAYER.id, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
   });
+  e.dropoff = true;   // accepta tots els recursos
   const stone = mat(0x9b958a, { roughness: 0.92, flatShading: true });
   const blue = mat(PLAYER.color, { roughness: 0.6 });
   const blueLight = mat(PLAYER.colorLight, { roughness: 0.55 });
@@ -769,6 +823,14 @@ const villagerGeo = {
   crown: new THREE.ConeGeometry(0.28, 0.3, 14),
   band: new THREE.CylinderGeometry(0.27, 0.27, 0.07, 14),
   hit: new THREE.CylinderGeometry(0.62, 0.62, 2.4, 8),
+  toolHandle: new THREE.CylinderGeometry(0.035, 0.035, 0.8, 6),
+  axeHead: new THREE.BoxGeometry(0.05, 0.3, 0.22),
+  pickHead: new THREE.BoxGeometry(0.06, 0.5, 0.07),
+  carry: new THREE.BoxGeometry(0.46, 0.46, 0.46),
+};
+const CARRY_MATERIALS = {
+  wood: mat(0x8b5a2b, { roughness: 0.85 }),
+  gold: mat(0xffc53a, { metalness: 0.7, roughness: 0.3, emissive: 0x4a3300, emissiveIntensity: 0.7 }),
 };
 const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
 
@@ -783,6 +845,16 @@ function createVillager(x, z) {
   e.target = null;
   e.walkPhase = rand() * 10;
   e.spawnT = 1;
+  // --- Màquina d'estats i economia ---
+  e.state = STATE.IDLE;
+  e.gatherNode = null;          // recurs assignat
+  e.gatherAngle = null;         // angle fix al voltant del recurs (per repartir els aldeans)
+  e.lastResourceType = null;    // per buscar un recurs nou quan s'esgota
+  e.lastNodePos = new THREE.Vector3();
+  e.dropTarget = null;          // Centre de Ciutat on descarregar
+  e.carry = { type: null, amount: 0 };
+  e.gatherProgress = 0;
+  e.workPhase = 0;
 
   const model = new THREE.Group();
   const clothes = mat(PLAYER.color, { roughness: 0.7 });
@@ -803,6 +875,26 @@ function createVillager(x, z) {
   const band = new THREE.Mesh(villagerGeo.band, clothes); band.position.y = 2.09;
   model.add(legL, legR, torso, belt, armL, armR, head, brim, crown, band);
 
+  // Eina a la mà dreta (destral per a fusta, pic per a or) – visible només treballant
+  const tool = new THREE.Group();
+  const handle = new THREE.Mesh(villagerGeo.toolHandle, mat(0x6b4423, { roughness: 0.9 }));
+  handle.rotation.x = Math.PI / 2;
+  handle.position.z = 0.3;
+  const axeHead = new THREE.Mesh(villagerGeo.axeHead, mat(0xb8bcc4, { metalness: 0.8, roughness: 0.35 }));
+  axeHead.position.set(0, 0.1, 0.66);
+  const pickHead = new THREE.Mesh(villagerGeo.pickHead, mat(0x8d9199, { metalness: 0.8, roughness: 0.35 }));
+  pickHead.position.set(0, 0, 0.68);
+  tool.add(handle, axeHead, pickHead);
+  tool.position.set(0, -0.58, 0);
+  tool.visible = false;
+  armR.add(tool);
+
+  // Cub de càrrega sobre el cap (indica que l'aldeà va carregat)
+  const carryMesh = new THREE.Mesh(villagerGeo.carry, mat(0x8b5a2b));
+  carryMesh.position.y = 2.72;
+  carryMesh.visible = false;
+  model.add(carryMesh);
+
   const hit = new THREE.Mesh(villagerGeo.hit, hitMaterial);
   hit.position.y = 1.2;
   hit.userData.noShadow = true;
@@ -811,6 +903,10 @@ function createVillager(x, z) {
   e.model = model;
   e.legs = [legL, legR];
   e.arms = [armL, armR];
+  e.tool = tool;
+  e.axeHead = axeHead;
+  e.pickHead = pickHead;
+  e.carryMesh = carryMesh;
   e.group.position.set(x, 0, z);
   e.finalize();
   state.units.push(e);
@@ -887,6 +983,9 @@ const townCenter = createTownCenter(0, 0);
 createTree(-17, -12, 1.1);
 createTree(-21, -4, 0.95);
 createTree(-13, -19, 1.2);
+// Petit bosc a l'oest: quan un arbre s'esgota, els aldeans busquen el següent
+[[-30, -16], [-33, -9], [-28, -24], [-36, -20], [-38, -12], [-31, -31], [-41, -26], [-26, -32], [-43, -17], [-35, -3]]
+  .forEach(([x, z]) => createTree(x + randRange(-1, 1), z + randRange(-1, 1), randRange(0.85, 1.25)));
 createGoldMine(19, -15);
 createGoldMine(23, 11);
 createDecorations();
@@ -1075,24 +1174,74 @@ function commandMove(units, point) {
       if (d < bestD) { bestD = d; best = i; }
     }
     const u = free.splice(best, 1)[0];
-    u.target = slot;
+    orderMove(u, slot);
   }
 }
 
 function commandStop(units) {
-  for (const u of units) u.target = null;
+  for (const u of units) {
+    u.target = null;
+    u.gatherNode = null;
+    u.dropTarget = null;
+    setUnitState(u, STATE.IDLE);
+  }
+}
+
+/* Envia un grup d'aldeans a treballar un recurs, repartint-los al seu voltant */
+function commandGather(units, node) {
+  const centroid = new THREE.Vector3();
+  units.forEach(u => centroid.add(u.position));
+  centroid.divideScalar(units.length);
+  const base = Math.atan2(centroid.x - node.position.x, centroid.z - node.position.z);
+  // Separació angular segons la mida del recurs (≈1.1 unitats d'arc entre aldeans)
+  const ringR = node.radius + CONFIG.VILLAGER.radius + 0.3;
+  const stepA = Math.min(1.1, 1.15 / ringR);
+  // Els aldeans que ja hi treballen ocupen els primers llocs
+  const already = state.units.filter(u => u.gatherNode === node && !units.includes(u)).length;
+  const sorted = units.slice().sort((a, b) => a.position.distanceToSquared(node.position) - b.position.distanceToSquared(node.position));
+  sorted.forEach((u, i) => {
+    const k = i + already;
+    const off = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * stepA;
+    orderGather(u, node, base + off);
+  });
+}
+
+/* Clic dret sobre el Centre de Ciutat: els que van carregats hi descarreguen */
+function commandReturn(units, building) {
+  const empty = [];
+  for (const u of units) {
+    if (u.carry.amount > 0) {
+      u.gatherNode = null;
+      goToDropoff(u, building);
+    } else {
+      empty.push(u);
+    }
+  }
+  if (empty.length) {
+    const p = approachPoint(building, empty[0].position);
+    commandMove(empty, p);
+  }
 }
 
 function issueRightClick(x, y) {
   const units = state.selected.filter(e => e.kind === 'unit' && e.isOwn);
   if (!units.length) return;
+  const targetEnt = pickEntity(x, y);
+
+  if (targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted) {
+    commandGather(units, targetEnt);
+    spawnMoveMarker(targetEnt.position, 0xffd84a, targetEnt.radius + 0.9);
+    return;
+  }
+  if (targetEnt && targetEnt.dropoff && targetEnt.isOwn) {
+    commandReturn(units, targetEnt);
+    spawnMoveMarker(targetEnt.position, 0x6ef2ff, targetEnt.radius + 1.2);
+    return;
+  }
+
   const p = pickGround(x, y);
   if (!p) return;
   clampToMap(p);
-  const targetEnt = pickEntity(x, y);
-  if (targetEnt && targetEnt.kind === 'resource') {
-    toast(`Recol·lecció de ${targetEnt.resourceType === 'wood' ? 'fusta' : 'or'}: disponible a la Fase 2`);
-  }
   commandMove(units, p);
   spawnMoveMarker(p);
 }
@@ -1100,15 +1249,16 @@ function issueRightClick(x, y) {
 /* ---------- Marcador de destí ---------- */
 const markerGeo = new THREE.TorusGeometry(0.9, 0.08, 8, 48);
 const markerGeoInner = new THREE.TorusGeometry(0.4, 0.07, 8, 32);
-function spawnMoveMarker(p) {
+function spawnMoveMarker(p, color = 0x8dff6a, size = 1) {
   const g = new THREE.Group();
-  const m1 = new THREE.MeshBasicMaterial({ color: 0x8dff6a, transparent: true, depthWrite: false, fog: false, toneMapped: false });
+  const m1 = new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, fog: false, toneMapped: false });
   const m2 = m1.clone();
   const r1 = new THREE.Mesh(markerGeo, m1);
   const r2 = new THREE.Mesh(markerGeoInner, m2);
   r1.rotation.x = r2.rotation.x = -Math.PI / 2;
   g.add(r1, r2);
   g.position.set(p.x, 0.14, p.z);
+  g.scale.setScalar(size);
   g.renderOrder = 6;
   scene.add(g);
   state.markers.push({ g, r1, r2, mats: [m1, m2], t: 0 });
@@ -1230,6 +1380,207 @@ function separateUnits() {
   }
 }
 
+/* =====================================================================
+   ECONOMIA: MÀQUINA D'ESTATS DE L'ALDEÀ
+   IDLE → MOVING → GATHERING → RETURNING → MOVING → GATHERING …
+   ===================================================================== */
+function setUnitState(u, st) {
+  u.state = st;
+  const working = st === STATE.GATHERING;
+  u.tool.visible = working;
+  if (working && u.gatherNode) {
+    u.axeHead.visible = u.gatherNode.resourceType === 'wood';
+    u.pickHead.visible = u.gatherNode.resourceType !== 'wood';
+  }
+}
+
+function hDist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+function inReach(u, ent) { return hDist(u.position, ent.position) <= ent.radius + u.radius + CONFIG.GATHER.reach; }
+
+function approachPointAt(ent, angle) {
+  const r = ent.radius + CONFIG.VILLAGER.radius + 0.3;
+  const p = new THREE.Vector3(ent.position.x + Math.sin(angle) * r, 0, ent.position.z + Math.cos(angle) * r);
+  // Evitem que el punt quedi dins d'un altre obstacle (p. ex. un arbre veí)
+  for (const o of state.obstacles) {
+    if (o.entity === ent) continue;
+    const dx = p.x - o.x, dz = p.z - o.z, min = o.r + CONFIG.VILLAGER.radius + 0.1;
+    if (dx * dx + dz * dz < min * min) {
+      const d = Math.hypot(dx, dz) || 0.001;
+      p.x = o.x + dx / d * min; p.z = o.z + dz / d * min;
+    }
+  }
+  return clampToMap(p);
+}
+function approachPoint(ent, fromPos, angleOffset = 0) {
+  return approachPointAt(ent, Math.atan2(fromPos.x - ent.position.x, fromPos.z - ent.position.z) + angleOffset);
+}
+
+function nearestDropoff(pos) {
+  let best = null, bestD = Infinity;
+  for (const b of state.buildings) {
+    if (!b.dropoff || !b.isOwn) continue;
+    const d = hDist(b.position, pos);
+    if (d < bestD) { bestD = d; best = b; }
+  }
+  return best;
+}
+function nearestResource(type, pos, maxDist = Infinity) {
+  let best = null, bestD = maxDist;
+  for (const n of state.resourceNodes) {
+    if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
+    const d = hDist(n.position, pos);
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  return best;
+}
+
+function orderMove(u, point) {
+  u.gatherNode = null;
+  u.dropTarget = null;
+  u.target = point;
+  setUnitState(u, STATE.MOVING);
+}
+
+function orderGather(u, node, angle = null) {
+  // Si canvia de tipus de recurs, perd la càrrega anterior (com als RTS clàssics)
+  if (u.carry.amount > 0 && u.carry.type !== node.resourceType) {
+    u.carry.amount = 0;
+    u.carry.type = null;
+    updateCarryVisual(u);
+  }
+  u.gatherNode = node;
+  u.gatherAngle = angle;
+  u.dropTarget = null;
+  u.lastResourceType = node.resourceType;
+  u.lastNodePos.copy(node.position);
+  goToResource(u);
+}
+
+function goToResource(u) {
+  const node = u.gatherNode;
+  if (!node || node.depleted) { findNextResource(u); return; }
+  u.target = u.gatherAngle !== null
+    ? approachPointAt(node, u.gatherAngle)
+    : approachPoint(node, u.position, ((u.id % 5) - 2) * 0.35);
+  setUnitState(u, STATE.MOVING);
+}
+
+function goToDropoff(u, building = null) {
+  const tc = building || nearestDropoff(u.position);
+  if (!tc) { u.target = null; setUnitState(u, STATE.IDLE); return; }
+  u.dropTarget = tc;
+  // Punt d'arribada a la cara del Centre de Ciutat que mira cap a l'aldeà
+  u.target = approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06);
+  setUnitState(u, STATE.RETURNING);
+}
+
+/* Quan el recurs actual desapareix, en busca un altre del mateix tipus a prop */
+function findNextResource(u) {
+  const type = u.lastResourceType;
+  const next = type ? nearestResource(type, u.lastNodePos, CONFIG.GATHER.autoSearchRadius) : null;
+  if (next) {
+    u.gatherNode = next;
+    u.gatherAngle = null;
+    u.lastNodePos.copy(next.position);
+    goToResource(u);
+  } else if (u.carry.amount > 0) {
+    u.gatherNode = null;
+    goToDropoff(u);
+  } else {
+    u.gatherNode = null;
+    u.target = null;
+    setUnitState(u, STATE.IDLE);
+  }
+}
+
+function startGathering(u) {
+  u.target = null;
+  u.gatherProgress = 0;
+  u.workPhase = 0;
+  setUnitState(u, STATE.GATHERING);
+}
+
+function depositCarry(u) {
+  const tc = u.dropTarget;
+  if (u.carry.amount > 0 && u.carry.type) {
+    const amt = u.carry.amount;
+    const type = u.carry.type;
+    state.resources[type] += amt;
+    spawnFloater(`+${amt} ${RES_ICON[type]}`, u.position, 3.0, type);
+    updateResourcesUI();
+  }
+  u.carry.amount = 0;
+  u.carry.type = null;
+  u.dropTarget = null;
+  updateCarryVisual(u);
+  if (tc) u.group.rotation.y = Math.atan2(u.position.x - tc.position.x, u.position.z - tc.position.z);
+
+  // Torna automàticament a la feina
+  if (u.gatherNode && !u.gatherNode.depleted) goToResource(u);
+  else if (u.lastResourceType && u.gatherNode) findNextResource(u);
+  else { u.target = null; setUnitState(u, STATE.IDLE); }
+}
+
+function updateCarryVisual(u) {
+  const m = u.carryMesh;
+  if (u.carry.amount <= 0 || !u.carry.type) { m.visible = false; return; }
+  m.visible = true;
+  m.material = CARRY_MATERIALS[u.carry.type] || CARRY_MATERIALS.wood;
+  const f = u.carry.amount / CONFIG.GATHER.capacity;
+  m.scale.setScalar(0.45 + 0.55 * f);
+}
+
+/* Moviment en línia recta a velocitat constant. Retorna true si ha arribat. */
+function stepTowardsTarget(u, dt) {
+  if (!u.target) return true;
+  const dx = u.target.x - u.position.x;
+  const dz = u.target.z - u.position.z;
+  const dist = Math.hypot(dx, dz);
+  const step = u.speed * dt;
+  if (dist <= step || dist < 0.05) {
+    u.position.x = u.target.x;
+    u.position.z = u.target.z;
+    u.target = null;
+    return true;
+  }
+  u.position.x += (dx / dist) * step;
+  u.position.z += (dz / dist) * step;
+  u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-14 * dt));
+  return false;
+}
+
+function gatherTick(u, dt) {
+  const node = u.gatherNode;
+  if (!node || node.depleted) { findNextResource(u); return; }
+  if (!inReach(u, node)) { goToResource(u); return; }
+
+  // Mirar cap al recurs
+  const face = Math.atan2(node.position.x - u.position.x, node.position.z - u.position.z);
+  u.group.rotation.y = lerpAngle(u.group.rotation.y, face, 1 - Math.exp(-10 * dt));
+
+  if (u.carry.type !== node.resourceType) { u.carry.type = node.resourceType; u.carry.amount = 0; }
+
+  u.gatherProgress += CONFIG.GATHER.rates[node.resourceType] * dt;
+  while (u.gatherProgress >= 1 && u.carry.amount < CONFIG.GATHER.capacity && node.amount > 0) {
+    u.gatherProgress -= 1;
+    u.carry.amount += 1;
+    node.amount -= 1;
+    onNodeHarvested(node);
+    updateCarryVisual(u);
+  }
+
+  if (node.amount <= 0) {
+    depleteResource(node);
+    if (u.carry.amount >= CONFIG.GATHER.capacity) goToDropoff(u);
+    else findNextResource(u);
+    return;
+  }
+  if (u.carry.amount >= CONFIG.GATHER.capacity) {
+    u.gatherProgress = 0;
+    goToDropoff(u);
+  }
+}
+
 function updateUnit(u, dt) {
   // Animació d'aparició
   if (u.spawnT < 1) {
@@ -1237,43 +1588,221 @@ function updateUnit(u, dt) {
     u.group.scale.setScalar(Math.max(0.01, easeOutBack(u.spawnT)));
   }
 
-  let moving = false;
-  if (u.target) {
-    const dx = u.target.x - u.position.x;
-    const dz = u.target.z - u.position.z;
-    const dist = Math.hypot(dx, dz);
-    const step = u.speed * dt;
-    if (dist <= step || dist < 0.05) {
-      u.position.x = u.target.x;
-      u.position.z = u.target.z;
-      u.target = null;
-    } else {
-      // Moviment en línia recta a velocitat constant
-      u.position.x += (dx / dist) * step;
-      u.position.z += (dz / dist) * step;
-      u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-14 * dt));
-      moving = true;
+  let walking = false;
+  switch (u.state) {
+    case STATE.MOVING: {
+      const node = u.gatherNode;
+      if (node) {
+        if (node.depleted) { findNextResource(u); break; }
+        if (inReach(u, node)) { startGathering(u); break; }
+      }
+      const arrived = stepTowardsTarget(u, dt);
+      walking = !arrived;
+      if (arrived) {
+        if (node) {
+          if (inReach(u, node)) startGathering(u); else goToResource(u);
+        } else {
+          setUnitState(u, STATE.IDLE);
+        }
+      }
+      break;
     }
+    case STATE.RETURNING: {
+      const tc = u.dropTarget;
+      if (!tc) { goToDropoff(u); break; }
+      if (inReach(u, tc)) { depositCarry(u); break; }
+      const arrived = stepTowardsTarget(u, dt);
+      walking = !arrived;
+      if (arrived) {
+        if (inReach(u, tc)) depositCarry(u); else goToDropoff(u, tc);
+      }
+      break;
+    }
+    case STATE.GATHERING:
+      gatherTick(u, dt);
+      break;
+    case STATE.IDLE:
+    default:
+      u.target = null;
+      break;
   }
+
   resolveObstacleCollision(u, dt);
   clampToMap(u.position);
 
-  // Animació procedimental de caminar
-  if (moving) {
+  // ---------- Animació procedimental ----------
+  const k = 1 - Math.exp(-12 * dt);
+  if (walking) {
     u.walkPhase += dt * u.speed * 2.2;
     const s = Math.sin(u.walkPhase);
     u.legs[0].rotation.x = s * 0.65;
     u.legs[1].rotation.x = -s * 0.65;
-    u.arms[0].rotation.x = -s * 0.55;
-    u.arms[1].rotation.x = s * 0.55;
+    // Carregat: braços alçats aguantant la càrrega
+    if (u.carry.amount > 0) {
+      u.arms[0].rotation.x += (-2.7 - u.arms[0].rotation.x) * k;
+      u.arms[1].rotation.x += (-2.7 - u.arms[1].rotation.x) * k;
+    } else {
+      u.arms[0].rotation.x = -s * 0.55;
+      u.arms[1].rotation.x = s * 0.55;
+    }
     u.model.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.09;
+    u.model.rotation.x *= (1 - k);
+  } else if (u.state === STATE.GATHERING && u.gatherNode) {
+    // Cop de destral / pic: pujada lenta i baixada ràpida
+    const prev = u.workPhase;
+    u.workPhase = (u.workPhase + dt * 1.5) % 1;
+    const p = u.workPhase;
+    const armX = p < 0.7
+      ? THREE.MathUtils.lerp(-0.5, -2.5, p / 0.7)
+      : THREE.MathUtils.lerp(-2.5, -0.5, (p - 0.7) / 0.3);
+    u.arms[1].rotation.x = armX;
+    u.arms[0].rotation.x = armX * 0.85;
+    u.model.rotation.x = p < 0.7 ? -0.08 * (p / 0.7) : 0.18 * Math.sin(((p - 0.7) / 0.3) * Math.PI);
+    u.model.position.y = 0;
+    for (const l of u.legs) l.rotation.x *= (1 - k);
+    if (p < prev) onToolStrike(u, u.gatherNode);   // el cicle ha acabat: impacte
   } else {
-    const k = 1 - Math.exp(-12 * dt);
     for (const l of u.legs) l.rotation.x *= (1 - k);
     for (const a of u.arms) a.rotation.x *= (1 - k);
     u.model.position.y *= (1 - k);
+    u.model.rotation.x *= (1 - k);
     // Respiració subtil en repòs
     u.model.scale.y = 1 + Math.sin(state.elapsed * 2.2 + u.id) * 0.012;
+  }
+
+  // El cub de càrrega flota i gira lleugerament
+  if (u.carryMesh.visible) {
+    u.carryMesh.position.y = 2.72 + Math.sin(state.elapsed * 4 + u.id) * 0.05;
+    u.carryMesh.rotation.y += dt * 1.5;
+  }
+}
+
+/* =====================================================================
+   RECURSOS: IMPACTES, PARTÍCULES I ESGOTAMENT
+   ===================================================================== */
+function onToolStrike(u, node) {
+  if (!node || node.depleted) return;
+  node.shakeT = 0.25;
+  // Punt d'impacte entre l'aldeà i el recurs
+  const dir = new THREE.Vector3(node.position.x - u.position.x, 0, node.position.z - u.position.z).normalize();
+  const hit = new THREE.Vector3(u.position.x + dir.x * (u.radius + 0.5), node.resourceType === 'wood' ? 1.2 : 0.8, u.position.z + dir.z * (u.radius + 0.5));
+  spawnParticles(hit, node.particleColor, node.resourceType === 'wood' ? 4 : 5, dir);
+}
+
+function onNodeHarvested(node) {
+  if (node.nuggets) {
+    // La veta d'or es fa petita a mesura que s'explota
+    node.nuggets.scale.setScalar(0.35 + 0.65 * (node.amount / node.maxAmount));
+  }
+}
+
+function depleteResource(node) {
+  if (node.depleted) return;
+  node.depleted = true;
+  node.amount = 0;
+  state.resourceNodes = state.resourceNodes.filter(n => n !== node);
+  state.obstacles = state.obstacles.filter(o => o.entity !== node);
+  state.pickables = state.pickables.filter(m => m.userData.entity !== node);
+  if (node.selected) { removeFromSelection(node); onSelectionChanged(); }
+  node.dieT = 0;
+  node.fallDir = rand() * Math.PI * 2;
+  state.dying.push(node);
+  if (node.resourceType === 'gold') toast("⛏️ Una Veta d'Or s'ha esgotat");
+  spawnParticles(new THREE.Vector3(node.position.x, 1.5, node.position.z), node.particleColor, 14, null);
+}
+
+function updateResourceNodes(dt) {
+  for (const n of state.resourceNodes) {
+    if (n.shakeT > 0) {
+      n.shakeT = Math.max(0, n.shakeT - dt);
+      const a = n.shakeT * 40;
+      n.model.rotation.z = Math.sin(a) * n.shakeT * (n.resourceType === 'wood' ? 0.18 : 0.05);
+    } else if (n.model.rotation.z !== 0) {
+      n.model.rotation.z = 0;
+    }
+  }
+  // Animació de desaparició dels recursos esgotats
+  for (let i = state.dying.length - 1; i >= 0; i--) {
+    const n = state.dying[i];
+    n.dieT += dt;
+    if (n.resourceType === 'wood') {
+      // L'arbre cau i després s'enfonsa
+      const f = Math.min(1, n.dieT / 0.9);
+      n.model.rotation.set(0, n.fallDir, 0);
+      n.model.rotateX(Math.PI / 2 * f * f);
+      if (n.dieT > 1.4) n.model.position.y = -(n.dieT - 1.4) * 2.5;
+      if (n.dieT > 2.4) { removeDead(n, i); }
+    } else {
+      const f = Math.min(1, n.dieT / 0.8);
+      n.model.scale.setScalar(Math.max(0.001, 1 - f));
+      if (f >= 1) removeDead(n, i);
+    }
+  }
+}
+function removeDead(n, idx) {
+  scene.remove(n.group);
+  state.dying.splice(idx, 1);
+}
+
+/* ---------- Partícules (estelles de fusta / espurnes d'or) ---------- */
+const particleGeo = new THREE.BoxGeometry(0.13, 0.13, 0.13);
+const particlePool = [];
+function spawnParticles(pos, color, count, dir) {
+  for (let i = 0; i < count; i++) {
+    const m = particlePool.pop() || new THREE.Mesh(particleGeo, mat(color));
+    m.material = mat(color, color === 0xffd24a ? { emissive: 0x6a4a00, emissiveIntensity: 0.8, metalness: 0.6, roughness: 0.3 } : { roughness: 0.9 });
+    m.position.copy(pos);
+    m.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+    m.scale.setScalar(randRange(0.6, 1.2));
+    const back = dir ? -1 : 0;
+    m.userData.vel = new THREE.Vector3(
+      randRange(-2, 2) + (dir ? dir.x * back * 2 : 0),
+      randRange(2.5, 5),
+      randRange(-2, 2) + (dir ? dir.z * back * 2 : 0)
+    );
+    m.userData.life = randRange(0.5, 0.8);
+    m.castShadow = false;
+    scene.add(m);
+    state.particles.push(m);
+  }
+}
+function updateParticles(dt) {
+  for (let i = state.particles.length - 1; i >= 0; i--) {
+    const m = state.particles[i];
+    const v = m.userData.vel;
+    m.userData.life -= dt;
+    v.y -= 14 * dt;
+    m.position.addScaledVector(v, dt);
+    m.rotation.x += dt * 8; m.rotation.y += dt * 6;
+    if (m.position.y < 0.07) { m.position.y = 0.07; v.set(v.x * 0.4, 0, v.z * 0.4); }
+    if (m.userData.life <= 0) {
+      scene.remove(m);
+      state.particles.splice(i, 1);
+      particlePool.push(m);
+    }
+  }
+}
+
+/* ---------- Text flotant (+10 🪵) ---------- */
+const floatersEl = document.getElementById('floaters');
+function spawnFloater(text, worldPos, height, cls) {
+  const el = document.createElement('div');
+  el.className = 'floater ' + (cls || '');
+  el.textContent = text;
+  floatersEl.appendChild(el);
+  state.floaters.push({ el, pos: new THREE.Vector3(worldPos.x, height, worldPos.z), t: 0 });
+}
+function updateFloaters(dt) {
+  for (let i = state.floaters.length - 1; i >= 0; i--) {
+    const f = state.floaters[i];
+    f.t += dt;
+    const k = f.t / 1.4;
+    if (k >= 1) { f.el.remove(); state.floaters.splice(i, 1); continue; }
+    const s = worldToScreen(f.pos, k * 2.5);
+    f.el.style.left = s.x + 'px';
+    f.el.style.top = s.y + 'px';
+    f.el.style.opacity = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
+    f.el.style.display = s.visible ? 'block' : 'none';
   }
 }
 
@@ -1327,14 +1856,36 @@ function ownerLine(e) {
     : `<div class="sel-owner">Natura · Recurs neutral</div>`;
 }
 
-function updateSelectionUI() {
+function unitTaskLine(u) {
+  const tag = `<span class="state-tag ${u.state}">${STATE_LABEL[u.state]}</span>`;
+  let detail = '';
+  if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
+  else if (u.state === STATE.MOVING && u.gatherNode) detail = ` cap a ${u.gatherNode.name.toLowerCase()}`;
+  else if (u.state === STATE.RETURNING) detail = ' a descarregar';
+  return tag + detail;
+}
+function carryLine(u) {
+  if (!u.carry.amount || !u.carry.type) return `<span>🎒 Càrrega <b>buida</b></span>`;
+  return `<span>🎒 Càrrega <b>${RES_ICON[u.carry.type]} ${u.carry.amount}/${CONFIG.GATHER.capacity}</b></span>`;
+}
+
+/* Signatura de l'estat visible: si canvia, es refà el panell de selecció */
+function selectionSignature() {
+  return state.selected.map(e => e.kind === 'unit'
+    ? `${e.id}:${e.state}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}`
+    : `${e.id}:${e.amount ?? ''}:${state.units.length}`).join('|');
+}
+let lastSelSignature = '';
+
+function updateSelectionUI(panelOnly = false) {
+  lastSelSignature = selectionSignature();
   const sel = state.selected;
   selCount.textContent = sel.length ? `${sel.length} ${sel.length === 1 ? 'element' : 'elements'}` : '';
-  actionsEl.innerHTML = '';
+  if (!panelOnly) actionsEl.innerHTML = '';
 
   if (!sel.length) {
     selContent.innerHTML = `<div class="empty-hint">Cap element seleccionat<br><span style="font-size:12px">Fes clic o arrossega per seleccionar unitats</span></div>`;
-    actionsEl.innerHTML = `<div class="action-hint">Selecciona el <b>Centre de Ciutat</b> (<kbd>H</kbd>) per crear aldeans.</div>`;
+    if (!panelOnly) actionsEl.innerHTML = `<div class="action-hint">Selecciona el <b>Centre de Ciutat</b> (<kbd>H</kbd>) per crear aldeans.</div>`;
     return;
   }
 
@@ -1342,7 +1893,8 @@ function updateSelectionUI() {
   if (sel.length === 1) {
     let stats = '';
     if (first.kind === 'unit') {
-      stats = `<div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>0/0</b></span><span>👟 Velocitat <b>${first.speed.toFixed(1)}</b></span><span>Estat <b>${first.target ? 'En marxa' : 'Inactiu'}</b></span></div>`;
+      stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${carryLine(first)}</div>
+        <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>0/0</b></span><span>👟 Velocitat <b>${first.speed.toFixed(1)}</b></span></div>`;
     } else if (first.kind === 'building') {
       stats = `<div class="stats"><span>👥 Població <b>${state.units.filter(u => u.isOwn).length}/${CONFIG.POP_CAP}</b></span><span>🏹 Guarnició <b>0/15</b></span><span>Edat <b>Fosca</b></span></div>`;
     }
@@ -1361,12 +1913,19 @@ function updateSelectionUI() {
       </div>`;
   } else {
     const shown = sel.slice(0, 24);
-    const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name}">${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
+    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒' };
+    const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
+    const counts = {};
+    sel.forEach(u => { counts[u.state] = (counts[u.state] || 0) + 1; });
+    const summary = Object.entries(counts).map(([k, v]) => `<span class="state-tag ${k}">${STATE_LABEL[k]}: ${v}</span>`).join(' ');
+    const carried = { wood: 0, gold: 0 };
+    sel.forEach(u => { if (u.carry.type) carried[u.carry.type] = (carried[u.carry.type] || 0) + u.carry.amount; });
     const more = sel.length > shown.length ? `<div class="more">+${sel.length - shown.length}</div>` : '';
     selContent.innerHTML = `
       <div class="portrait">${first.icon}</div>
       <div class="sel-info" style="justify-content:flex-start">
         <div class="sel-name">${sel.length} Aldeans</div>
+        <div class="stats">${summary}<span>🎒 ${RES_ICON.wood} <b>${carried.wood}</b> · ${RES_ICON.gold} <b>${carried.gold}</b></span></div>
         <div class="multi-grid">${minis}${more}</div>
       </div>`;
     selContent.querySelectorAll('.mini').forEach(el => {
@@ -1378,6 +1937,8 @@ function updateSelectionUI() {
       });
     });
   }
+
+  if (panelOnly) return;
 
   // Botons d'acció contextuals
   if (first.kind === 'building' && first.subtype === 'towncenter' && first.isOwn) {
@@ -1392,10 +1953,10 @@ function updateSelectionUI() {
     actionsEl.appendChild(makeActionButton('✋', 'Aturar', 'Cancel·la l\'ordre', 'X', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }));
     const hint = document.createElement('div');
     hint.className = 'action-hint';
-    hint.innerHTML = '<kbd>Clic dret</kbd> sobre el terreny<br>per moure les unitats.';
+    hint.innerHTML = '<kbd>Clic dret</kbd> terreny: moure<br><kbd>Clic dret</kbd> arbre/or: recol·lectar<br><kbd>Clic dret</kbd> Centre: descarregar';
     actionsEl.appendChild(hint);
   } else if (first.kind === 'resource') {
-    actionsEl.innerHTML = `<div class="action-hint">Recurs natural. La recol·lecció<br>arribarà a la <b>Fase 2</b>.</div>`;
+    actionsEl.innerHTML = `<div class="action-hint">Recurs natural (${RES_LABEL[first.resourceType]}).<br>Selecciona aldeans i fes <kbd>clic dret</kbd><br>sobre el recurs per recol·lectar-lo.</div>`;
   }
 }
 
@@ -1505,6 +2066,10 @@ window.addEventListener('keydown', (e) => {
       if (units.length) { commandStop(units); updateSelectionUI(); }
       break;
     }
+    case 'Period':
+    case 'NumpadDecimal':
+      selectNextIdle();
+      break;
     case 'Space':
       if (state.selected.length) {
         const c = new THREE.Vector3();
@@ -1515,6 +2080,17 @@ window.addEventListener('keydown', (e) => {
   }
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
+
+let idleCursor = 0;
+function selectNextIdle() {
+  const idle = state.units.filter(u => u.isOwn && u.state === STATE.IDLE);
+  if (!idle.length) { toast('No hi ha cap aldeà inactiu'); return; }
+  idleCursor = (idleCursor + 1) % idle.length;
+  const u = idle[idleCursor];
+  setSelection([u]);
+  centerOn(u.position);
+}
+document.getElementById('idle-btn').addEventListener('click', selectNextIdle);
 
 function centerOn(p) {
   camState.target.x = p.x;
@@ -1533,10 +2109,14 @@ function updateCameraControls(dt) {
 
   if (mouse.inside) {
     const edge = CONFIG.CAM.edge;
-    if (mouse.x <= edge) mx -= 1;
-    if (mouse.x >= window.innerWidth - edge) mx += 1;
-    if (mouse.y <= edge) mz += 1;
-    if (mouse.y >= window.innerHeight - edge) mz -= 1;
+    const mapBottom = window.innerHeight - hudHeight();
+    // Sobre el HUD no hi ha pan (per poder fer clic als botons tranquil·lament)
+    if (mouse.y < mapBottom) {
+      if (mouse.x <= edge) mx -= 1;
+      if (mouse.x >= window.innerWidth - edge) mx += 1;
+      if (mouse.y <= edge) mz += 1;
+      if (mouse.y >= mapBottom - CONFIG.CAM.bottomEdge) mz -= 1;
+    }
   }
 
   if (keys.has('KeyQ')) camState.yaw += CONFIG.CAM.rotSpeed * dt;
@@ -1580,10 +2160,12 @@ const clock = new THREE.Clock();
 const clockEl = document.getElementById('clock');
 const fpsEl = document.getElementById('fps');
 let fpsFrames = 0, fpsTime = 0, lastClockSec = -1;
+let uiTimer = 0;
+const idleCountEl = document.getElementById('idle-count');
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const dt = Math.min(clock.getDelta(), 0.05) * CONFIG.TIME_SCALE;
   state.elapsed += dt;
   const t = state.elapsed;
 
@@ -1592,6 +2174,17 @@ function animate() {
   separateUnits();
   for (const u of state.units) updateUnit(u, dt);
   updateMarkers(dt);
+  updateResourceNodes(dt);
+  updateParticles(dt);
+  updateFloaters(dt);
+
+  // Refresc periòdic del HUD (estat dels aldeans, càrrega, recurs restant)
+  uiTimer += dt;
+  if (uiTimer >= 0.2) {
+    uiTimer = 0;
+    if (selectionSignature() !== lastSelSignature) updateSelectionUI(true);
+    idleCountEl.textContent = state.units.filter(u => u.isOwn && u.state === STATE.IDLE).length;
+  }
   for (const a of state.animated) a.update(t, dt);
 
   // Pulsació dels indicadors de selecció
@@ -1638,7 +2231,7 @@ setTimeout(() => loadingEl.remove(), 500);
 toast('Benvingut! Selecciona el Centre de Ciutat (H) per crear aldeans');
 
 // Exposem l'estat per depurar des de la consola
-window.RTS = { THREE, scene, camera, renderer, state, CONFIG, trainVillager, townCenter };
+window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, trainVillager, townCenter, mouse };
 </script>
 </body>
 </html>
