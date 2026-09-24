@@ -165,6 +165,7 @@
   }
   .action-btn .big { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
   .action-btn .cost { font-size: 10px; color: var(--muted); font-weight: 500; }
+  .action-btn.small .hk { top: 2px; right: 2px; font-size: 9px; padding: 0 3px; }
   .action-btn .hk {
     position: absolute; top: 4px; right: 5px; font-size: 10px; padding: 0 4px; border-radius: 3px;
     background: rgba(0,0,0,0.45); color: var(--gold); border: 1px solid var(--gold-soft);
@@ -219,6 +220,12 @@
     color: #1a1204; background: linear-gradient(180deg, #ffe39a, #d8a93a); border: 1px solid #fff2c4; box-shadow: 0 6px 20px rgba(216,178,90,0.35);
   }
   .overlay label { color: var(--muted); font-size: 13px; cursor: pointer; }
+  .overlay .hidden { display: none; }
+  .overlay input[type=password], .overlay textarea {
+    width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 8px; font: 12px 'Inter', monospace;
+    background: rgba(0,0,0,0.45); color: var(--text); border: 1px solid var(--gold-soft); outline: none; user-select: text;
+  }
+  .overlay textarea { resize: vertical; word-break: break-all; }
   .overlay .legend { text-align: left; font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-top: 14px; }
   .bar.build > i { background: linear-gradient(180deg, #9fd6ff, #2f7fe0); }
   .action-btn.small { width: 54px; height: 54px; gap: 0; font-size: 9.5px; padding: 2px; border-radius: 8px; }
@@ -291,7 +298,8 @@
     </div>
     <label><input type="checkbox" id="fog-toggle" checked> Boira de guerra</label>
     <div><button class="big-btn" id="start-btn">COMENÇAR</button></div>
-    <div><button class="choice" id="start-load" style="margin-top:10px;display:none">📂 Continuar la partida desada</button></div>
+    <div><button class="choice" id="start-load" style="margin-top:10px;display:none">📂 Continuar la partida desada</button>
+      <button class="choice" id="start-code" style="margin-top:10px">🔑 Carregar amb codi</button></div>
     <div class="legend">
       ⚔️ <b>Caserna</b>: Milícia · Llancer i Arquer (Feudal) · 🐎 <b>Estable</b>: Explorador (Feudal) i Cavaller (Castells).<br>
       🔔 <b>Campana</b> (<kbd>B</kbd>): els aldeans es refugien al Centre i aquest dispara més fletxes.<br>
@@ -311,7 +319,19 @@
       <button class="big-btn" id="menu-continue">CONTINUAR</button>
       <button class="choice" id="menu-save">💾 Desar partida</button>
       <button class="choice" id="menu-load">📂 Carregar partida desada</button>
+      <button class="choice" id="menu-code">🔑 Codi de partida amb contrasenya</button>
       <button class="choice" id="menu-new">🔄 Nova partida</button>
+    </div>
+    <div id="code-panel" class="hidden">
+      <p style="font-size:12.5px;color:var(--muted);margin:4px 0 8px">Genera un codi per reprendre la partida més tard (també en un altre navegador).
+        Amb contrasenya, el codi queda xifrat i només es pot carregar amb la mateixa contrasenya.</p>
+      <input id="code-pass" type="password" placeholder="Contrasenya (opcional)" autocomplete="off">
+      <div class="row" style="margin:8px 0">
+        <button class="choice" id="code-make">Generar codi</button>
+        <button class="choice" id="code-copy">Copiar</button>
+        <button class="choice" id="code-load">Carregar aquest codi</button>
+      </div>
+      <textarea id="code-text" rows="4" placeholder="Enganxa aquí un codi de partida (IMP1-…)"></textarea>
     </div>
     <p id="menu-slot" style="font-size:12px;color:var(--muted)"></p>
   </div>
@@ -350,7 +370,7 @@
   <span class="sep"></span>
   <span class="stat">⏱ <b id="clock">00:00</b></span>
   <span class="sep"></span>
-  <span class="stat idle" id="idle-btn" title="Seleccionar aldeà inactiu (.)">💤 Inactius <b id="idle-count">0</b></span>
+  <span class="stat idle" id="idle-btn" title="Aldeans inactius: clic o (.) per seleccionar-ne un">💤 Inactius <b id="idle-count">0</b></span>
   <span class="sep"></span>
   <span class="stat">FPS <b id="fps">--</b></span>
   <span class="sep"></span>
@@ -469,6 +489,8 @@ const CONFIG = {
     wheelbarrow: { name: 'Carretó', icon: '🛒', cost: { food: 175, wood: 50 }, time: 30, age: 1, at: 'towncenter', desc: 'Aldeans: +10% velocitat, +3 de càrrega' },
     doublebit:   { name: 'Destral de doble fil', icon: '🪓', cost: { food: 100, wood: 50 }, time: 20, age: 1, at: 'lumbercamp', desc: '+20% de ritme tallant fusta' },
     goldmining:  { name: "Mineria d'or", icon: '⛏️', cost: { food: 100, wood: 75 }, time: 20, age: 1, at: 'miningcamp', desc: "+15% de ritme extraient or i pedra" },
+    reseed:      { name: 'Resembra automàtica', icon: '🔁', cost: { wood: 100, food: 50 }, time: 20, age: 0, at: 'mill',
+                   desc: "Quan una granja s'esgota, el granger la torna a sembrar sol (paga 60 de fusta)" },
     horsecollar: { name: 'Collar de cavall', icon: '🐴', cost: { food: 75, wood: 75 }, time: 20, age: 1, at: 'mill', desc: "Les granges noves donen +75 d'aliment" },
     forging:     { name: 'Forja', icon: '🔨', cost: { food: 150 }, time: 25, age: 1, at: 'blacksmith', desc: 'Infanteria i cavalleria: +1 atac' },
     fletching:   { name: 'Plomes', icon: '🪶', cost: { food: 100, wood: 50 }, time: 20, age: 1, at: 'blacksmith', desc: 'Arquers: +1 atac i +1 abast. Torres i Centre: +1 atac' },
@@ -480,6 +502,9 @@ const CONFIG = {
   QUEUE_MAX: 15,
   TC_POP: 5,                 // població que dona el Centre de Ciutat
   // Edificis construïbles pels aldeans (mida en cel·les de la graella; 1 cel·la = 1 unitat)
+  // Tecles de construcció quan hi ha aldeans seleccionats
+  BUILD_KEYS: { KeyC: 'house', KeyF: 'lumbercamp', KeyG: 'miningcamp', KeyL: 'mill', KeyT: 'farm', KeyU: 'market',
+                KeyB: 'barracks', KeyV: 'stable', KeyI: 'blacksmith', KeyY: 'watchtower', KeyZ: 'palisade', KeyN: 'stonewall', KeyO: 'gate' },
   BUILDINGS: {
     house:      { name: 'Casa', short: 'Casa', icon: '🏠', cost: { wood: 25 }, size: [4, 4], hp: 550, time: 15, pop: 5,
                   desc: '+5 de població' },
@@ -1589,7 +1614,8 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
   e.def = def;
   e.armor = def.armor || [2, 6];
   e.los = def.los || 8;
-  if (def.trains) { e.trainQueue = []; e.rally = null; }
+  if (def.trains || Object.values(CONFIG.TECHS).some(t => t.at === type)) e.trainQueue = [];
+  if (def.trains) e.rally = null;
   e.footprint = (def.walkable || def.wall || def.gate) ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };
   e.isWall = !!def.wall;
   e.rot = rot;
@@ -1774,7 +1800,7 @@ function startPlacement(type) {
   g.add(model, fp, overlay);
   scene.add(g);
   Object.assign(placing, { type, ghost: g, overlay, valid: false, chain: 0, rot: placing.rot || 0 });
-  if (def.gate) toast('Porta: prem R per girar-la');
+  if (def.gate) toast('Porta: col·loca-la sobre la muralla (substitueix els trams) · R per girar-la');
   updatePlacement();
 }
 function cancelPlacement() {
@@ -1864,14 +1890,25 @@ function snapToGrid(v, cells) {
   // Mida senar → centre a mitja cel·la; mida parell → centre a la vora d'una cel·la
   return cells % 2 ? Math.round(v - 0.5) + 0.5 : Math.round(v);
 }
+/* Trams de muralla propis dins d'un rectangle (la porta els substitueix) */
+function wallsIn(x, z, sw, sd, team = PLAYER.id) {
+  return state.buildings.filter(b => b.isWall && b.team === team && !b.dead
+    && Math.abs(b.position.x - x) < sw / 2 && Math.abs(b.position.z - z) < sd / 2);
+}
 function canPlace(type, x, z, rot = 0) {
   const [sw, sd] = sizeOf(type, rot);
   const L = CONFIG.MAP_LIMIT;
   if (Math.abs(x) + sw / 2 > L - 1 || Math.abs(z) + sd / 2 > L - 1) return false;
   const N = NAV.N;
+  const walls = CONFIG.BUILDINGS[type].gate ? wallsIn(x, z, sw, sd) : [];
   for (let j = navCell(z - sd / 2 + 0.01); j <= navCell(z + sd / 2 - 0.01); j++)
-    for (let i = navCell(x - sw / 2 + 0.01); i <= navCell(x + sw / 2 - 0.01); i++)
-      if (NAV.build[j * N + i]) return false;
+    for (let i = navCell(x - sw / 2 + 0.01); i <= navCell(x + sw / 2 - 0.01); i++) {
+      if (!NAV.build[j * N + i]) continue;
+      // Porta: la cel·la pot estar ocupada per un tram de muralla propi
+      const cx = navCenter(i), cz = navCenter(j);
+      if (walls.some(w => Math.abs(w.position.x - cx) < 0.6 && Math.abs(w.position.z - cz) < 0.6)) continue;
+      return false;
+    }
   // Tampoc a sobre de les ovelles
   for (const n of state.resourceNodes) {
     if (n.subtype === 'sheep' && Math.abs(n.position.x - x) < sw / 2 + 0.6 && Math.abs(n.position.z - z) < sd / 2 + 0.6) return false;
@@ -1904,6 +1941,17 @@ function confirmPlacement(shift) {
   const units = builders();
   if (!units.length) { cancelPlacement(); return; }
   applyCost(CONFIG.BUILDINGS[type].cost);
+  if (CONFIG.BUILDINGS[type].gate) {
+    // La porta substitueix els trams de muralla que ocupa
+    const [gw, gd] = sizeOf(type, placing.rot);
+    for (const w of wallsIn(placing.x, placing.z, gw, gd)) {
+      w.dead = true; w.depleted = true;
+      state.buildings = state.buildings.filter(x => x !== w);
+      state.obstacles = state.obstacles.filter(o => o.entity !== w);
+      state.pickables = state.pickables.filter(m => m.userData.entity !== w);
+      scene.remove(w.group);
+    }
+  }
   const b = createBuilding(type, placing.x, placing.z, false, PLAYER.id, placing.rot);
   // Amb Shift es poden col·locar diversos fonaments seguits: s'encuen com a ordres
   if (shift && placing.chain > 0) units.forEach(u => enqueueOrder(u, { type: 'build', building: b }));
@@ -1969,6 +2017,9 @@ function applyUnitStats(e, kind) {
   e.scanTimer = rand() * 0.5;
   e.chaseTimer = 0;
   e.attackMove = null;
+  e.stance = 'aggressive';      // agressiva · defensiva · mantenir posició
+  e.anchor = null;              // punt on la unitat defensa (postura defensiva)
+  e.forcedTarget = false;       // objectiu ordenat pel jugador (ignora la postura)
   e.garrisoned = null;
   e.garrisonTarget = null;
   e.swingT = 0;
@@ -2621,6 +2672,9 @@ createStoneMine(46, -38);
   .forEach(([x, z]) => createTree(x + randRange(-1, 1), z + randRange(-1, 1), randRange(0.9, 1.25)));
 createGoldMine(44, 74);
 createGoldMine(70, 86);
+// Mines extres repartides pel mapa (or i pedra per a partides llargues)
+[[-38, 12], [4, -34], [-70, -30], [30, -75], [-20, 70], [75, -5], [-80, 70], [85, -80]].forEach(([x, z]) => createGoldMine(x, z));
+[[-45, -45], [15, 55], [-85, -5], [60, -65]].forEach(([x, z]) => createStoneMine(x, z));
 [[70, 36], [72.6, 37.4], [69.2, 39], [72.2, 40.4], [74.8, 39.2]].forEach(([x, z]) => createBerryBush(x, z));
 [[50, 52], [52.5, 49], [48, 47]].forEach(([x, z]) => createSheep(x, z));
 createStoneMine(34, 86);
@@ -2945,7 +2999,7 @@ function issueRightClick(x, y, queued = false) {
   // Centre de Ciutat seleccionat: clic dret = punt de reunió
   if (!units.length) {
     const b = state.selected.length === 1 ? state.selected[0] : null;
-    if (b && b.kind === 'building' && b.isOwn && b.trainQueue) {
+    if (b && b.kind === 'building' && b.isOwn && (b.subtype === 'towncenter' || (b.def && b.def.trains))) {
       if (targetEnt === b) { b.rally = null; toast('🚩 Punt de reunió eliminat'); return; }
       if (targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted) {
         b.rally = { point: targetEnt.position.clone(), node: targetEnt };
@@ -3170,6 +3224,7 @@ function applyTechEffect(team, kind) {
     case 'doublebit': M.gather.tree = (M.gather.tree || 1) * 1.2; break;
     case 'goldmining': M.gather.gold = (M.gather.gold || 1) * 1.15; M.gather.stone = (M.gather.stone || 1) * 1.15; break;
     case 'horsecollar': M.farmBonus += 75; break;
+    case 'reseed': M.autoReseed = true; break;
     case 'forging': M.attack.infantry += 1; M.attack.cavalry += 1; break;
     case 'fletching': M.attack.archer += 1; M.range.archer += 1; M.buildingArrow += 1; break;
     case 'scalearmor': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 1]; break;
@@ -3265,7 +3320,7 @@ const rallyFlag = (() => {
 })();
 function updateRallyFlag(t) {
   const b = state.selected.length === 1 ? state.selected[0] : null;
-  const rally = b && b.trainQueue ? b.rally : null;
+  const rally = b && (b.subtype === 'towncenter' || (b.def && b.def.trains)) ? b.rally : null;
   if (!rally) { rallyFlag.visible = false; return; }
   if (rally.node && rally.node.depleted) rally.node = null;
   const p = rally.node ? rally.node.position : rally.point;
@@ -3413,6 +3468,8 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
 }
 
 function orderMove(u, point) {
+  u.anchor = point.clone ? point.clone() : null;
+  u.forcedTarget = false;
   u.gatherNode = null;
   u.dropTarget = null;
   u.buildTarget = null;
@@ -3450,6 +3507,14 @@ function afterBuild(u, b) {
   setMoveTarget(u, null);
   if (u.orderQueue.length) { setUnitState(u, STATE.IDLE); return; }
   if (b.subtype === 'farm' && !b.depleted && !b.dead && !farmTaken(b, u)) { orderGather(u, b, null); return; }
+  // Fonaments propis a mig construir a prop: continuar-hi (com a l'AoE)
+  let next = null, nd = 22;
+  for (const o of state.buildings) {
+    if (o === b || o.team !== u.team || !o.underConstruction || o.dead) continue;
+    const d = entSurfaceDist(o, u.position.x, u.position.z);
+    if (d < nd) { nd = d; next = o; }
+  }
+  if (next) { orderBuild(u, next, null); return; }
   if (b.dropoffTypes && b.subtype !== 'towncenter') {
     let best = null, bestD = Infinity;
     for (const type of b.dropoffTypes) {
@@ -3515,9 +3580,24 @@ function goToDropoff(u, building = null) {
 }
 
 /* Quan el recurs actual desapareix, en busca un altre del mateix tipus a prop */
+/* Tria el recurs que queda més a prop del magatzem de la zona (i no gaire lluny d'on treballava) */
+function nextResourceNear(type, fromPos, u) {
+  const R = CONFIG.GATHER.autoSearchRadius;
+  const drop = nearestDropoff(fromPos, type, u.team);
+  let best = null, bestS = Infinity;
+  for (const n of state.resourceNodes) {
+    if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
+    if (farmTaken(n, u) || (n.subtype === 'farm' && n.team !== u.team)) continue;
+    const dWork = hDist(n.position, fromPos);
+    if (dWork > R * 1.5) continue;
+    const score = (drop ? hDist(n.position, drop.position) : 0) + dWork * 0.5;
+    if (score < bestS) { bestS = score; best = n; }
+  }
+  return best;
+}
 function findNextResource(u) {
   const type = u.lastResourceType;
-  const next = type ? nearestResource(type, u.lastNodePos, CONFIG.GATHER.autoSearchRadius, u) : null;
+  const next = type ? nextResourceNear(type, u.lastNodePos, u) : null;
   if (next) {
     u.gatherNode = next;
     u.gatherAngle = null;
@@ -3636,6 +3716,7 @@ function gatherTick(u, dt) {
 
   if (node.amount <= 0) {
     depleteResource(node);
+    if (u.reseedFarm) { const nf = u.reseedFarm; u.reseedFarm = null; orderBuild(u, nf, null); return; }
     if (u.carry.amount >= cap) goToDropoff(u);
     else findNextResource(u);
     return;
@@ -3722,6 +3803,17 @@ function updateUnit(u, dt) {
           performAttack(u, t);
         }
       } else {
+        // Postures: «quieta» no es mou; «defensiva» no s'allunya més de 9 unitats del seu lloc
+        if (!u.forcedTarget && u.isMilitary && !u.attackMove && u.stance === 'stand') {
+          u.attackTarget = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break;
+        }
+        if (!u.forcedTarget && u.isMilitary && !u.attackMove && u.stance === 'defensive' && u.anchor && hDist(u.position, u.anchor) > 9) {
+          u.attackTarget = null;
+          setMoveTarget(u, u.anchor.clone());
+          setUnitState(u, STATE.MOVING);
+          u.returningToAnchor = true;
+          break;
+        }
         // Perseguir l'objectiu (es recalcula el camí cada mig segon)
         u.chaseTimer -= dt;
         if (!u.target || u.chaseTimer <= 0) {
@@ -3730,7 +3822,7 @@ function updateUnit(u, dt) {
         }
         walking = !stepTowardsTarget(u, dt);
         // Les unitats militars abandonen una persecució massa llarga
-        if (u.isMilitary && t.kind === 'unit' && hDist(u.position, t.position) > u.los * 2.5) {
+        if (u.isMilitary && !u.forcedTarget && t.kind === 'unit' && hDist(u.position, t.position) > u.los * 2.5) {
           u.attackTarget = null;
           setUnitState(u, STATE.IDLE);
         }
@@ -3797,12 +3889,13 @@ function updateUnit(u, dt) {
     default:
       if (u.target) setMoveTarget(u, null);
       if (u.orderQueue.length) { runOrder(u, u.orderQueue.shift()); break; }
-      // Les unitats militars ataquen automàticament l'enemic que veuen
+      // Les unitats militars ataquen automàticament l'enemic que veuen (segons la postura)
       if (u.isMilitary) {
+        u.returningToAnchor = false;
         u.scanTimer -= dt;
         if (u.scanTimer <= 0) {
           u.scanTimer = 0.5;
-          const t = findTargetNear(u, u.los);
+          const t = findTargetNear(u, acquireRadius(u));
           if (t) orderAttack(u, t);
         }
       }
@@ -4004,6 +4097,7 @@ function aiTick() {
   AI.saving = !!ageReady && army.length >= 4;
   if (ageReady) tryTech(nextAge);
   if (!AI.saving) tryTech('loom', 12);
+  if (!AI.saving && hasCompleted('mill', T) && res.wood > 250) tryTech('reseed');
   if (E.age >= 1) {
     if (!has('blacksmith')) aiBuild('blacksmith', tc.position, 12, 28);
     if (!has('stable') && villagers.length >= 15) aiBuild('stable', tc.position, 13, 30, 2);
@@ -4166,7 +4260,8 @@ function updateFog() {
    COMBAT: ATAC, PROJECTILS, MORT, REFUGI AL CENTRE DE CIUTAT
    ===================================================================== */
 function computeDamage(attack, target, type, vsBuilding = 0) {
-  const armor = (target.armor || [0, 0])[type] || 0;
+  // Un edifici en construcció (fonament o bastida) no té armadura
+  const armor = target.underConstruction ? 0 : ((target.armor || [0, 0])[type] || 0);
   let d = attack - armor;
   if (target.kind === 'building') d += vsBuilding;
   return Math.max(1, d);
@@ -4181,6 +4276,8 @@ function isAttackable(t) {
 
 function orderAttack(u, target, keepAttackMove = true) {
   if (!isAttackable(target) || target.team === u.team) return;
+  u.forcedTarget = false;
+  if (!u.anchor || u.state === STATE.IDLE) u.anchor = u.position.clone();
   u.gatherNode = null;
   u.dropTarget = null;
   u.buildTarget = null;
@@ -4195,7 +4292,26 @@ function commandAttack(units, target, queued = false) {
     if (queued) { enqueueOrder(u, { type: 'attack', target }); continue; }
     u.orderQueue.length = 0;
     orderAttack(u, target, false);
+    u.forcedTarget = true;
   }
+}
+const STANCES = {
+  aggressive: { icon: '⚔️', name: 'Agressiva', desc: 'Ataca el que veu i el persegueix lluny' },
+  defensive:  { icon: '🛡️', name: 'Defensiva', desc: 'Ataca el que veu però no s\'allunya gaire del seu lloc' },
+  stand:      { icon: '🧱', name: 'Quieta', desc: 'No es mou: només ataca el que té a l\'abast' },
+};
+function setStance(units, stance) {
+  for (const u of units) {
+    u.stance = stance;
+    u.anchor = u.position.clone();
+    if (stance === 'stand' && u.state === STATE.ATTACKING && !u.forcedTarget) { u.attackTarget = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); }
+  }
+  toast(`${STANCES[stance].icon} Postura: ${STANCES[stance].name}`);
+  updateSelectionUI();
+}
+/* Radi en què una unitat busca enemics segons la postura */
+function acquireRadius(u) {
+  return u.stance === 'stand' ? (u.range > 0 ? u.range : u.reach) + u.radius + 0.6 : u.los;
 }
 function orderAttackMove(u, point) {
   orderMove(u, point);
@@ -4238,8 +4354,9 @@ function applyDamage(target, amount, attacker) {
   target.lastHitT = state.elapsed;
   if (target.hp <= 0) { killEntity(target, attacker); return; }
   // Les unitats militars inactives responen l'atac
-  if (target.kind === 'unit' && target.isMilitary && attacker && !attacker.dead
-      && (target.state === STATE.IDLE || (target.state === STATE.ATTACKING && target.attackTarget && target.attackTarget.kind === 'building'))) {
+  if (target.kind === 'unit' && target.isMilitary && attacker && !attacker.dead && attacker.kind === 'unit'
+      && (target.state === STATE.IDLE || (target.state === STATE.ATTACKING && target.attackTarget && target.attackTarget.kind === 'building'))
+      && (target.stance !== 'stand' || inAttackRange(target, attacker))) {
     orderAttack(target, attacker);
   }
   if (target.team === ENEMY.id && attacker) aiAlert(attacker);
@@ -4449,8 +4566,19 @@ function depleteResource(node) {
   state.dying.push(node);
   if (node.subtype === 'gold') toast("⛏️ Una Veta d'Or s'ha esgotat");
   if (node.subtype === 'stone') toast('🪨 Una Mina de Pedra s\'ha esgotat');
-  if (node.subtype === 'farm') toast('🌱 Una granja s\'ha esgotat');
   rebuildNav();
+  if (node.subtype === 'farm') {
+    const T = teamOf(node.team);
+    const farmers = state.units.filter(u => u.gatherNode === node && !u.dead);
+    if (T.mods.autoReseed && canAfford(CONFIG.BUILDINGS.farm.cost, node.team) && canPlace('farm', node.position.x, node.position.z)) {
+      applyCost(CONFIG.BUILDINGS.farm.cost, -1, node.team);
+      const nf = createBuilding('farm', node.position.x, node.position.z, false, node.team);
+      farmers.forEach(u => { u.reseedFarm = nf; });
+      if (node.team === PLAYER.id) toast('🔁 Granja resembrada automàticament');
+    } else if (node.team === PLAYER.id) {
+      toast(T.mods.autoReseed ? '🌱 Una granja s\'ha esgotat (falta fusta per resembrar-la)' : '🌱 Una granja s\'ha esgotat');
+    }
+  }
   spawnParticles(new THREE.Vector3(node.position.x, 1.5, node.position.z), node.particleColor, 14, null);
 }
 
@@ -4658,7 +4786,7 @@ function updateSelectionUI(panelOnly = false) {
   if (sel.length === 1) {
     let stats = '';
     if (first.kind === 'unit') {
-      stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.isMilitary || !first.isOwn ? '' : carryLine(first)}</div>
+      stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.isMilitary || !first.isOwn ? (first.isMilitary && first.isOwn ? `<span>${STANCES[first.stance].icon} ${STANCES[first.stance].name}</span>` : '') : carryLine(first)}</div>
         <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>🎯 Abast <b>${first.range ? first.range : 'cos a cos'}</b></span><span>👁 Visió <b>${first.los}</b></span></div>`;
     } else if (first.kind === 'building') {
       if (!first.isOwn) {
@@ -4769,12 +4897,21 @@ function updateSelectionUI(panelOnly = false) {
       actionsEl.appendChild(makeActionButton('🗑️', 'Enderrocar', 'Supr', '', () => demolishBuilding(first), true));
     }
   } else if (first.kind === 'unit' && first.isOwn && !builders().length) {
-    // Només militars
-    actionsEl.appendChild(makeActionButton('✋', 'Aturar', "Cancel·la l'ordre", 'X', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }));
-    const hint = document.createElement('div');
-    hint.className = 'action-hint';
-    hint.innerHTML = '<kbd>Clic dret</kbd> enemic: atacar<br><kbd>Clic dret</kbd> terreny: moure<br>Inactives, ataquen el que veuen.';
-    actionsEl.appendChild(hint);
+    // Només militars: aturar i postures de combat
+    actionsEl.classList.add('compact');
+    const mil = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
+    const stop = makeActionButton('✋', 'Aturar', 'X', '', () => { commandStop(mil); updateSelectionUI(); }, true);
+    stop.title = "Aturar (X)\nClic dret sobre un enemic: atacar (l'ordre directa ignora la postura)";
+    actionsEl.appendChild(stop);
+    const cur = mil.every(u => u.stance === mil[0].stance) ? mil[0].stance : null;
+    const keysSt = { aggressive: 'Z', defensive: 'V', stand: 'N' };
+    for (const [k, st] of Object.entries(STANCES)) {
+      if (!mil.some(u => u.isMilitary)) break;
+      const b = makeActionButton(st.icon, st.name, cur === k ? '● activa' : '', keysSt[k], () => setStance(mil.filter(u => u.isMilitary), k), true);
+      b.title = `Postura ${st.name} (${keysSt[k]}): ${st.desc}`;
+      if (cur === k) b.style.boxShadow = '0 0 0 2px var(--gold) inset, 0 0 12px rgba(216,178,90,0.5)';
+      actionsEl.appendChild(b);
+    }
   } else if (first.kind === 'unit' && first.isOwn) {
     // Menú de construcció de l'aldeà
     actionsEl.classList.add('compact');
@@ -4784,7 +4921,8 @@ function updateSelectionUI(panelOnly = false) {
     for (const [type, def] of Object.entries(CONFIG.BUILDINGS)) {
       if ((def.page || 0) !== buildPage) continue;
       const locked = (def.age || 0) > PLAYER.age;
-      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costText(def.cost), '', () => startPlacement(type), true);
+      const hk = Object.entries(CONFIG.BUILD_KEYS).find(([, t]) => t === type);
+      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costText(def.cost), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
       btn.dataset.build = type;
       btn.title = `${def.name} — ${costText(def.cost)} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
       actionsEl.appendChild(btn);
@@ -4974,6 +5112,7 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const code = e.code;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) e.preventDefault();
   if (e.repeat) { keys.add(code); return; }
@@ -4987,6 +5126,22 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.ctrlKey || e.metaKey) return;
+
+  // Aldeans seleccionats: lletres de construcció
+  if (builders().length && CONFIG.BUILD_KEYS[code]) {
+    const type = CONFIG.BUILD_KEYS[code];
+    const def = CONFIG.BUILDINGS[type];
+    buildPage = def.page || 0;
+    startPlacement(type);
+    updateSelectionUI();
+    return;
+  }
+  // Unitats militars seleccionades: postures
+  const milSel = state.selected.filter(s => s.kind === 'unit' && s.isOwn && s.isMilitary);
+  if (milSel.length && !builders().length && ['KeyZ', 'KeyV', 'KeyN'].includes(code)) {
+    setStance(milSel, code === 'KeyZ' ? 'aggressive' : code === 'KeyV' ? 'defensive' : 'stand');
+    return;
+  }
 
   switch (code) {
     case 'Escape':
@@ -5082,7 +5237,7 @@ function handleControlGroup(n, e) {
 
 let idleCursor = 0;
 function selectNextIdle() {
-  const idle = state.units.filter(u => u.isOwn && u.state === STATE.IDLE);
+  const idle = state.units.filter(u => u.isOwn && u.subtype === 'villager' && u.state === STATE.IDLE);
   if (!idle.length) { toast('No hi ha cap aldeà inactiu'); return; }
   idleCursor = (idleCursor + 1) % idle.length;
   const u = idle[idleCursor];
@@ -5554,6 +5709,56 @@ function loadGame(data) {
   toast(`📂 Partida carregada (${formatTime(data.elapsed)}, ${AI.diff.label})`);
   return true;
 }
+/* ---------- Codi de partida (comprimit i, opcionalment, xifrat amb contrasenya) ---------- */
+function bytesToB64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64ToBytes(str) {
+  const b = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+  const out = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+  return out;
+}
+async function streamBytes(bytes, transform) {
+  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(transform)).arrayBuffer());
+}
+async function passKey(password, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 120000, hash: 'SHA-256' }, base,
+    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function exportGameCode(password) {
+  let bytes = new TextEncoder().encode(JSON.stringify(serializeGame()));
+  let flags = '';
+  if (window.CompressionStream) { bytes = await streamBytes(bytes, new CompressionStream('deflate-raw')); flags += 'z'; }
+  if (password) {
+    if (!window.crypto || !crypto.subtle) throw new Error('Aquest navegador no permet xifrar (cal HTTPS o un navegador modern)');
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const enc = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await passKey(password, salt), bytes));
+    const all = new Uint8Array(28 + enc.length);
+    all.set(salt, 0); all.set(iv, 16); all.set(enc, 28);
+    bytes = all;
+    flags += 'e';
+  }
+  return `IMP1-${flags || 'p'}-${bytesToB64(bytes)}`;
+}
+async function importGameCode(code, password) {
+  const m = /^IMP1-([a-z]+)-([A-Za-z0-9_-]+)$/.exec(code.replace(/\s+/g, ''));
+  if (!m) throw new Error('El codi no és vàlid');
+  const flags = m[1];
+  let bytes = b64ToBytes(m[2]);
+  if (flags.includes('e')) {
+    if (!password) throw new Error('Aquest codi està protegit: escriu la contrasenya');
+    try {
+      bytes = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(16, 28) }, await passKey(password, bytes.slice(0, 16)), bytes.slice(28)));
+    } catch { throw new Error('Contrasenya incorrecta'); }
+  }
+  if (flags.includes('z')) bytes = await streamBytes(bytes, new DecompressionStream('deflate-raw'));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 const menuScreen = document.getElementById('menu-screen');
 function refreshSaveInfo() {
   const d = readSave();
@@ -5575,6 +5780,34 @@ document.getElementById('menu-continue').addEventListener('click', () => openMen
 document.getElementById('menu-save').addEventListener('click', () => saveGame());
 document.getElementById('menu-load').addEventListener('click', () => { if (loadGame(readSave())) openMenu(false); });
 document.getElementById('menu-new').addEventListener('click', () => location.reload());
+const codePanel = document.getElementById('code-panel');
+const codeText = document.getElementById('code-text');
+document.getElementById('menu-code').addEventListener('click', () => codePanel.classList.toggle('hidden'));
+document.getElementById('code-make').addEventListener('click', async () => {
+  try {
+    const pass = document.getElementById('code-pass').value;
+    codeText.value = await exportGameCode(pass);
+    codeText.select();
+    toast(pass ? '🔑 Codi xifrat generat: guarda\'l amb la contrasenya' : '🔑 Codi generat (sense contrasenya)');
+  } catch (err) { toast('⚠️ ' + err.message); }
+});
+document.getElementById('code-copy').addEventListener('click', async () => {
+  if (!codeText.value) return;
+  try { await navigator.clipboard.writeText(codeText.value); toast('📋 Codi copiat'); }
+  catch { codeText.select(); document.execCommand('copy'); toast('📋 Codi copiat'); }
+});
+document.getElementById('code-load').addEventListener('click', async () => {
+  try {
+    const data = await importGameCode(codeText.value.trim(), document.getElementById('code-pass').value);
+    if (loadGame(data)) { codePanel.classList.add('hidden'); openMenu(false); }
+  } catch (err) { toast('⚠️ ' + err.message); }
+});
+document.getElementById('start-code').addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  openMenu(true);
+  codePanel.classList.remove('hidden');
+  document.getElementById('menu-info').textContent = 'Enganxa el codi i escriu la contrasenya';
+});
 document.getElementById('start-load').addEventListener('click', () => {
   const d = readSave();
   startScreen.classList.add('hidden');
@@ -5663,7 +5896,7 @@ function animate() {
     const techSig = `${PLAYER.age}:${PLAYER.techs.size}:${state.buildings.filter(b => b.isOwn && !b.underConstruction).length}`;
     if (techSig !== lastTechSig) { lastTechSig = techSig; updateSelectionUI(); }
     else if (selectionSignature() !== lastSelSignature) updateSelectionUI(true);
-    idleCountEl.textContent = state.units.filter(u => u.isOwn && u.state === STATE.IDLE).length;
+    idleCountEl.textContent = state.units.filter(u => u.isOwn && u.subtype === 'villager' && u.state === STATE.IDLE).length;
     updatePopulationUI();
   }
   for (const a of state.animated) a.update(t, dt);
@@ -5725,7 +5958,7 @@ setTimeout(() => loadingEl.remove(), 500);
 window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, queueUnit, townCenter, enemyTC, mouse, NAV, createBuilding,
   commandBuild, startPlacement, placing, findPath, popCap, createSoldier, commandAttack, AI, FOG, ENEMY, DIFFICULTY, ringTownBell, kill: (e) => killEntity(e, null),
   PLAYER, completeTech, itemBlockReason, createSoldierAt: createSoldier, saveGame, loadGame, readSave, serializeGame,
-  createTradeCart, marketTrade, orderTrade };
+  createTradeCart, marketTrade, orderTrade, exportGameCode, importGameCode, setStance, orderBuild, orderGather, depleteResource };
 </script>
 </body>
 </html>
