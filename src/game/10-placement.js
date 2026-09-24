@@ -196,14 +196,34 @@ function canPlace(type, x, z, rot = 0) {
   }
   return true;
 }
+/* Porta: si el cursor és a prop d'una muralla pròpia, s'orienta en la seva direcció i s'hi encaixa */
+function snapGateToWall(p) {
+  let near = null, bestD = 2.5;
+  for (const b of state.buildings) {
+    if (!b.isWall || b.team !== PLAYER.id || b.dead) continue;
+    const d = Math.hypot(b.position.x - p.x, b.position.z - p.z);
+    if (d < bestD) { bestD = d; near = b; }
+  }
+  if (!near) return null;
+  const at = (dx, dz) => state.buildings.some(b => b.isWall && b.team === PLAYER.id && !b.dead
+    && Math.abs(b.position.x - (near.position.x + dx)) < 0.2 && Math.abs(b.position.z - (near.position.z + dz)) < 0.2);
+  const horiz = at(1, 0) || at(-1, 0), vert = at(0, 1) || at(0, -1);
+  if (horiz === vert) return null;
+  // Porta de 3 cel·les centrada a la muralla, sobre la mateixa línia
+  return horiz
+    ? { rot: 0, x: snapToGrid(p.x, 3), z: near.position.z }
+    : { rot: 1, x: near.position.x, z: snapToGrid(p.z, 3) };
+}
 function updatePlacement() {
   if (!placing.type) return;
   const p = pickGround(mouse.x, mouse.y);
   if (!p) return;
   if (placing.wall) { updateWallPlacement(p); return; }
+  const gateSnap = CONFIG.BUILDINGS[placing.type].gate ? snapGateToWall(p) : null;
+  if (gateSnap) placing.rot = gateSnap.rot;
   const [sw, sd] = sizeOf(placing.type, placing.rot);
-  placing.x = snapToGrid(p.x, sw);
-  placing.z = snapToGrid(p.z, sd);
+  placing.x = gateSnap ? gateSnap.x : snapToGrid(p.x, sw);
+  placing.z = gateSnap ? gateSnap.z : snapToGrid(p.z, sd);
   placing.ghost.position.set(placing.x, 0, placing.z);
   placing.ghost.rotation.y = placing.rot ? Math.PI / 2 : 0;
   placing.overlay.position.set(Math.round(placing.x) - placing.x, 0.04, Math.round(placing.z) - placing.z);

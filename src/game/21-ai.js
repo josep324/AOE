@@ -55,6 +55,23 @@ function nearestPlayerTarget(pos) {
   return best;
 }
 
+/* Rendició: quan la IA ja no té cap possibilitat clara de guanyar, abandona (com a l'AoE II) */
+function aiCheckResign(tc, villagers, army) {
+  if (AI.resigned || state.elapsed < 300) return false;
+  const strength = (team, hasTC, vills, arm) => vills + arm * 2 + (hasTC ? 15 : 0)
+    + state.buildings.filter(b => b.team === team && !b.underConstruction && !b.isWall && b.def && b.def.trains).length * 4;
+  const pUnits = state.units.filter(u => u.team === PLAYER.id);
+  const pTC = state.buildings.some(b => b.team === PLAYER.id && b.subtype === 'towncenter');
+  const me = strength(AI.team, !!tc, villagers.length, army.length);
+  const them = strength(PLAYER.id, pTC, pUnits.filter(u => u.subtype === 'villager').length, pUnits.filter(u => u.isMilitary).length);
+  const broke = !tc && (villagers.length < 3 || !canAfford({ wood: 275, stone: 100 }, AI.team)) && army.length < 4;
+  const crushed = state.elapsed > 600 && them > me * 6 && army.length < 3;
+  if (!broke && !crushed) return false;
+  AI.resigned = true;
+  AI.enabled = false;
+  toast(`🏳️ Els ${civOf(AI.team).name} es rendeixen!`);
+  return true;
+}
 function aiTick() {
   if (!AI.enabled) return;
   const T = AI.team, D = AI.diff, res = ENEMY.res;
@@ -65,6 +82,8 @@ function aiTick() {
   const has = (type, includeFoundations = true) => blds.some(b => b.subtype === type && (includeFoundations || !b.underConstruction));
   const count = (type) => blds.filter(b => b.subtype === type).length;
   const now = state.elapsed;
+  AI.resignTimer = (AI.resignTimer || 0) + 1;
+  if (AI.resignTimer % 10 === 0 && aiCheckResign(tc, villagers, army)) return;
 
   if (!tc) {
     // Sense Centre de Ciutat: tot l'exèrcit a l'atac

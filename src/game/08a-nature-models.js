@@ -247,13 +247,35 @@ function bushTemplate(v) {
 const berryGeoShared = new THREE.SphereGeometry(0.085, 8, 6);
 
 /* ---------- Ovella ---------- */
+const SHEEP_WOOL = [0xffffff, 0xf1e7d2, 0xdcd6cc, 0x5a524c];
+const SHEEP_FACE = [0x2e2824, 0xe9dfcf, 0x4a3a30];
+function sheepWoolMat(i) {
+  return natureMat('wool' + i, () => new THREE.MeshStandardMaterial({ map: NM.wool.map, color: SHEEP_WOOL[i], roughness: 1 }));
+}
 const sheepParts = {
-  body: null, head: null,
+  body: null,
   get() {
     if (!this.body) {
-      this.body = lumpGeo(0.5, 2, 3.3, 0.12);
-      this.body.scale(1.0, 0.82, 1.4);
-      this.head = new THREE.SphereGeometry(0.2, 12, 10).scale(0.85, 0.95, 1.3);
+      // Cos de llana: un volum principal i diversos flocs
+      const lumps = [];
+      const main = lumpGeo(0.5, 2, 3.3, 0.1);
+      main.scale(1.0, 0.82, 1.35);
+      lumps.push(main);
+      for (let i = 0; i < 9; i++) {
+        const a = (i / 9) * Math.PI * 2, r = nr(0.2, 0.26);
+        const l = lumpGeo(r, 1, 10 + i, 0.15);
+        l.translate(Math.cos(a) * 0.36, 0.22 + nr(-0.05, 0.1), Math.sin(a) * 0.52);
+        lumps.push(l);
+      }
+      const tail = lumpGeo(0.12, 1, 40, 0.1); tail.translate(0, 0.12, -0.72);
+      lumps.push(tail);
+      this.body = mergeParts(lumps);
+      this.face = new THREE.SphereGeometry(1, 12, 10).scale(0.14, 0.16, 0.27).translate(0, 0, 0.12);
+      this.cap = lumpGeo(0.14, 1, 77, 0.15);
+      this.ear = new THREE.SphereGeometry(1, 8, 6).scale(0.11, 0.035, 0.06);
+      this.eye = new THREE.SphereGeometry(0.03, 6, 5);
+      this.leg = new THREE.CylinderGeometry(0.05, 0.04, 0.5, 6).translate(0, -0.25, 0);
+      this.hoof = new THREE.CylinderGeometry(0.05, 0.055, 0.06, 6).translate(0, -0.5, 0);
     }
     return this;
   },

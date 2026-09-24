@@ -133,6 +133,7 @@ function loadGame(data) {
   });
   // IA, boira, temps i càmera
   AI.diff = DIFFICULTY[data.ai.diff] || DIFFICULTY.normal;
+  AI.resigned = false; AI.enabled = true;
   AI.waveCount = data.ai.waveCount; AI.nextWaveAt = data.ai.nextWaveAt; AI.armyCycle = data.ai.armyCycle || 0;
   FOG.enabled = data.fog.enabled;
   for (let k = 0; k < FOG.explored.length; k++) FOG.explored[k] = data.fog.explored.charCodeAt(k) === 49 ? 1 : 0;
@@ -205,7 +206,7 @@ function refreshSaveInfo() {
   const d = readSave();
   document.getElementById('menu-slot').textContent = d
     ? `Partida desada: ${formatTime(d.elapsed)} de joc · ${new Date(d.date).toLocaleString('ca')}`
-    : 'Encara no hi ha cap partida desada en aquest navegador.';
+    : 'Encara no hi ha cap partida desada aquí.';
   document.getElementById('menu-load').disabled = !d;
   document.getElementById('start-load').style.display = d ? 'inline-block' : 'none';
 }
@@ -218,12 +219,46 @@ function openMenu(open) {
 }
 document.getElementById('menu-btn').addEventListener('click', () => openMenu(true));
 document.getElementById('menu-continue').addEventListener('click', () => openMenu(false));
-document.getElementById('menu-save').addEventListener('click', () => saveGame());
+document.getElementById('menu-save').addEventListener('click', () => { saveGame(); refreshSaveInfo(); });
 document.getElementById('menu-load').addEventListener('click', () => { if (loadGame(readSave())) openMenu(false); });
 document.getElementById('menu-new').addEventListener('click', () => location.reload());
 const codePanel = document.getElementById('code-panel');
 const codeText = document.getElementById('code-text');
 document.getElementById('menu-code').addEventListener('click', () => codePanel.classList.toggle('hidden'));
+/* ---------- Fitxer de partida (.imperis): el mateix codi, desat en un fitxer ---------- */
+document.getElementById('file-save').addEventListener('click', async () => {
+  try {
+    const pass = document.getElementById('code-pass').value;
+    const code = await exportGameCode(pass);
+    const d = new Date(), pad = (n) => String(n).padStart(2, '0');
+    const name = `imperis-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.imperis`;
+    const url = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`⬇️ Partida descarregada: ${name}${pass ? ' (amb contrasenya)' : ''}`);
+  } catch (err) { toast('⚠️ ' + err.message); }
+});
+const fileInput = document.getElementById('file-input');
+let fileFromStart = false;
+document.getElementById('file-open').addEventListener('click', () => { fileFromStart = false; fileInput.click(); });
+fileInput.addEventListener('change', async () => {
+  const f = fileInput.files[0];
+  fileInput.value = '';
+  if (!f) return;
+  try {
+    const data = await importGameCode((await f.text()).trim(), document.getElementById('code-pass').value);
+    if (loadGame(data)) {
+      if (fileFromStart) { startScreen.classList.add('hidden'); state.paused = false; canvas.focus(); }
+      else openMenu(false);
+    }
+  } catch (err) {
+    toast('⚠️ ' + err.message + (/contrasenya/i.test(err.message) ? ' (escriu-la al menú i torna a obrir el fitxer)' : ''));
+    if (fileFromStart) { startScreen.classList.add('hidden'); openMenu(true); }
+  }
+});
+document.getElementById('start-file').addEventListener('click', () => { fileFromStart = true; fileInput.click(); });
 document.getElementById('code-make').addEventListener('click', async () => {
   try {
     const pass = document.getElementById('code-pass').value;
@@ -266,6 +301,7 @@ function togglePause() {
 }
 document.getElementById('restart-btn').addEventListener('click', () => location.reload());
 function teamAlive(team) {
+  if (team === AI.team && AI.resigned) return false;
   return state.units.some(u => u.team === team) || state.buildings.some(b => b.team === team && !b.underConstruction);
 }
 function checkGameOver() {
@@ -277,7 +313,7 @@ function checkGameOver() {
   const mins = Math.floor(state.elapsed / 60), secs = Math.floor(state.elapsed % 60);
   document.getElementById('end-title').textContent = win ? 'VICTÒRIA' : 'DERROTA';
   document.getElementById('end-text').innerHTML = win
-    ? `Has derrotat els ${civOf(ENEMY.id).name} en <b>${mins}:${String(secs).padStart(2, '0')}</b> (dificultat ${AI.diff.label}).`
+    ? `${AI.resigned ? `Els ${civOf(ENEMY.id).name} s'han rendit` : `Has derrotat els ${civOf(ENEMY.id).name}`} en <b>${mins}:${String(secs).padStart(2, '0')}</b> (dificultat ${AI.diff.label}).`
     : `La teva civilització (${civOf(PLAYER.id).name}) ha caigut després de <b>${mins}:${String(secs).padStart(2, '0')}</b>.`;
   endScreen.classList.remove('hidden');
 }

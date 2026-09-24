@@ -139,10 +139,11 @@ function createGround() {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uGrassDetail = { value: grassDetailTex };
     shader.uniforms.uDirtDetail = { value: dirtDetailTex };
+    shader.uniforms.uMapLimit = { value: CONFIG.MAP_LIMIT };
     shader.vertexShader = 'varying vec2 vGroundXZ;\n' + shader.vertexShader.replace('#include <worldpos_vertex>',
       `#include <worldpos_vertex>
       vGroundXZ = (modelMatrix * vec4(transformed, 1.0)).xz;`);
-    shader.fragmentShader = 'uniform sampler2D uGrassDetail;\nuniform sampler2D uDirtDetail;\nvarying vec2 vGroundXZ;\n' +
+    shader.fragmentShader = 'uniform sampler2D uGrassDetail;\nuniform sampler2D uDirtDetail;\nuniform float uMapLimit;\nvarying vec2 vGroundXZ;\n' +
       shader.fragmentShader.replace('#include <map_fragment>', `
       vec4 macroC = texture2D(map, vMapUv);
       float dirtK = smoothstep(-0.015, 0.06, macroC.r - macroC.g);
@@ -150,10 +151,18 @@ function createGround() {
       float g2 = texture2D(uGrassDetail, vGroundXZ * 0.071 + 0.37).r;
       float d1 = texture2D(uDirtDetail, vGroundXZ * 0.28).r;
       float det = mix(g1 * 0.65 + g2 * 0.35, d1, dirtK);
-      diffuseColor.rgb *= macroC.rgb * (0.55 + 0.9 * det);`);
+      diffuseColor.rgb *= macroC.rgb * (0.55 + 0.9 * det);
+      // Fora del mapa jugable: més fosc i dessaturat, amb una vora marcada
+      float edgeD = max(abs(vGroundXZ.x), abs(vGroundXZ.y)) - uMapLimit;
+      if (edgeD > 0.0) {
+        float lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(lum) * 0.5, 0.45 + 0.35 * smoothstep(0.0, 10.0, edgeD));
+      }
+      float border = 1.0 - smoothstep(0.15, 0.7, abs(edgeD + 0.35));
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.12, 0.07), border * 0.8);`);
   };
   // Les UV del mapa arriben al vertex shader gràcies a la textura (USE_MAP)
-  material.customProgramCacheKey = () => 'terrain-v1';
+  material.customProgramCacheKey = () => 'terrain-v2';
   ground = new THREE.Mesh(geo, fogify(material));
   ground.receiveShadow = true;
   ground.name = 'ground';

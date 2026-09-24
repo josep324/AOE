@@ -210,6 +210,15 @@
     color: #1a1204; background: linear-gradient(180deg, #ffe39a, #d8a93a); border: 1px solid #fff2c4; box-shadow: 0 6px 20px rgba(216,178,90,0.35);
   }
   .overlay label { color: var(--muted); font-size: 13px; cursor: pointer; }
+  .save-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 10px 0; text-align: left; }
+  .save-grid section { background: rgba(255,255,255,0.04); border: 1px solid rgba(216,178,90,0.25); border-radius: 10px; padding: 10px; }
+  .save-grid h3 { margin: 0 0 6px; font: 700 13px 'Cinzel', serif; color: var(--gold); }
+  .save-grid p { font-size: 11.5px !important; line-height: 1.45 !important; color: var(--muted) !important; margin: 0 0 6px !important; }
+  .save-grid .row { margin: 6px 0 0 !important; justify-content: flex-start; gap: 6px; }
+  .save-grid .choice { padding: 7px 10px; font-size: 12px; }
+  .save-grid .save-slot { color: var(--text) !important; }
+  #menu-screen input[type=password] { margin-top: 4px; }
+  @media (max-width: 640px) { .save-grid { grid-template-columns: 1fr; } }
   .civ-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 6px; }
   .civ-card { text-align: left; padding: 9px 10px; font-weight: 500; line-height: 1.35; }
   .civ-card b { display: block; font: 700 14px 'Cinzel', serif; color: var(--gold); margin-bottom: 3px; }

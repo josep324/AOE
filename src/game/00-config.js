@@ -126,5 +126,7 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rand = mulberry32(1337);
+/* Llavor del mapa: aleatòria a cada partida (o fixa amb ?seed=123 a l'adreça) */
+const MAP_SEED = (parseInt(new URLSearchParams(location.search).get('seed'), 10) || Math.floor(Math.random() * 1e9)) >>> 0;
+const rand = mulberry32(MAP_SEED);
 const randRange = (a, b) => a + (b - a) * rand();

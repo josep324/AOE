@@ -94,8 +94,9 @@ function createDecorations() {
   );
   const tint = new THREE.Color();
   let gi = 0;
+  const inner = CONFIG.MAP_LIMIT - 1;
   while (gi < grassCount) {
-    const cx = randRange(-area, area), cz = randRange(-area, area);
+    const cx = randRange(-inner, inner), cz = randRange(-inner, inner);
     if (isNearObstacle(cx, cz, 1.5)) continue;
     const clump = 2 + Math.floor(rand() * 4);
     for (let k = 0; k < clump && gi < grassCount; k++) {

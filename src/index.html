@@ -30,6 +30,7 @@
     <label><input type="checkbox" id="fog-toggle" checked> Boira de guerra</label>
     <div><button class="big-btn" id="start-btn">COMENÇAR</button></div>
     <div><button class="choice" id="start-load" style="margin-top:10px;display:none">📂 Continuar la partida desada</button>
+      <button class="choice" id="start-file" style="margin-top:10px">📁 Obrir fitxer de partida</button>
       <button class="choice" id="start-code" style="margin-top:10px">🔑 Carregar amb codi</button></div>
     <div class="legend">
       ⚔️ <b>Caserna</b>: Milícia · Llancer i Arquer (Feudal) · 🐎 <b>Estable</b>: Explorador (Feudal) i Cavaller (Castells).<br>
@@ -46,26 +47,41 @@
   <div class="card glass">
     <h1>MENÚ</h1>
     <h2 id="menu-info">La partida està en pausa</h2>
-    <div class="row" style="flex-direction:column;align-items:center">
+    <div class="row">
       <button class="big-btn" id="menu-continue">CONTINUAR</button>
-      <button class="choice" id="menu-save">💾 Desar partida</button>
-      <button class="choice" id="menu-load">📂 Carregar partida desada</button>
-      <button class="choice" id="menu-code">🔑 Codi de partida amb contrasenya</button>
       <button class="choice" id="menu-new">🔄 Nova partida</button>
     </div>
+    <div class="save-grid">
+      <section>
+        <h3>💾 En aquest navegador</h3>
+        <p>La partida es guarda dins del navegador d'aquest ordinador (no és la memòria cau: es conserva encara que el tanquis).
+          Només hi ha un espai i s'esborra si esborres les dades del navegador.</p>
+        <div class="row"><button class="choice" id="menu-save">Desar</button><button class="choice" id="menu-load">Carregar</button></div>
+        <p id="menu-slot" class="save-slot"></p>
+      </section>
+      <section>
+        <h3>📁 En un fitxer</h3>
+        <p>Descarrega un fitxer <b>.imperis</b> i guarda'l on vulguis (també serveix per passar-la a un altre ordinador).
+          Per continuar-la, prem «Obrir fitxer» i tria'l.</p>
+        <div class="row"><button class="choice" id="file-save">⬇️ Descarregar</button><button class="choice" id="file-open">⬆️ Obrir fitxer</button></div>
+        <input type="file" id="file-input" accept=".imperis,.txt" hidden>
+      </section>
+      <section>
+        <h3>🔑 Com a codi de text</h3>
+        <p>La mateixa partida convertida en un text que pots copiar i enviar-te per correu o missatge. Per continuar, enganxa'l i prem «Carregar codi».</p>
+        <div class="row"><button class="choice" id="menu-code">Mostrar el codi</button></div>
+      </section>
+    </div>
+    <input id="code-pass" type="password" placeholder="Contrasenya opcional (per al fitxer i el codi: sense ella no es podran obrir)" autocomplete="off">
     <div id="code-panel" class="hidden">
-      <p style="font-size:12.5px;color:var(--muted);margin:4px 0 8px">Genera un codi per reprendre la partida més tard (també en un altre navegador).
-        Amb contrasenya, el codi queda xifrat i només es pot carregar amb la mateixa contrasenya.</p>
-      <input id="code-pass" type="password" placeholder="Contrasenya (opcional)" autocomplete="off">
       <div class="row" style="margin:8px 0">
         <button class="choice" id="code-make">Generar codi</button>
         <button class="choice" id="code-copy">Copiar</button>
-        <button class="choice" id="code-load">Carregar aquest codi</button>
+        <button class="choice" id="code-load">Carregar codi</button>
       </div>
       <textarea id="code-text" rows="4" placeholder="Enganxa aquí un codi de partida (IMP1-…)"></textarea>
     </div>
-    <p id="menu-slot" style="font-size:12px;color:var(--muted)"></p>
-  </div>
+      </div>
 </div>
 <div id="end-screen" class="overlay hidden">
   <div class="card glass">

@@ -20,10 +20,10 @@ export const BUILDINGS = {
                 armor: [1, 7], los: 16, arrows: { range: 14, damage: 5, reload: 2.0 }, desc: 'Dispara fletxes als enemics propers' },
   market:     { name: 'Mercat', short: 'Mercat', icon: '🏪', cost: { wood: 175 }, size: [6, 6], hp: 1400, time: 35, age: 1, page: 0,
                 trains: ['tradecart'], desc: 'Compra i ven recursos per or. Entrena carros de comerç' },
-  gate:       { name: 'Porta', short: 'Porta', icon: '🚪', cost: { stone: 30 }, size: [3, 1], hp: 1500, time: 15, age: 1, page: 1, gate: true,
+  gate:       { name: 'Porta', short: 'Porta', icon: '🚪', cost: { stone: 30 }, size: [3, 1], hp: 1500, time: 10, age: 1, page: 1, gate: true,
                 armor: [6, 8], los: 3, desc: 'Deixa passar les teves unitats però no les enemigues. R: girar' },
-  palisade:   { name: 'Palissada', short: 'Palissada', icon: '🚧', cost: { wood: 2 }, size: [1, 1], hp: 250, time: 2.5, page: 1, wall: true,
+  palisade:   { name: 'Palissada', short: 'Palissada', icon: '🚧', cost: { wood: 2 }, size: [1, 1], hp: 250, time: 1.2, page: 1, wall: true,
                 armor: [2, 5], los: 2, desc: 'Mur de troncs (per tram). Arrossega per fer una línia' },
-  stonewall:  { name: 'Muralla de pedra', short: 'Muralla', icon: '🧱', cost: { stone: 5 }, size: [1, 1], hp: 1800, time: 6, age: 1, page: 1, wall: true,
+  stonewall:  { name: 'Muralla de pedra', short: 'Muralla', icon: '🧱', cost: { stone: 5 }, size: [1, 1], hp: 1800, time: 3, age: 1, page: 1, wall: true,
                 armor: [8, 10], los: 2, desc: 'Mur resistent (per tram). Arrossega per fer una línia' },
 };

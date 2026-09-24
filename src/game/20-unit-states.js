@@ -405,6 +405,11 @@ function updateUnit(u, dt) {
         u.attackTarget = null;
         setMoveTarget(u, null);
         u.scanTimer = 0;
+        // Objectiu destruït: com a l'AoE II, les tropes busquen el següent enemic proper (també edificis)
+        if (u.isMilitary && u.stance !== 'stand') {
+          const next = findTargetNear(u, u.stance === 'defensive' ? u.los : Math.max(u.los * 1.6, 18));
+          if (next) { orderAttack(u, next); break; }
+        }
         if (u.attackMove) { setMoveTarget(u, u.attackMove); setUnitState(u, STATE.MOVING); }
         else setUnitState(u, STATE.IDLE);
         break;

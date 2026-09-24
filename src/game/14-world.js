@@ -18,24 +18,65 @@ function createForest(cx, cz, n, r) {
     placed++;
   }
 }
-/* Sortida estàndard d'un jugador (posicions relatives al Centre de Ciutat) */
+/* Punt a una distància i angle del Centre, lliure d'obstacles (prova diversos angles) */
+function freeSpot(B, dist, angle, spread, margin) {
+  for (let k = 0; k < 30; k++) {
+    const a = angle + (k === 0 ? 0 : randRange(-spread, spread)), d = dist + (k === 0 ? 0 : randRange(-1.5, 1.5));
+    const x = B.x + Math.cos(a) * d, z = B.z + Math.sin(a) * d;
+    if (Math.abs(x) < CONFIG.MAP_LIMIT - 6 && Math.abs(z) < CONFIG.MAP_LIMIT - 6 && !isNearObstacle(x, z, margin)) return [x, z, a];
+  }
+  return null;
+}
+const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+/* Sortida d'un jugador: les mateixes quantitats i distàncies per a tothom (partida justa),
+   però amb una disposició aleatòria diferent a cada costat */
 function createStartingBase(team) {
   const B = BASES[team];
-  const at = (dx, dz) => [B.x + dx * B.s, B.z + dz * B.s];
   const tc = createTownCenter(B.x, B.z, team);
-  // Línia d'arbres propera i bosc darrere la base
-  [[-17, -12, 1.1], [-21, -4, 0.95], [-13, -19, 1.2]].forEach(([dx, dz, sc]) => createTree(...at(dx, dz), sc));
-  [[-30, -16], [-33, -9], [-28, -24], [-36, -20], [-38, -12], [-31, -31], [-41, -26], [-26, -32], [-43, -17], [-35, -3]]
-    .forEach(([dx, dz]) => { const [x, z] = at(dx + randRange(-1, 1), dz + randRange(-1, 1)); createTree(x, z, randRange(0.85, 1.25)); });
-  createGoldMine(...at(19, -15));
-  createGoldMine(...at(23, 11));
-  createStoneMine(...at(-24, 17));
-  [[11, 22], [13.6, 23.4], [10.2, 24.8], [13.2, 26.4], [15.8, 25.2], [11.6, 27.6]].forEach(([dx, dz]) => createBerryBush(...at(dx, dz)));
-  [[-11, 13], [-13, 15.5], [-9, 16], [-14, 11.5]].forEach(([dx, dz]) => createSheep(...at(dx, dz)));
+  const back = Math.atan2(-B.z, -B.x) + Math.PI;              // direcció cap a la cantonada (lluny del rival)
+  // Línia d'arbres: darrere la base, amb un angle aleatori
+  const wood = back + randRange(-0.9, 0.9);
+  for (let i = 0; i < 3; i++) {
+    const p = freeSpot(B, randRange(17, 21), wood + (i - 1) * 0.35, 0.2, 1.8);
+    if (p) createTree(p[0], p[1], randRange(0.95, 1.2));
+  }
+  const fx = B.x + Math.cos(wood) * 33, fz = B.z + Math.sin(wood) * 33;
+  createForest(fx, fz, 12, 8);
+  // Or i pedra a banda i banda, separats de la fusta i entre ells
+  const used = [wood];
+  const pickAngle = (minSep) => {
+    for (let k = 0; k < 60; k++) {
+      const a = randRange(0, Math.PI * 2);
+      if (used.every(u => angDiff(a, u) > minSep)) { used.push(a); return a; }
+    }
+    const a = randRange(0, Math.PI * 2); used.push(a); return a;
+  };
+  for (const [fn, dist] of [[createGoldMine, randRange(18, 21)], [createGoldMine, randRange(22, 26)], [createStoneMine, randRange(20, 24)]]) {
+    const p = freeSpot(B, dist, pickAngle(0.95), 0.3, 3.5);
+    if (p) fn(p[0], p[1]);
+  }
+  // Baies i ovelles
+  const bp = freeSpot(B, randRange(14, 17), pickAngle(0.8), 0.3, 3);
+  if (bp) {
+    const [bx, bz] = bp;
+    [[0, 0], [2.6, 1.4], [-0.8, 2.8], [2.2, 4.2], [4.8, 3.2], [1.6, 5.6]].forEach(([dx, dz]) => {
+      const x = bx + dx, z = bz + dz;
+      if (!isNearObstacle(x, z, 1.1)) createBerryBush(x, z);
+    });
+  }
+  const sp = freeSpot(B, randRange(10, 13), pickAngle(0.6), 0.4, 2);
+  if (sp) [[0, 0], [-2, 2.5], [2, 3], [-3, -1.5]].forEach(([dx, dz]) => createSheep(sp[0] + dx, sp[1] + dz));
   return tc;
 }
-/* Recurs neutral i el seu simètric respecte del centre del mapa */
-function mirrored(fn, x, z, ...args) { fn(x, z, ...args); fn(-x, -z, ...args); }
+/* Recurs neutral a cada meitat del mapa: posició simètrica amb una petita variació independent */
+function mirrored(fn, x, z, ...args) {
+  for (const s of [1, -1]) {
+    for (let k = 0; k < 12; k++) {
+      const px = s * x + randRange(-5, 5), pz = s * z + randRange(-5, 5);
+      if (!isNearObstacle(px, pz, fn === createForest ? 0 : 4)) { fn(px, pz, ...args); break; }
+    }
+  }
+}
 
 createGround();
 const townCenter = createStartingBase(PLAYER.id);

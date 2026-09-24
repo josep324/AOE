@@ -107,14 +107,7 @@ function createBerryBush(x, z) {
 }
 
 /* ---------- Ovella (aliment mòbil) ---------- */
-const sheepGeo = {
-  body: new THREE.SphereGeometry(0.5, 14, 10),
-  puff: new THREE.SphereGeometry(0.28, 10, 8),
-  head: new THREE.BoxGeometry(0.28, 0.32, 0.4),
-  ear: new THREE.BoxGeometry(0.16, 0.05, 0.08),
-  leg: new THREE.CylinderGeometry(0.06, 0.05, 0.45, 6).translate(0, -0.225, 0),
-  hit: new THREE.SphereGeometry(0.9, 8, 6),
-};
+const sheepGeo = { hit: new THREE.SphereGeometry(0.9, 8, 6) };
 function createSheep(x, z) {
   const e = new Entity({ kind: 'resource', subtype: 'sheep', name: 'Ovella', icon: '🐑', radius: 0.6, selRadius: 1.0 });
   e.resourceType = 'food';
@@ -134,23 +127,33 @@ function createSheep(x, z) {
   e.model.add(e.body);
   e.group.add(e.model);
   const SP = sheepParts.get();
-  const dark = NM.sheepSkin;
-  const body = new THREE.Mesh(SP.body, NM.wool);
-  body.position.y = 0.74;
+  const v = Math.floor(hash2(x * 3.1, z * 2.3) * 100);
+  const woolMat = sheepWoolMat(v < 8 ? 3 : v % 3);
+  const skin = mat(SHEEP_FACE[v < 8 ? 0 : (v >> 2) % 3], { roughness: 0.8 });
+  const body = new THREE.Mesh(SP.body, woolMat);
+  body.position.y = 0.78;
   e.body.add(body);
-  const head = new THREE.Mesh(SP.head, dark);
-  head.position.set(0, 0.95, 0.74);
-  head.rotation.x = 0.35;
-  const earL = new THREE.Mesh(sheepGeo.ear, dark); earL.position.set(-0.17, 1.02, 0.66); earL.rotation.z = -0.4;
-  const earR = new THREE.Mesh(sheepGeo.ear, dark); earR.position.set(0.17, 1.02, 0.66); earR.rotation.z = 0.4;
-  e.body.add(head, earL, earR);
+  // Cap articulat (pastura)
+  e.head = new THREE.Group();
+  e.head.position.set(0, 1.0, 0.58);
+  const face = new THREE.Mesh(SP.face, skin); face.rotation.x = 0.45;
+  const cap = new THREE.Mesh(SP.cap, woolMat); cap.position.set(0, 0.1, 0.02);
+  const earL = new THREE.Mesh(SP.ear, skin); earL.position.set(-0.15, 0.05, 0.02); earL.rotation.z = 0.3;
+  const earR = new THREE.Mesh(SP.ear, skin); earR.position.set(0.15, 0.05, 0.02); earR.rotation.z = -0.3;
+  const eyeMat = mat(0x111111, { roughness: 0.3 });
+  const eyeL = new THREE.Mesh(SP.eye, eyeMat); eyeL.position.set(-0.1, 0.03, 0.16);
+  const eyeR = new THREE.Mesh(SP.eye, eyeMat); eyeR.position.set(0.1, 0.03, 0.16);
+  e.head.add(face, cap, earL, earR, eyeL, eyeR);
+  e.body.add(e.head);
   e.legs = [];
-  for (const [lx, lz] of [[-0.22, 0.35], [0.22, 0.35], [-0.22, -0.35], [0.22, -0.35]]) {
-    const leg = new THREE.Mesh(sheepGeo.leg, dark);
-    leg.position.set(lx, 0.45, lz);
+  for (const [lx, lz] of [[-0.2, 0.36], [0.2, 0.36], [-0.2, -0.38], [0.2, -0.38]]) {
+    const leg = new THREE.Group();
+    leg.position.set(lx, 0.52, lz);
+    leg.add(new THREE.Mesh(SP.leg, skin), new THREE.Mesh(SP.hoof, mat(0x1a1612)));
     e.body.add(leg);
     e.legs.push(leg);
   }
+  e.grazeT = rand() * 6;
   const hit = new THREE.Mesh(sheepGeo.hit, hitMaterial);
   hit.position.y = 0.7;
   hit.userData.noShadow = true;
@@ -205,6 +208,13 @@ function updateSheep(n, dt) {
     n.obstacle.z = n.position.z;
   }
   n.walkPhase += dt * (moving ? 9 : 0);
+  // Pastura: abaixa el cap de tant en tant quan està quieta
+  if (n.head) {
+    n.grazeT += dt;
+    const grazing = !moving && (n.grazeT % 7) < 3.2;
+    n.head.rotation.x = THREE.MathUtils.damp(n.head.rotation.x, grazing ? 0.95 : 0, 4, dt);
+    n.head.position.y = THREE.MathUtils.damp(n.head.position.y, grazing ? 0.8 : 1.0, 4, dt);
+  }
   const sw = moving ? Math.sin(n.walkPhase) * 0.5 : 0;
   n.legs[0].rotation.x = sw; n.legs[3].rotation.x = sw;
   n.legs[1].rotation.x = -sw; n.legs[2].rotation.x = -sw;
