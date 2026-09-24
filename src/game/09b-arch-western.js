@@ -297,6 +297,34 @@ ARCH.western = {
     for (const sx of [-1, 1]) kbox(g, 0.7, 1.5, 0.04, KM.team(team), sx * 2.6, 3.4, 4.67);
     return 13.8;
   },
+  archeryrange(g, { team }) {
+    const hz = -1.4;
+    kbox(g, 5.8, 0.3, 2.8, KM.stone, 0, 0.15, hz);
+    timberBody(g, { w: 5.4, d: 2.4, h: 2.0, y0: 0.3, cz: hz, front: { door: { x: 0, w: 1.2, h: 1.6 }, windows: [{ x: -1.8, w: 0.6, h: 0.4 }, { x: 1.8, w: 0.6, h: 0.4 }] } });
+    gableRoof(g, { w: 5.4, d: 2.4, h: 1.3, over: 0.4, y0: 2.3, z: hz });
+    // Camp de tir: dianes de palla sobre cavallets i un armer amb arcs
+    kbox(g, 5.6, 0.04, 2.8, KM.dirt, 0, 0.02, 1.5);
+    for (const x of [-1.8, 0, 1.8]) kTarget(g, team, x, 2.4, Math.PI);
+    kRailFence(g, -2.8, 0.2, -2.8, 2.9, 0.9);
+    kRailFence(g, 2.8, 0.2, 2.8, 2.9, 0.9);
+    kHay(g, -2.1, 0.7, 0.2);
+    kBanner(g, team, 2.4, 0.4, 3.4);
+    return 4.4;
+  },
+  university(g, { team }) {
+    kbox(g, 5.8, 0.4, 5.2, KM.stone, 0, 0.2, -0.3);
+    kbox(g, 5.2, 2.4, 4.4, KM.stone, 0, 1.6, -0.3);
+    for (const x of [-1.6, 0, 1.6]) kopening(g, 0.6, 1.3, x, 1.0, 1.92, 0, 'round', KM.stone);
+    timberBody(g, { w: 5.2, d: 4.4, h: 1.7, y0: 2.8, cz: -0.3, front: { windows: [{ x: -1.5, w: 0.5, h: 0.5 }, { x: 0, w: 0.5, h: 0.5 }, { x: 1.5, w: 0.5, h: 0.5 }] } });
+    gableRoof(g, { w: 5.2, d: 4.4, h: 2.0, over: 0.4, y0: 4.5, z: -0.3, roofMat: KM.darkplanks, ridgeMat: KM.darkplanks });
+    // Torre del rellotge
+    kbox(g, 1.2, 2.2, 1.2, KM.stone, 0, 6.6, -0.3);
+    kcyl(g, 0.35, 0.35, 0.06, 16, mat(0xe8e0c8), 0, 6.9, 0.32, [Math.PI / 2, 0, 0]);
+    kcyl(g, 0, 1.0, 2.0, 4, KM.darkplanks, 0, 8.7, -0.3, [0, Math.PI / 4, 0]);
+    kbox(g, 2.2, 0.3, 1.0, KM.stone, 0, 0.15, 2.4);
+    kBanner(g, team, 2.4, 2.4, 3.6);
+    return 9.7;
+  },
   siegeworkshop(g, { team }) {
     const hz = -1.6;
     kbox(g, 6.6, 0.25, 3.6, KM.stone, 0, 0.125, hz);

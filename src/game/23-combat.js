@@ -198,7 +198,9 @@ function updateDefensiveBuildings(dt) {
     if (b.garrison) for (const u of b.garrison) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5);
     b.arrowCooldown = (b.arrowCooldown ?? 0) - dt;
     if (b.arrowCooldown > 0) continue;
-    const C = isTC ? CONFIG.TC_ARROWS : b.def.arrows;
+    const C0 = isTC ? CONFIG.TC_ARROWS : b.def.arrows;
+    const lvl = b.subtype === 'watchtower' ? teamOf(b.team).mods.towerLevel : 0;
+    const C = lvl ? { ...C0, damage: C0.damage + lvl, range: C0.range + (lvl >= 2 ? 1 : 0) } : C0;
     let target = null, bestD = Infinity;
     for (const u of unitsNear(b.position.x, b.position.z, C.range + (b.footprint ? b.footprint.hw : b.radius) + 1, targetBuf)) {
       if (u.team === b.team || u.team === 0 || u.dead || u.garrisoned) continue;

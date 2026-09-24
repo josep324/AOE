@@ -173,6 +173,7 @@ function updateSelectionUI(panelOnly = false) {
       const tech = isTech(kind);
       if (tech && (T.techs.has(kind) || techQueued(T.id, kind))) continue;
       if (tech && d.ageUp && d.ageUp !== T.age + 1) continue;
+      if (tech && d.requires && !T.techs.has(d.requires)) continue;     // només es mostra el pas següent de cada cadena
       const locked = (d.age || 0) > T.age;
       const cost = costFor(kind);
       const b = makeActionButton(locked ? '🔒' : d.icon, d.name.length > 11 ? d.name.split(' ')[0] : d.name, costText(cost),
@@ -310,7 +311,7 @@ function buildingItems(b) {
   const out = [];
   const civ = teamOf(b.team).civ;
   if (b.subtype === 'towncenter') out.push('villager');
-  if (b.def && b.def.trains) for (const k of b.def.trains) out.push(k === '@unique' ? uniqueUnitOf(b.team) : k);
+  if (b.def && b.def.trains) for (const k of b.def.trains) out.push(k === '@unique' ? uniqueUnitOf(b.team) : currentKind(b.team, k));
   for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.at === b.subtype && (!d.civ || d.civ === civ)) out.push(k);
   return out;
 }

@@ -76,7 +76,14 @@ function techQueued(team, kind) {
   return state.buildings.some(b => b.team === team && b.trainQueue && b.trainQueue.some(it => it.kind === kind));
 }
 function distinctBuilt(team, list) {
-  return list.filter(t => hasCompleted(t, team)).length;
+  // El Castell compta per dos (com a l'AoE II)
+  return list.filter(t => hasCompleted(t, team)).length + (list.includes('castle') && hasCompleted('castle', team) ? 1 : 0);
+}
+/* Nivell actual d'una línia d'unitats (p. ex. milícia → espadatxí) per a un equip */
+function currentKind(team, kind) {
+  const d = CONFIG.UNITS[kind];
+  if (!d) return kind;
+  return teamOf(team).mods.lineKind[d.line || kind] || kind;
 }
 /* Motiu pel qual no es pot encuar (o null) */
 function itemBlockReason(kind, team = PLAYER.id) {
@@ -84,6 +91,8 @@ function itemBlockReason(kind, team = PLAYER.id) {
   if ((d.age || 0) > T.age) return `Requereix: ${CONFIG.AGES[d.age].name}`;
   const onlyFor = d.civ || d.unique;
   if (onlyFor && onlyFor !== T.civ) return `Només per als ${CIVS[onlyFor].name}`;
+  if (d.requires && !T.techs.has(d.requires)) return `Cal investigar abans: ${CONFIG.TECHS[d.requires].name}`;
+  if (d.requiresTech && !T.techs.has(d.requiresTech)) return `Cal investigar abans: ${CONFIG.TECHS[d.requiresTech].name}`;
   if (isTech(kind)) {
     if (T.techs.has(kind)) return 'Ja investigada';
     if (techQueued(team, kind)) return 'En investigació';
@@ -101,6 +110,7 @@ function itemBlockReason(kind, team = PLAYER.id) {
 
 /* Afegeix una unitat o tecnologia a la cua d'un edifici (el cost es paga en encuar) */
 function queueUnit(building, kind) {
+  kind = currentKind(building.team, kind);
   const def = itemDef(kind);
   const own = building.team === PLAYER.id;
   if (!building.trainQueue || building.underConstruction || building.dead) return false;
@@ -129,7 +139,28 @@ function applyTechEffect(team, kind) {
   const T = teamOf(team), M = T.mods, d = CONFIG.TECHS[kind];
   T.techs.add(kind);
   switch (kind) {
-    case 'age1': case 'age2': T.age = d.ageUp; break;
+    case 'age1': case 'age2': case 'age3': T.age = d.ageUp; break;
+    case 'handcart': M.villagerSpeed *= 1.1; M.capacity += 5; break;
+    case 'bowsaw': M.gather.tree = (M.gather.tree || 1) * 1.2; break;
+    case 'twomansaw': M.gather.tree = (M.gather.tree || 1) * 1.1; break;
+    case 'goldshaft': M.gather.gold = (M.gather.gold || 1) * 1.15; break;
+    case 'stoneshaft': M.gather.stone = (M.gather.stone || 1) * 1.15; break;
+    case 'heavyplow': M.farmBonus += 125; break;
+    case 'croprotation': M.farmBonus += 175; break;
+    case 'paddedarcher': case 'leatherarcher': M.armor.archer = [M.armor.archer[0] + 1, M.armor.archer[1] + 1]; break;
+    case 'ringarcher': M.armor.archer = [M.armor.archer[0] + 1, M.armor.archer[1] + 2]; break;
+    case 'ironcasting': M.attack.infantry += 1; M.attack.cavalry += 1; break;
+    case 'blastfurnace': M.attack.infantry += 2; M.attack.cavalry += 2; break;
+    case 'bodkin': case 'bracer': M.attack.archer += 1; M.range.archer += 1; M.buildingArrow += 1; break;
+    case 'chainmail': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 1]; break;
+    case 'platemail': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 2]; break;
+    case 'chainbarding': M.armor.cavalry = [M.armor.cavalry[0] + 1, M.armor.cavalry[1] + 1]; break;
+    case 'architecture': M.buildingHpMul *= 1.1; M.buildingArmor += 1; break;
+    case 'treadmill': M.buildSpeed = 1.2; break;
+    case 'chemistry': M.attack.archer += 1; M.buildingArrow += 1; break;
+    case 'guardtower': M.towerLevel = 1; break;
+    case 'keep': M.towerLevel = 2; break;
+    case 'siegeengineers': M.range.siege = (M.range.siege || 0) + 1; M.siegeBldMul = 1.2; break;
     case 'loom': M.villagerHp += 15; M.villagerArmor = [M.villagerArmor[0] + 1, M.villagerArmor[1] + 2]; break;
     case 'wheelbarrow': M.villagerSpeed *= 1.1; M.capacity += 3; break;
     case 'doublebit': M.gather.tree = (M.gather.tree || 1) * 1.2; break;
@@ -144,14 +175,30 @@ function applyTechEffect(team, kind) {
     case 'zealotry': M.unitHp.mameluke = (M.unitHp.mameluke || 0) + 20; break;
     case 'yasama': M.towerArrows += 2; break;
     case 'masonry': M.buildingHpMul *= 1.1; M.buildingArmor += 1; break;
-    default: if (d.elite) M.elite[d.elite] = true;
+    default:
+      if (d.elite) M.elite[d.elite] = true;
+      if (d.upgradeTo) M.lineKind[CONFIG.UNITS[d.upgradeTo].line] = d.upgradeTo;
   }
 }
 function completeTech(team, kind) {
   const d = CONFIG.TECHS[kind];
   applyTechEffect(team, kind);
-  for (const u of state.units) if (u.team === team) setUnitStats(u, u.unitKind);
-  if (kind === 'masonry') for (const b of state.buildings) if (b.team === team) applyBuildingMods(b, 1.1);
+  for (const u of state.units) if (u.team === team) { setUnitStats(u, u.unitKind); if (u.garrison && u.garrison.length) refreshContainer(u); }
+  if (kind === 'masonry' || kind === 'architecture') for (const b of state.buildings) if (b.team === team) applyBuildingMods(b, 1.1);
+  if (kind === 'guardtower' || kind === 'keep') for (const b of state.buildings) if (b.team === team && b.subtype === 'watchtower') upgradeTower(b);
+  // Millora de línia: les unitats existents passen al nou nivell (estadístiques i aspecte)
+  if (d.upgradeTo) {
+    const line = CONFIG.UNITS[d.upgradeTo].line;
+    for (const u of state.units) {
+      if (u.team !== team || u.dead) continue;
+      const ud = CONFIG.UNITS[u.unitKind];
+      if ((ud.line || u.unitKind) !== line) continue;
+      u.subtype = d.upgradeTo;
+      u.icon = CONFIG.UNITS[d.upgradeTo].icon;
+      setUnitStats(u, d.upgradeTo);
+      if (!u.garrisoned) rebuildUnitModel(u);
+    }
+  }
   if (team === PLAYER.id) {
     toast(d.ageUp ? `🎉 Heu avançat a l'${d.name}!` : `🔬 Tecnologia investigada: ${d.name}`);
     updateAgeUI();
@@ -191,6 +238,7 @@ function updateTraining(dt) {
 }
 
 function spawnUnit(building, kind) {
+  kind = currentKind(building.team, kind);
   const spot = findSpawnSpot(building);
   const v = kind === 'villager' ? createVillager(spot.x, spot.z, building.team)
     : kind === 'tradecart' ? createTradeCart(spot.x, spot.z, building.team)

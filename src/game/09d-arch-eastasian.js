@@ -254,6 +254,33 @@ ARCH.eastasian = {
     kNoren(g, team, 0, 2.6, 5.12, 1.6);
     return 13.0;
   },
+  archeryrange(g, { team }) {
+    // Kyūdōjō: sala de tir oberta i dianes (mato) al fons
+    kbox(g, 5.8, 0.4, 2.4, KM.granite, 0, 0.2, -1.6);
+    kbox(g, 5.6, 0.1, 2.2, KM.darkplanks, 0, 0.45, -1.6);
+    for (let i = 0; i < 5; i++) kbox(g, 0.16, 2.0, 0.16, KM.darkwood, -2.6 + i * 1.3, 1.4, -0.6);
+    kbox(g, 5.6, 1.8, 0.1, KM.whiteplaster, 0, 1.4, -2.65);
+    eaRoof(g, { w: 5.6, d: 2.2, h: 1.0, y0: 2.4, z: -1.6, over: 0.5, lift: 0.3 });
+    kbox(g, 5.8, 0.04, 3.0, KM.dirt, 0, 0.02, 1.4);
+    kBamboo(g, -2.9, 0.2, -2.9, 2.9, 1.0); kBamboo(g, 2.9, 0.2, 2.9, 2.9, 1.0);
+    for (const x of [-1.6, 0, 1.6]) {
+      kbox(g, 1.0, 1.0, 0.3, KM.dirt, x, 0.5, 2.8);
+      kcyl(g, 0.28, 0.28, 0.05, 16, mat(0xf0ece0), x, 0.6, 2.6, [Math.PI / 2, 0, 0]);
+      kcyl(g, 0.16, 0.16, 0.055, 16, mat(0x1a1a1a), x, 0.6, 2.6, [Math.PI / 2, 0, 0]);
+    }
+    kNobori(g, team, 2.6, 0.4, 3.4);
+    return 4.2;
+  },
+  university(g, { team }) {
+    eaStoneBase(g, 5.8, 5.2, 0.6, 0, -0.3);
+    eaBody(g, { w: 4.8, d: 4.0, h: 2.2, y0: 0.6, cz: -0.3, door: { x: 0, w: 1.4, h: 1.6 } });
+    eaRoof(g, { w: 4.8, d: 4.0, h: 1.0, y0: 2.8, z: -0.3, over: 0.6, lift: 0.35 });
+    eaBody(g, { w: 3.4, d: 2.8, h: 1.5, y0: 3.4, cz: -0.3, lower: false });
+    eaRoof(g, { w: 3.4, d: 2.8, h: 1.4, y0: 4.9, z: -0.3, over: 0.6, lift: 0.4, gold: true });
+    kLantern(g, -1.8, 2.3); kLantern(g, 1.8, 2.3);
+    kNobori(g, team, 2.6, -2.6, 3.8);
+    return 6.8;
+  },
   siegeworkshop(g, { team }) {
     kbox(g, 6.6, 0.3, 3.8, KM.granite, 0, 0.15, -1.5);
     kbox(g, 6.0, 2.4, 0.2, KM.darkplanks, 0, 1.5, -3.2);

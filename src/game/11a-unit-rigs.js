@@ -153,6 +153,31 @@ const WEAPONS = {
     piece(arm, UG.box, DARK_METAL, { y: -0.6, z: 0.08, sx: 0.24, sy: 0.04, sz: 0.04, metal: true });
     piece(arm, taper(0.025, 0.025, 0.16, 6), LEATHER, { y: -0.6, z: -0.02, rx: Math.PI / 2 });
   },
+  greatsword(arm, arch) {
+    const col = arch === 'eastasian' ? 0xc8ccd2 : METAL;
+    piece(arm, UG.box, col, { y: -0.6, z: 0.7, sx: arch === 'eastasian' ? 0.04 : 0.07, sy: 0.02, sz: 1.2, rx: arch === 'eastasian' ? -0.06 : 0, metal: true });
+    piece(arm, UG.box, arch === 'eastasian' ? GOLD : DARK_METAL, { y: -0.6, z: 0.08, sx: arch === 'eastasian' ? 0.1 : 0.34, sy: 0.05, sz: 0.05, metal: true });
+    piece(arm, taper(0.025, 0.025, 0.34, 6), arch === 'eastasian' ? 0x1a1a1a : LEATHER, { y: -0.6, z: -0.12, rx: Math.PI / 2 });
+  },
+  halberd(arm) {
+    const rx = Math.PI / 2 - 0.25, dy = Math.cos(rx), dz = Math.sin(rx), len = 3.0;
+    piece(arm, taper(0.025, 0.025, len, 6), WOOD, { y: -0.6, z: 0.35, rx });
+    const tipY = -0.6 + dy * (len / 2), tipZ = 0.35 + dz * (len / 2);
+    piece(arm, UG.box, METAL, { y: tipY - 0.05, z: tipZ - 0.1, x: 0.1, sx: 0.2, sy: 0.02, sz: 0.3, rx, metal: true });
+    piece(arm, UG.cone, METAL, { y: tipY + dy * 0.18, z: tipZ + dz * 0.18, rx, sx: 0.05, sy: 0.3, sz: 0.05, metal: true });
+  },
+  crossbow(arm) {
+    piece(arm, UG.box, WOOD, { y: -0.58, z: 0.3, sx: 0.07, sy: 0.07, sz: 0.7 });
+    piece(arm, arcGeo(0.34, 0.022, Math.PI * 0.8), 0x3a2e24, { y: -0.58, z: 0.62, rx: Math.PI / 2, rz: Math.PI * 0.1 });
+    piece(arm, UG.box, 0xe8e0d0, { y: -0.55, z: 0.56, sx: 0.62, sy: 0.01, sz: 0.01 });
+  },
+  javelins(arm) {
+    for (let i = -1; i <= 1; i++) piece(arm, taper(0.018, 0.018, 1.4, 5), WOOD, { y: -0.6, x: i * 0.04, z: 0.3, rx: Math.PI / 2 - 0.3 });
+  },
+  pavise(torso, team) {
+    piece(torso, UG.box, team, { y: 1.2, z: -0.34, sx: 0.55, sy: 0.9, sz: 0.05 });
+    piece(torso, UG.box, 0xe8dcc0, { y: 1.2, z: -0.37, sx: 0.12, sy: 0.7, sz: 0.02 });
+  },
   axe(arm) {
     piece(arm, taper(0.025, 0.025, 0.55, 6), WOOD, { y: -0.6, z: 0.22, rx: Math.PI / 2 });
     piece(arm, UG.box, 0xa8adb5, { y: -0.52, z: 0.46, sx: 0.04, sy: 0.2, sz: 0.14, metal: true });
@@ -237,29 +262,43 @@ function soldierLook(arch, team, kind) {
   return { ...base, top: T.color, top2: 0x2a2622, sleeves: 0x2a2622 };
 }
 /* Detalls d'armadura sobre el tors */
-function armorDetails(torso, arch, team, kind) {
+/* Aspecte base de cada unitat millorada (la línia) i nivell d'equipament */
+const VIS_BASE = {
+  manatarms: 'militia', longsword: 'militia', twohanded: 'militia', champion: 'militia',
+  pikeman: 'spearman', halberdier: 'spearman', crossbow: 'archer', arbalester: 'archer',
+  eliteskirm: 'skirmisher', heavycavarcher: 'cavarcher', lightcav: 'scout', hussar: 'scout',
+  cavalier: 'knight', paladin: 'knight', heavycamel: 'camel',
+};
+function armorDetails(torso, arch, team, kind, tier = 0) {
   const T = teamOf(team);
-  if (arch === 'western' && (kind === 'militia' || kind === 'knight' || kind === 'throwingaxe')) {
-    piece(torso, taper(0.32, 0.36, 0.5, 12), 0x8a9098, { y: 1.28, sz: 0.8, metal: true });
+  const heavy = kind === 'militia' || kind === 'knight' || kind === 'throwingaxe' || (tier >= 1 && kind !== 'archer' && kind !== 'skirmisher' && kind !== 'cavarcher');
+  if (arch === 'western' && heavy) {
+    piece(torso, taper(0.32, 0.36, 0.5, 12), tier >= 3 ? 0xb4bac2 : 0x8a9098, { y: 1.28, sz: 0.8, metal: true });
     piece(torso, UG.box, T.color, { y: 1.15, z: 0.02, sx: 0.44, sy: 0.72, sz: 0.62 });
   }
-  if (arch === 'middleeast' && (kind === 'militia' || kind === 'knight' || kind === 'spearman' || kind === 'mameluke')) {
-    piece(torso, taper(0.32, 0.35, 0.46, 12), 0x8a9098, { y: 1.3, sz: 0.8, metal: true });
+  if (arch === 'middleeast' && (heavy || kind === 'spearman' || kind === 'mameluke')) {
+    piece(torso, taper(0.32, 0.35, 0.46, 12), tier >= 3 ? 0xb4bac2 : 0x8a9098, { y: 1.3, sz: 0.8, metal: true });
     piece(torso, UG.box, T.color, { y: 1.25, z: 0.2, sx: 0.36, sy: 0.5, sz: 0.04 });
   }
-  if (arch === 'eastasian' && kind !== 'archer' && kind !== 'mameluke' && kind !== 'throwingaxe') {
+  if (arch === 'eastasian' && kind !== 'archer' && kind !== 'mameluke' && kind !== 'throwingaxe' && kind !== 'skirmisher') {
     // Dō lacat amb cordons de l'equip i faldons
     for (let i = 0; i < 4; i++) piece(torso, taper(0.33 - i * 0.005, 0.34, 0.12, 12), i % 2 ? 0x2a2622 : T.colorDark, { y: 1.12 + i * 0.12, sz: 0.8, metal: i % 2 === 1 });
     for (const s of [-1, 1]) piece(torso, UG.box, 0x2a2622, { x: s * 0.36, y: 1.48, sx: 0.2, sy: 0.08, sz: 0.3, rz: s * 0.3, metal: true });
     piece(torso, UG.box, T.color, { y: 0.9, z: 0.28, sx: 0.4, sy: 0.3, sz: 0.04 });
   }
+  // Nivells alts: espatlleres i braçals de metall
+  if (tier >= 2 && kind !== 'archer' && kind !== 'skirmisher') for (const s of [-1, 1]) piece(torso, UG.sphere, arch === 'eastasian' ? 0x2a2622 : 0xa8adb5, { x: s * 0.36, y: 1.5, sx: 0.17, sy: 0.12, sz: 0.19, metal: true });
+  if (tier >= 1 && (kind === 'archer' || kind === 'skirmisher' || kind === 'cavarcher')) piece(torso, taper(0.31, 0.34, 0.4, 12), arch === 'eastasian' ? 0x3a3028 : 0x7a6a4a, { y: 1.3, sz: 0.8 });
 }
 function buildSoldierRig(kind, team, arch) {
   const T = teamOf(team);
   const rig = new THREE.Group();
-  const look = soldierLook(arch, team, kind);
+  const tier = (CONFIG.UNITS[kind] && CONFIG.UNITS[kind].tier) || 0;
+  const base = VIS_BASE[kind] || kind;
+  const look = soldierLook(arch, team, base);
+  if (tier >= 2 && (base === 'militia' || base === 'knight')) look.sleeves = arch === 'eastasian' ? 0x2a2622 : 0x9ca3ad;
   const P = humanBody(rig, look);
-  armorDetails(P.torso, arch, team, kind);
+  armorDetails(P.torso, arch, team, base, tier);
   const t = P.torso;
   // Unitats úniques
   if (kind === 'throwingaxe') {
@@ -284,46 +323,64 @@ function buildSoldierRig(kind, team, arch) {
     piece(t, UG.sphere, 0xf2eee4, { x: 0.13, y: 2.5, z: -0.29, sx: 0.08, sy: 0.08, sz: 0.02 });
     return { rig, parts: P };
   }
-  // Cap
+  // Cap (millor casc com més alt és el nivell)
   if (arch === 'western') {
-    if (kind === 'archer') HATS.hood(t, 0x4a5a30);
-    else if (kind === 'spearman') HATS.kettle(t);
-    else if (kind === 'knight') HATS.greathelm(t, T.color);
-    else if (kind === 'scout') HATS.coif(t, 0x6a5a48);
-    else HATS.nasal(t);
+    if (base === 'archer') tier >= 2 ? HATS.kettle(t) : tier >= 1 ? HATS.coif(t, 0x7a6a4a) : HATS.hood(t, 0x4a5a30);
+    else if (base === 'skirmisher') tier ? HATS.kettle(t) : HATS.coif(t, 0x8a7a5a);
+    else if (base === 'cavarcher') tier ? HATS.nasal(t) : HATS.hood(t, 0x6a5a38);
+    else if (base === 'spearman') tier >= 2 ? HATS.nasal(t) : HATS.kettle(t);
+    else if (base === 'knight') HATS.greathelm(t, tier >= 2 ? GOLD : T.color);
+    else if (base === 'scout') tier >= 2 ? HATS.kettle(t) : tier ? HATS.nasal(t) : HATS.coif(t, 0x6a5a48);
+    else if (base === 'camel') HATS.nasal(t);
+    else tier >= 4 ? HATS.greathelm(t, T.color) : tier >= 2 ? HATS.kettle(t) : HATS.nasal(t);
   } else if (arch === 'middleeast') {
-    if (kind === 'archer' || kind === 'scout') HATS.turban(t, kind === 'scout' ? 0xe8dcc0 : 0xf0ece0);
-    else HATS.spangen(t, kind === 'knight' ? T.color : 0xf0ece0);
+    if (base === 'archer' || base === 'scout' || base === 'skirmisher' || base === 'cavarcher') tier >= 1 && base !== 'skirmisher' ? HATS.spangen(t, 0xf0ece0) : HATS.turban(t, base === 'scout' ? 0xe8dcc0 : 0xf0ece0);
+    else HATS.spangen(t, base === 'knight' || tier >= 3 ? T.color : 0xf0ece0);
   } else {
-    if (kind === 'archer') HATS.hachimaki(t, T.color);
-    else if (kind === 'spearman' || kind === 'scout') HATS.jingasa(t);
-    else HATS.kabuto(t, kind === 'knight' ? GOLD : 0x8a8a8a);
+    if (base === 'archer' || base === 'skirmisher') tier ? HATS.jingasa(t) : HATS.hachimaki(t, T.color);
+    else if (base === 'spearman' || base === 'scout' || base === 'cavarcher') tier >= 1 ? HATS.kabuto(t, 0x8a8a8a) : HATS.jingasa(t);
+    else HATS.kabuto(t, base === 'knight' || tier >= 3 ? GOLD : 0x8a8a8a);
   }
   // Armes
-  if (kind === 'militia') {
-    if (arch === 'eastasian') WEAPONS.katana(P.armR);
-    else WEAPONS.sword(P.armR, arch === 'middleeast');
-    if (arch === 'western') WEAPONS.kite(P.armL, T.color);
-    else if (arch === 'middleeast') WEAPONS.round(P.armL, T.color);
-  } else if (kind === 'spearman') {
-    WEAPONS.spear(P.armR, arch === 'eastasian' ? 3.0 : 2.4);
-    if (arch !== 'eastasian') WEAPONS.round(P.armL, T.color, arch === 'western' ? WOOD : METAL);
-  } else if (kind === 'archer') {
-    WEAPONS.bow(P.armL, arch === 'eastasian' ? 'yumi' : arch === 'middleeast' ? 'recurve' : 'long');
+  if (base === 'militia') {
+    if (tier >= 3) WEAPONS.greatsword(P.armR, arch);
+    else {
+      if (arch === 'eastasian') WEAPONS.katana(P.armR);
+      else WEAPONS.sword(P.armR, arch === 'middleeast');
+      if (arch === 'western') WEAPONS.kite(P.armL, T.color);
+      else if (arch === 'middleeast') WEAPONS.round(P.armL, T.color);
+    }
+  } else if (base === 'spearman') {
+    if (tier >= 2) WEAPONS.halberd(P.armR);
+    else WEAPONS.spear(P.armR, arch === 'eastasian' || tier ? 3.2 : 2.4);
+    if (arch !== 'eastasian' && tier < 2) WEAPONS.round(P.armL, T.color, arch === 'western' ? WOOD : METAL);
+  } else if (base === 'archer') {
+    if (tier >= 1) WEAPONS.crossbow(P.armL);
+    else WEAPONS.bow(P.armL, arch === 'eastasian' ? 'yumi' : arch === 'middleeast' ? 'recurve' : 'long');
     WEAPONS.quiver(t);
-  } else if (kind === 'knight') {
+  } else if (base === 'skirmisher') {
+    WEAPONS.javelins(P.armR);
+    WEAPONS.pavise(t, T.color);
+  } else if (base === 'cavarcher') {
+    WEAPONS.bow(P.armL, arch === 'eastasian' ? 'yumi' : 'recurve');
+    WEAPONS.quiver(t);
+  } else if (base === 'knight') {
     WEAPONS.spear(P.armR, 2.8, METAL);
     if (arch === 'western') WEAPONS.kite(P.armL, T.color);
     else if (arch === 'middleeast') WEAPONS.round(P.armL, T.color);
-  } else if (kind === 'scout') {
+    if (tier >= 2) piece(t, UG.cone, GOLD, { y: 2.3, sx: 0.06, sy: 0.25, sz: 0.06, metal: true });
+  } else if (base === 'scout') {
     if (arch === 'eastasian') WEAPONS.katana(P.armR);
-    else WEAPONS.sword(P.armR, arch === 'middleeast');
+    else WEAPONS.sword(P.armR, arch === 'middleeast' || tier >= 2);
+    if (tier >= 2 && arch === 'western') for (const s of [-1, 1]) piece(t, UG.box, 0xf2eee4, { x: s * 0.3, y: 1.9, z: -0.25, sx: 0.04, sy: 0.7, sz: 0.2, rx: -0.3, rz: s * 0.2 });
+  } else if (base === 'camel') {
+    WEAPONS.spear(P.armR, 2.6, METAL);
   }
   return { rig, parts: P };
 }
 
 /* ---------- Muntures ---------- */
-function buildHorse(rig, team, arch, kind) {
+function buildHorse(rig, team, arch, kind, tier = 0) {
   const T = teamOf(team);
   const coat = kind === 'knight' ? upick([0x3b2a20, 0x2a2220, 0x5a4636]) : upick([0x8a5a32, 0x6a4428, 0xa07048, 0xd8ccb8]);
   const mane = 0x1c1410;
@@ -340,7 +397,8 @@ function buildHorse(rig, team, arch, kind) {
     const cap = arch === 'eastasian' ? T.colorDark : T.color;
     for (const s of [-1, 1]) piece(body, UG.box, cap, { x: s * 0.41, y: 1.18, sx: 0.04, sy: 0.72, sz: 1.7 });
     piece(body, UG.box, cap, { y: 1.72, sx: 0.84, sy: 0.04, sz: 1.2 });
-    piece(body, UG.box, arch === 'western' ? 0xe8dcc0 : GOLD, { x: 0.43, y: 1.2, sx: 0.02, sy: 0.3, sz: 0.3 });
+    piece(body, UG.box, arch === 'western' && tier < 2 ? 0xe8dcc0 : GOLD, { x: 0.43, y: 1.2, sx: 0.02, sy: 0.3, sz: 0.3 });
+    if (tier >= 1) for (const s of [-1, 1]) piece(body, UG.box, GOLD, { x: s * 0.43, y: 0.84, sx: 0.03, sy: 0.05, sz: 1.72, metal: true });
     if (arch === 'western') piece(body, taper(0.18, 0.2, 0.55, 10), METAL, { y: 2.05, z: 1.2, rx: 1.9, metal: true });
   } else piece(body, UG.box, T.color, { y: 1.7, z: -0.05, sx: 0.86, sy: 0.04, sz: 0.7 });
   const legs = [];
@@ -502,7 +560,35 @@ function buildTrebuchet(rig, team, arch) {
   piece(arm, UG.sphere, 0x8a7a62, { y: -1.6, z: 3.8, sx: 0.2, sy: 0.15, sz: 0.2 });
   return [[-0.75, 0.42, -1.2], [0.75, 0.42, -1.2], [-0.75, 0.42, 1.2], [0.75, 0.42, 1.2]].map(([x, y, z], i) => siegeWheel(packed, 'wheel' + i, x, y, z, 0.42, L.dark));
 }
-const SIEGE_BUILDERS = { ram: buildRam, mangonel: buildMangonel, scorpion: buildScorpion, trebuchet: buildTrebuchet };
+function buildBombard(rig, team, arch) {
+  const L = siegeLook(arch), T = teamOf(team);
+  const b = rigPart(rig, 'frame');
+  piece(b, UG.box, L.wood, { y: 0.55, z: -0.3, sx: 0.8, sy: 0.3, sz: 2.0 });
+  piece(b, UG.box, L.dark, { y: 0.35, z: -1.4, sx: 0.4, sy: 0.2, sz: 0.8, rx: 0.3 });
+  const barrel = rigPart(rig, 'barrel', 0, 0.95, 0.1);
+  piece(barrel, taper(0.24, 0.3, 2.0, 14), 0x3a3c40, { z: 0.6, rx: Math.PI / 2 - 0.08, metal: true });
+  for (const z of [-0.2, 0.5, 1.2]) piece(barrel, taper(0.31, 0.31, 0.1, 14), 0x6a5a3a, { z, rx: Math.PI / 2 - 0.08, metal: true });
+  piece(barrel, UG.sphere, 0x3a3c40, { z: -0.45, sx: 0.28, sy: 0.28, sz: 0.28, metal: true });
+  piece(b, UG.box, T.color, { y: 0.72, z: -0.9, sx: 0.82, sy: 0.05, sz: 0.5 });
+  return [[-0.55, 0.5, 0.0], [0.55, 0.5, 0.0]].map(([x, y, z], i) => siegeWheel(rig, 'wheel' + i, x, y, z, 0.5, L.dark));
+}
+/* Variants millorades: més grans i amb reforços de ferro */
+function upgraded(builder, scale, plates = false) {
+  return (rig, team, arch) => {
+    const r = builder(rig, team, arch);
+    rig.scale.setScalar(scale);
+    if (plates) {
+      const f = rig.getObjectByName('frame');
+      for (const s of [-1, 1]) piece(f, UG.box, 0x4a4e55, { x: s * 0.62, y: 1.9, sx: 0.8, sy: 0.05, sz: 3.1, rz: -s * 0.75, metal: true });
+    }
+    return r;
+  };
+}
+const SIEGE_BUILDERS = {
+  ram: buildRam, mangonel: buildMangonel, scorpion: buildScorpion, trebuchet: buildTrebuchet, bombard: buildBombard,
+  cappedram: upgraded(buildRam, 1.06, true), siegeram: upgraded(buildRam, 1.18, true),
+  onager: upgraded(buildMangonel, 1.15), heavyscorpion: upgraded(buildScorpion, 1.15),
+};
 
 /* ---------- Plantilles i instàncies ---------- */
 const UNIT_TEMPLATES = new Map();
@@ -525,14 +611,14 @@ function unitTemplate(kind, team, arch, variant) {
     } else {
       const s = buildSoldierRig(kind, team, arch);
       rig = s.rig;
-      if (d.cat === 'cavalry') {
+      if (d.cat === 'cavalry' || d.mounted) {
         // El genet puja a la muntura: amaguem les cames i hi posem cuixes fixes
         const rider = rigPart(rig, 'rider', 0, 0.72, 0);
         for (const p of [s.parts.torso, s.parts.armL, s.parts.armR]) { rig.remove(p); rider.add(p); }
         rig.remove(s.parts.legL); rig.remove(s.parts.legR);
         for (const sx of [-1, 1]) piece(s.parts.torso, taper(0.1, 0.085, 0.62), soldierLook(arch, team, kind).pants, { x: sx * 0.3, y: 0.62, z: 0.1, rx: 0.5, rz: sx * 0.35 });
-        if (kind === 'mameluke') { rider.position.y = 1.18; buildCamelMount(rig, team); }
-        else buildHorse(rig, team, arch, kind);
+        if (kind === 'mameluke' || kind === 'camel' || kind === 'heavycamel') { rider.position.y = 1.18; buildCamelMount(rig, team); }
+        else buildHorse(rig, team, arch, VIS_BASE[kind] || kind, d.tier || 0);
       }
     }
     UNIT_TEMPLATES.set(key, bakeRig(rig));
@@ -564,7 +650,7 @@ function buildUnitVisual(e, kind, team) {
     e.arms = [new THREE.Object3D(), new THREE.Object3D()];
     e.cargo = get('cargo');
     e.cargo.visible = false;
-  } else if (d.cat === 'cavalry') {
+  } else if (d.cat === 'cavalry' || d.mounted) {
     e.legs = ['hFL', 'hBR', 'hFR', 'hBL'].map(get);
     e.arms = [get('armL'), get('armR')];
   } else {

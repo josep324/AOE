@@ -24,10 +24,28 @@ function makeBuildingModel(type, team = PLAYER.id) {
   const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96, maxH: LIB_MAX_HEIGHT[type] });
   if (lib) return { model: lib, height: lib.userData.height };
   const kit = kitBuildingModel(type, team);
+  if (kit && type === 'watchtower' && teamOf(team).mods.towerLevel) {
+    // Torres millorades: més grans (el contenidor manté l'escala mentre es construeix)
+    const s = TOWER_LEVELS[teamOf(team).mods.towerLevel].scale;
+    const wrap = new THREE.Group();
+    kit.model.scale.setScalar(s);
+    wrap.add(kit.model);
+    return { model: wrap, height: kit.height * s };
+  }
   if (kit) return kit;
   const g = new THREE.Group();
   bx(g, fw * 0.9, 2, fd * 0.9, mat(teamOf(team).color), 0, 1, 0);
   return { model: g, height: 2 };
+}
+/* Torres: nivell (Torre de guaita → Torre de guàrdia → Torrassa) */
+const TOWER_LEVELS = [{ name: 'Torre de guaita', hp: 1, scale: 1 }, { name: 'Torre de guàrdia', hp: 1.7, scale: 1.1 }, { name: 'Torrassa', hp: 3.2, scale: 1.22 }];
+function upgradeTower(b) {
+  const L = TOWER_LEVELS[teamOf(b.team).mods.towerLevel];
+  const newMax = Math.round(b.def.hp * L.hp * teamOf(b.team).mods.buildingHpMul);
+  b.hp = Math.round(b.hp * newMax / b.maxHp);
+  b.maxHp = newMax;
+  b.name = L.name;
+  rebuildBuildingModel(b);
 }
 /* Aplica una millora de resistència (Maçoneria) a un edifici existent */
 function applyBuildingMods(b, mul) {
@@ -88,7 +106,8 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
   });
   e.def = def;
   const M = teamOf(team).mods;
-  e.maxHp = Math.round(def.hp * M.buildingHpMul);
+  e.maxHp = Math.round(def.hp * M.buildingHpMul * (type === 'watchtower' ? TOWER_LEVELS[M.towerLevel].hp : 1));
+  if (type === 'watchtower') e.name = TOWER_LEVELS[M.towerLevel].name;
   e.armor = (def.armor || [2, 6]).map(a => a + M.buildingArmor);
   e.los = (def.los || 8) + (def.arrows ? (civOf(team).mods.towerLos || 0) : 0);
   if (def.trains || Object.values(CONFIG.TECHS).some(t => t.at === type)) e.trainQueue = [];
@@ -170,7 +189,7 @@ function updateConstruction(dt) {
     let n = 0;
     for (const u of state.units) if (u.state === STATE.BUILDING && u.buildTarget === b) n++;
     if (!n) continue;
-    b.progress = Math.min(1, b.progress + (dt / b.def.time) * n * 3 / (n + 2));
+    b.progress = Math.min(1, b.progress + (dt / b.def.time) * n * 3 / (n + 2) * teamOf(b.team).mods.buildSpeed);
     applyConstructionVisual(b);
     if (b.progress >= 1) completeBuilding(b);
   }

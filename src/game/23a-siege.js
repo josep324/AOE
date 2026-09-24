@@ -80,18 +80,21 @@ const projGeo = {
   boltTip: new THREE.ConeGeometry(0.1, 0.3, 5).rotateX(Math.PI / 2).translate(0, 0, 0.9),
   stone: new THREE.IcosahedronGeometry(0.28, 0),
   bigstone: new THREE.IcosahedronGeometry(0.5, 0),
+  cannonball: new THREE.SphereGeometry(0.16, 8, 6),
 };
 function projectileMesh(kind) {
   const g = new THREE.Group();
   if (kind === 'axe') g.add(new THREE.Mesh(projGeo.axeHandle, mat(0x6b4423)), new THREE.Mesh(projGeo.axeHead, mat(0x9ca3ad, { metalness: 0.7, roughness: 0.4 })));
   else if (kind === 'scimitar') g.add(new THREE.Mesh(projGeo.blade, mat(0xc8ccd2, { metalness: 0.8, roughness: 0.3 })));
+  else if (kind === 'cannonball') g.add(new THREE.Mesh(projGeo.cannonball, mat(0x1c1c1e, { metalness: 0.6, roughness: 0.4 })));
   else if (kind === 'bolt') g.add(new THREE.Mesh(projGeo.bolt, mat(0x5a3a1e)), new THREE.Mesh(projGeo.boltTip, mat(0x777777)));
   else g.add(new THREE.Mesh(kind === 'bigstone' ? projGeo.bigstone : projGeo.stone, mat(0x8a857b, { flatShading: true })));
   return g;
 }
 function hitDamage(u, t, type) {
   let d = computeDamage(u.attack, t, type, u.vsBuilding);
-  if (t.category === 'cavalry') d += u.bonusCav || 0;
+  if (t.mounted) d += u.bonusCav || 0;
+  if (t.category === 'archer') d += u.bonusArcher || 0;
   if (t.isUnique) d += u.bonusUnique || 0;
   return d;
 }
@@ -111,6 +114,15 @@ function fireProjectile(u, t) {
   const type = u.meleeShot ? 0 : 1;
   const dmg = hitDamage(u, t, type);
   if (kind === 'arrow') { spawnArrow(from, t, dmg, u); return; }
+  if (kind === 'cannonball') {
+    // Canó: fumarada i bala ràpida amb dany de cos a cos
+    from.set(u.position.x + Math.sin(u.group.rotation.y) * 1.6, 1.1, u.position.z + Math.cos(u.group.rotation.y) * 1.6);
+    spawnParticles(from.clone(), 0xd8d4cc, 8, null);
+    const cdmg = hitDamage(u, t, 0);
+    spawnProjectile({ mesh: projectileMesh(kind), from, end: aimPoint(t), target: t, shooter: u, arcK: 0.03, speed: 45, spin: 0,
+      onHit: () => { if (t && !t.dead && !t.garrisoned) applyDamage(t, cdmg, u); spawnParticles(aimPoint(t), 0x6a6258, 6, null); } });
+    return;
+  }
   const info = { u, team: u.team, attack: u.attack, start: from.clone() };
   spawnProjectile({
     mesh: projectileMesh(kind), from, end: aimPoint(t), target: t, shooter: u, arcK: kind === 'bolt' ? 0.05 : 0.14,

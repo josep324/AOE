@@ -41,10 +41,13 @@ function setUnitStats(e, kind) {
   e.pierceShot = !!d.pierce;
   e.canGround = !!d.ground;
   e.garrisonCap = d.garrison || 0;
+  e.mounted = cat === 'cavalry' || !!d.mounted;
+  e.bonusArcher = d.bonusArcher || 0;
+  if (cat === 'siege') e.vsBuilding = Math.round(e.vsBuilding * M.siegeBldMul);
   const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
-  e.barH = cat === 'cavalry' ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
+  e.barH = e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
 }
 function applyUnitStats(e, kind) {
   setUnitStats(e, kind);
@@ -106,7 +109,7 @@ const cavalryHitGeo = new THREE.CylinderGeometry(0.9, 0.9, 3.2, 8);
 function createSoldier(kind, x, z, team = PLAYER.id) {
   const d = CONFIG.UNITS[kind];
   const e = new Entity({ kind: 'unit', subtype: kind, name: d.name, icon: d.icon, team, radius: 0.45,
-    selRadius: d.cat === 'cavalry' ? 1.2 : 0.8, hp: d.hp, maxHp: d.hp });
+    selRadius: d.cat === 'cavalry' || d.mounted ? 1.2 : 0.8, hp: d.hp, maxHp: d.hp });
   applyUnitStats(e, kind);
   e.target = null;
   e.path = null;
@@ -119,10 +122,11 @@ function createSoldier(kind, x, z, team = PLAYER.id) {
   e.carry = { type: null, amount: 0 };
   e.workPhase = 0;
   const model = buildUnitVisual(e, kind, team);
-  if (d.cat === 'cavalry') e.radius = 0.75;
+  if (d.cat === 'cavalry' || d.mounted) e.radius = 0.75;
   if (d.cat === 'siege') e.radius = kind === 'scorpion' ? 0.7 : 1.1;
-  const hit = new THREE.Mesh(d.cat === 'cavalry' || d.cat === 'siege' ? cavalryHitGeo : villagerGeo.hit, hitMaterial);
-  hit.position.y = d.cat === 'cavalry' || d.cat === 'siege' ? 1.6 : 1.2;
+  const big = d.cat === 'cavalry' || d.cat === 'siege' || d.mounted;
+  const hit = new THREE.Mesh(big ? cavalryHitGeo : villagerGeo.hit, hitMaterial);
+  hit.position.y = big ? 1.6 : 1.2;
   hit.userData.noShadow = true;
   e.group.add(model, hit);
   e.group.position.set(x, 0, z);

@@ -133,7 +133,7 @@ function aiTick() {
     return at ? queueUnit(at, kind) : false;
   };
   // Estalvi per avançar d'edat: amb un exèrcit mínim, deixa de gastar en tropes i millores
-  const nextAge = E.age === 0 ? 'age1' : E.age === 1 && D !== DIFFICULTY.easy ? 'age2' : null;
+  const nextAge = E.age === 0 ? 'age1' : E.age === 1 && D !== DIFFICULTY.easy ? 'age2' : E.age === 2 && D !== DIFFICULTY.easy ? 'age3' : null;
   const ageReady = nextAge && !techQueued(T, nextAge) && distinctBuilt(T, CONFIG.AGES[E.age + 1].req) >= 2
     && villagers.length >= (E.age === 0 ? Math.min(D.villagers, 14) : D.villagers - 2);
   AI.saving = !!ageReady && army.length >= 4;
@@ -148,7 +148,19 @@ function aiTick() {
       const dir = toward ? new THREE.Vector3(toward.position.x - tc.position.x, 0, toward.position.z - tc.position.z).normalize() : new THREE.Vector3(-1, 0, -1).normalize();
       aiBuild('watchtower', tc.position.clone().addScaledVector(dir, 16), 0, 10);
     }
-    if (!AI.saving) for (const k of ['wheelbarrow', 'doublebit', 'horsecollar', 'forging', 'goldmining', 'fletching', 'scalearmor']) if (res.food > 350) tryTech(k);
+    if (!has('archeryrange') && villagers.length >= 13) aiBuild('archeryrange', tc.position, 13, 30, 2);
+    if (!AI.saving) for (const k of ['wheelbarrow', 'doublebit', 'horsecollar', 'forging', 'goldmining', 'fletching', 'scalearmor', 'paddedarcher', 'up_manatarms']) if (res.food > 350) tryTech(k);
+  }
+  if (E.age >= 2) {
+    if (!has('university') && villagers.length >= 14 && res.wood >= 250) aiBuild('university', tc.position, 12, 30, 2);
+    if (!AI.saving && res.food > 500 && res.gold > 300) {
+      for (const k of ['up_longsword', 'up_pikeman', 'up_crossbow', 'up_eliteskirm', 'up_lightcav', 'ironcasting', 'bodkin', 'chainmail',
+        'leatherarcher', 'bowsaw', 'goldshaft', 'heavyplow', 'handcart', 'masonry', 'guardtower', 'treadmill']) tryTech(k);
+    }
+  }
+  if (E.age >= 3 && !AI.saving && res.food > 800 && res.gold > 600) {
+    for (const k of ['blastfurnace', 'bracer', 'platemail', 'ringarcher', 'up_twohanded', 'up_champion', 'up_halberdier', 'up_arbalester',
+      'up_cavalier', 'up_paladin', 'up_hussar', 'up_cappedram', 'up_onager', 'chemistry', 'keep', 'twomansaw', 'croprotation', 'architecture', 'chainbarding']) tryTech(k);
   }
   if (E.age >= 2 && !AI.saving) {
     tryTech('barding');
@@ -172,10 +184,11 @@ function aiTick() {
     if (!b.def || !b.def.trains || b.underConstruction || b.trainQueue.length >= 2) continue;
     const siegeCount = army.filter(u => u.category === 'siege').length;
     if (b.subtype === 'siegeworkshop' && siegeCount >= (D === DIFFICULTY.hard ? 4 : 3)) continue;
-    const order = b.subtype === 'stable' ? ['knight', 'scout', 'knight']
-      : b.subtype === 'siegeworkshop' ? ['ram', 'mangonel', 'ram']
-      : b.subtype === 'castle' ? [uniqueUnitOf(T)]
-      : ['militia', 'archer', 'spearman', 'archer', 'spearman'];
+    const order = b.subtype === 'stable' ? (ENEMY.civ === 'saracens' ? ['camel', 'knight', 'scout'] : ['knight', 'scout', 'knight'])
+      : b.subtype === 'siegeworkshop' ? (E.age >= 3 && T && ENEMY.techs.has('chemistry') ? ['ram', 'bombard', 'mangonel'] : ['ram', 'mangonel', 'ram'])
+      : b.subtype === 'castle' ? (E.age >= 3 && army.filter(u => u.subtype === 'trebuchet').length < 2 ? [uniqueUnitOf(T), uniqueUnitOf(T), 'trebuchet'] : [uniqueUnitOf(T)])
+      : b.subtype === 'archeryrange' ? ['archer', 'skirmisher', 'archer', 'cavarcher']
+      : ['militia', 'spearman', 'militia'];
     for (let k = 0; k < order.length; k++) {
       const kind = order[(AI.armyCycle + k) % order.length];
       if (!itemBlockReason(kind, T) && queueUnit(b, kind)) { AI.armyCycle++; break; }

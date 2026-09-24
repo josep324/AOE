@@ -14,6 +14,12 @@ Civilitzacions disponibles (es trien al menú d'inici), cadascuna amb arquitectu
 | 🌙 Sarraïns | Orient Mitjà: tova, arenisca, terrats, arcs i cúpules | Mameluc (camell) | Arquers +2 contra edificis · Comerç +20% · Mercat −75 fusta · Menys comissió · *Zelotisme* |
 | ⛩️ Japonesos | Àsia oriental: fusta fosca, parets blanques, teulades corbes | Samurai | Infanteria +25% velocitat d'atac · Magatzems a meitat de preu · Fusta +10% · Torres +2 visió · *Yasama* |
 
+Edats: Fosca → Feudal → Castells → **Imperial**. Línies completes d'unitats que es milloren (i converteixen les existents):
+Milícia → Home d'armes → Espadatxí → Dues mans → Campió · Llancer → Piquer → Alabarder · Arquer → Ballester → Arbalester ·
+Escaramussador (d'elit) · Arquer a cavall (pesant) · Explorador → Genet lleuger → Hússar · Cavaller → Cavaller pesant → Paladí ·
+Genet de camell (pesant) · Ariet → reforçat → de setge · Mangonell → Onagre · Escorpí pesant · Canó bombarda (amb Química).
+Edificis nous: **Galeria de tir** i **Universitat** (Maçoneria, Arquitectura, Química, Grua de roda, Torre de guàrdia → Torrassa, Enginyers de setge).
+
 Setge i fortificacions (Edat dels Castells): **Castell** (fletxes, refugi per a 20 unitats, unitat única i trabucs) i **Taller de setge**
 (Ariet, Mangonell amb dany en àrea i atac al terra, Escorpí amb virots que travessen). El Trabuc s'ha de muntar per disparar.
 

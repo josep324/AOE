@@ -266,6 +266,31 @@ ARCH.middleeast = {
     battlements(g, 3.6, 1.4, 6.8, KM.sandstone, { z: 4.4, round: true, size: 0.3, gap: 0.24, h: 0.45, thick: 0.2 });
     return 12.0;
   },
+  archeryrange(g, { team }) {
+    meBody(g, { w: 5.4, d: 2.2, h: 2.4, cz: -1.6 });
+    for (const x of [-1.6, 0, 1.6]) meArch(g, 0.9, 1.7, x, 0, -0.48, 0);
+    kbox(g, 5.8, 0.05, 3.2, KM.dirt, 0, 0.03, 1.3);
+    for (const [x, z, w, d] of [[-2.8, 1.4, 0.3, 3.0], [2.8, 1.4, 0.3, 3.0]]) kbox(g, w, 1.4, d, KM.adobe, x, 0.7, z);
+    for (const x of [-1.6, 0, 1.6]) kTarget(g, team, x, 2.5, Math.PI);
+    meCanopy(g, KM.team(team), 0, 0.4, 2.4, 1.2, 2.2);
+    kPennant(g, team, -2.4, 2.84, -2.6, 1.4);
+    return 4.2;
+  },
+  university(g, { team }) {
+    // Madrassa: pati amb iwan, cúpula i minaret
+    kbox(g, 5.8, 0.3, 5.8, KM.sandstone, 0, 0.15, 0);
+    meBody(g, { w: 5.2, d: 3.4, h: 3.4, y0: 0.3, cz: -0.9 });
+    kbox(g, 2.4, 4.6, 0.9, KM.sandstone, 0, 2.6, 1.0);
+    meArch(g, 1.3, 3.0, 0, 0.3, 1.46, 0);
+    kbox(g, 2.1, 0.3, 0.05, KM.tile, 0, 3.6, 1.47);
+    kcyl(g, 1.3, 1.35, 0.7, 16, KM.sandstone, -0.4, 4.4, -1.0);
+    kdome(g, 1.35, 1.3, KM.tile, -0.4, 4.75, -1.0, 0.55, 18);
+    kcyl(g, 0.4, 0.5, 6.4, 10, KM.sandstone, 2.2, 3.5, -2.2);
+    kcyl(g, 0.55, 0.55, 0.2, 10, KM.sandstone, 2.2, 5.8, -2.2);
+    kdome(g, 0.4, 0.5, KM.tile, 2.2, 6.7, -2.2, 0.8, 10);
+    kPennant(g, team, 2.2, 7.3, -2.2, 1.0);
+    return 8.4;
+  },
   siegeworkshop(g, { team }) {
     kbox(g, 6.8, 0.15, 6.8, KM.dirt, 0, 0.075, 0);
     for (const [x, z, w, d] of [[0, -3.1, 6.6, 0.4], [-3.1, -1.1, 0.4, 4.2], [3.1, -1.1, 0.4, 4.2]]) kbox(g, w, 2.4, d, KM.adobe, x, 1.2, z);
