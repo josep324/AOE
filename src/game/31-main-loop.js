@@ -14,21 +14,17 @@ let fpsFrames = 0, fpsTime = 0, lastClockSec = -1;
 let uiTimer = 0, fogTimer = 0, aiTimer = 0, overTimer = 0, fogReady = false;
 const idleCountEl = document.getElementById('idle-count');
 
-function animate() {
-  requestAnimationFrame(animate);
-  const realDt = Math.min(clock.getDelta(), 0.05);
-  const dt = state.paused ? 0 : realDt * CONFIG.TIME_SCALE;
+/* ---------- Simulació a pas fix ----------
+   La lògica del joc avança sempre en passos de 1/60 s, independentment dels fotogrames per segon:
+   el comportament és el mateix a qualsevol ordinador (base per al multijugador de l'última fase). */
+const SIM_STEP = 1 / 60;
+let simAccumulator = 0;
+function simulate(dt) {
   state.elapsed += dt;
-  const t = state.elapsed;
-
-  updateCameraControls(realDt);
-
+  spatialRebuild();
   separateUnits();
   for (const u of state.units) updateUnit(u, dt);
-  updateMarkers(dt);
   updateResourceNodes(dt);
-  updateParticles(dt);
-  updateFloaters(dt);
   updateTraining(dt);
   updateConstruction(dt);
   updateProjectiles(dt);
@@ -40,6 +36,30 @@ function animate() {
   if (aiTimer >= 0.5) { aiTimer = 0; aiTick(); }
   overTimer += dt;
   if (overTimer >= 1) { overTimer = 0; checkGameOver(); }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const realDt = Math.min(clock.getDelta(), 0.1);
+  const frameDt = state.paused ? 0 : realDt * CONFIG.TIME_SCALE;
+  // Passos fixos de simulació (amb límit per no quedar bloquejats si el navegador s'alenteix)
+  simAccumulator += frameDt;
+  const maxSteps = Math.ceil(6 * Math.max(1, CONFIG.TIME_SCALE));
+  let steps = 0;
+  while (simAccumulator >= SIM_STEP && steps < maxSteps) {
+    simulate(SIM_STEP);
+    simAccumulator -= SIM_STEP;
+    steps++;
+  }
+  if (steps >= maxSteps) simAccumulator = 0;
+  const dt = frameDt;              // efectes visuals (partícules, marcadors…) al ritme dels fotogrames
+  const t = state.elapsed;
+
+  if (!fogReady) { fogReady = true; updateFog(); }
+  updateCameraControls(realDt);
+  updateMarkers(dt);
+  updateParticles(dt);
+  updateFloaters(dt);
   updatePlacement();
   updateTrainingUI();
   updateRallyFlag(t);

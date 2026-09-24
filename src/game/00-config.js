@@ -10,8 +10,8 @@ import { DIFFICULTY } from '@data/difficulty.js';
    CONFIGURACIÓ GLOBAL
    ===================================================================== */
 const CONFIG = {
-  GROUND_SIZE: 900,          // mida visual del terreny (les vores queden dins la boira)
-  MAP_LIMIT: 95,             // límit jugable (±) per a càmera i unitats
+  GROUND_SIZE: 1000,          // mida visual del terreny (les vores queden dins la boira)
+  MAP_LIMIT: 125,            // límit jugable (±): mapa de 250×250
   CAM: {
     yaw: Math.PI / 4,        // angle isomètric
     pitch: 0.95,             // ~54° d'inclinació

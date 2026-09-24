@@ -7,7 +7,7 @@ const camState = {
   yawVel: 0,
   goal: null,                      // punt cap on llisca la càmera en centrar
   grab: null,                      // arrossegament amb el botó del mig
-  target: new THREE.Vector3(5, 0, 5),
+  target: new THREE.Vector3(-67, 0, -67),   // sobre la base del jugador
   yaw: CONFIG.CAM.yaw,
   pitch: CONFIG.CAM.pitch,
   dist: CONFIG.CAM.dist,

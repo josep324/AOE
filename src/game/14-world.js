@@ -1,35 +1,13 @@
 /* =====================================================================
    CONSTRUCCIÓ DEL MÓN
+   Mapa simètric: cada jugador té la mateixa sortida (com un mapa 1v1 de l'AoE II)
+   i els recursos neutrals es col·loquen per parelles, un a cada meitat del mapa.
    ===================================================================== */
-createGround();
-const townCenter = createTownCenter(0, 0);
-createTree(-17, -12, 1.1);
-createTree(-21, -4, 0.95);
-createTree(-13, -19, 1.2);
-// Petit bosc a l'oest: quan un arbre s'esgota, els aldeans busquen el següent
-[[-30, -16], [-33, -9], [-28, -24], [-36, -20], [-38, -12], [-31, -31], [-41, -26], [-26, -32], [-43, -17], [-35, -3]]
-  .forEach(([x, z]) => createTree(x + randRange(-1, 1), z + randRange(-1, 1), randRange(0.85, 1.25)));
-createGoldMine(19, -15);
-createGoldMine(23, 11);
-// Aliment: arbustos de baies i ovelles (com a l'inici d'una partida d'AoE II)
-[[11, 22], [13.6, 23.4], [10.2, 24.8], [13.2, 26.4], [15.8, 25.2], [11.6, 27.6]].forEach(([x, z]) => createBerryBush(x, z));
-[[-11, 13], [-13, 15.5], [-9, 16], [-14, 11.5]].forEach(([x, z]) => createSheep(x, z));
-[[42, 30], [44, 33]].forEach(([x, z]) => createSheep(x, z));
-// Pedra
-createStoneMine(-24, 17);
-createStoneMine(46, -38);
-// ---- Base de l'Imperi Vermell (cantonada oposada) ----
-[[80, 46], [83, 52], [86, 58], [79, 63], [84, 67], [88, 48], [76, 72], [90, 62], [82, 40], [87, 73], [91, 54]]
-  .forEach(([x, z]) => createTree(x + randRange(-1, 1), z + randRange(-1, 1), randRange(0.9, 1.25)));
-createGoldMine(44, 74);
-createGoldMine(70, 86);
-// Mines extres repartides pel mapa (or i pedra per a partides llargues)
-[[-38, 12], [4, -34], [-70, -30], [30, -75], [-20, 70], [75, -5], [-80, 70], [85, -80]].forEach(([x, z]) => createGoldMine(x, z));
-[[-45, -45], [15, 55], [-85, -5], [60, -65]].forEach(([x, z]) => createStoneMine(x, z));
-[[70, 36], [72.6, 37.4], [69.2, 39], [72.2, 40.4], [74.8, 39.2]].forEach(([x, z]) => createBerryBush(x, z));
-[[50, 52], [52.5, 49], [48, 47]].forEach(([x, z]) => createSheep(x, z));
-createStoneMine(34, 86);
-// Boscos grans repartits pel mapa (fusta per a tota la partida)
+const BASES = {
+  [PLAYER.id]: { x: -72, z: -72, s: 1 },     // s = orientació (el rival té la base girada 180°)
+  [ENEMY.id]: { x: 72, z: 72, s: -1 },
+};
+// Bosc irregular dins d'un cercle, sense trepitjar res del que ja hi ha
 function createForest(cx, cz, n, r) {
   let placed = 0, tries = 0;
   while (placed < n && tries++ < n * 12) {
@@ -40,18 +18,52 @@ function createForest(cx, cz, n, r) {
     placed++;
   }
 }
-createForest(-8, -58, 18, 11);
-createForest(-62, 30, 18, 11);
-createForest(88, 18, 14, 8);
-createForest(22, 88, 14, 9);
-createForest(-50, -60, 14, 10);
-createForest(60, -45, 14, 10);
-const enemyTC = createTownCenter(62, 60, ENEMY.id);
+/* Sortida estàndard d'un jugador (posicions relatives al Centre de Ciutat) */
+function createStartingBase(team) {
+  const B = BASES[team];
+  const at = (dx, dz) => [B.x + dx * B.s, B.z + dz * B.s];
+  const tc = createTownCenter(B.x, B.z, team);
+  // Línia d'arbres propera i bosc darrere la base
+  [[-17, -12, 1.1], [-21, -4, 0.95], [-13, -19, 1.2]].forEach(([dx, dz, sc]) => createTree(...at(dx, dz), sc));
+  [[-30, -16], [-33, -9], [-28, -24], [-36, -20], [-38, -12], [-31, -31], [-41, -26], [-26, -32], [-43, -17], [-35, -3]]
+    .forEach(([dx, dz]) => { const [x, z] = at(dx + randRange(-1, 1), dz + randRange(-1, 1)); createTree(x, z, randRange(0.85, 1.25)); });
+  createGoldMine(...at(19, -15));
+  createGoldMine(...at(23, 11));
+  createStoneMine(...at(-24, 17));
+  [[11, 22], [13.6, 23.4], [10.2, 24.8], [13.2, 26.4], [15.8, 25.2], [11.6, 27.6]].forEach(([dx, dz]) => createBerryBush(...at(dx, dz)));
+  [[-11, 13], [-13, 15.5], [-9, 16], [-14, 11.5]].forEach(([dx, dz]) => createSheep(...at(dx, dz)));
+  return tc;
+}
+/* Recurs neutral i el seu simètric respecte del centre del mapa */
+function mirrored(fn, x, z, ...args) { fn(x, z, ...args); fn(-x, -z, ...args); }
+
+createGround();
+const townCenter = createStartingBase(PLAYER.id);
+const enemyTC = createStartingBase(ENEMY.id);
+// Bosc gran a les cantonades, darrere de cada base
+mirrored(createForest, -104, -92, 16, 11);
+mirrored(createForest, -92, -106, 14, 10);
+// Or i pedra al centre (disputats) i als costats
+mirrored(createGoldMine, 6, -10);
+mirrored(createStoneMine, -22, 20);
+mirrored(createGoldMine, -100, -26);
+mirrored(createGoldMine, -26, -102);
+mirrored(createStoneMine, -104, 12);
+mirrored(createGoldMine, -58, 40);
+// Boscos neutrals repartits
+mirrored(createForest, -10, -58, 16, 11);
+mirrored(createForest, -58, -8, 16, 11);
+mirrored(createForest, 40, -44, 14, 9);
+mirrored(createForest, -108, 44, 16, 10);
+mirrored(createForest, 44, -108, 16, 10);
+mirrored(createForest, 0, 0, 10, 7);
+// Ovelles soltes per explorar
+mirrored(createSheep, -36, -12);
+mirrored(createSheep, -34, -15);
+mirrored(createSheep, 20, -70);
 createDecorations();
-// Tres aldeans inicials (com als RTS clàssics)
-createVillager(-2.5, 9.5);
-createVillager(0, 10.2);
-createVillager(2.5, 9.5);
-createVillager(59.5, 69.5, ENEMY.id);
-createVillager(62, 70.2, ENEMY.id);
-createVillager(64.5, 69.5, ENEMY.id);
+// Tres aldeans inicials per jugador (com als RTS clàssics)
+for (const team of [PLAYER.id, ENEMY.id]) {
+  const B = BASES[team];
+  [[-2.5, 9.5], [0, 10.2], [2.5, 9.5]].forEach(([dx, dz]) => createVillager(B.x + dx * B.s, B.z + dz * B.s, team));
+}

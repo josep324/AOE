@@ -28,6 +28,7 @@ function createTree(x, z, scale = 1) {
   e.shakeT = 0;
   e.depleted = false;
   e.particleColor = 0x9a6a3a;
+  swapModel(e, 'resources/tree', { w: 3.6 });
   e.finalize();
 
   state.resourceNodes.push(e);
@@ -68,6 +69,7 @@ function createGoldMine(x, z) {
   }
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  swapModel(e, 'resources/gold', { w: 4.6 });
   e.finalize();
 
   state.resourceNodes.push(e);
@@ -109,6 +111,7 @@ function createStoneMine(x, z) {
   }
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  swapModel(e, 'resources/stone', { w: 4.4 });
   e.finalize();
   state.resourceNodes.push(e);
   e.obstacle = { x, z, r: 2.2, entity: e };
@@ -151,6 +154,7 @@ function createBerryBush(x, z) {
   });
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  swapModel(e, 'resources/berries', { w: 2.4 });
   e.finalize();
   state.resourceNodes.push(e);
   e.obstacle = { x, z, r: 1.0, entity: e };
@@ -215,6 +219,7 @@ function createSheep(x, z) {
 
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  swapModel(e, 'resources/sheep', { w: 1.1, d: 1.6 }, e.body);
   e.finalize();
   state.resourceNodes.push(e);
   e.obstacle = { x, z, r: 0.6, entity: e };
@@ -391,6 +396,7 @@ function createTownCenter(x, z, team = PLAYER.id) {
   });
 
   e.group.position.set(x, 0, z);
+  swapModel(e, 'buildings/towncenter', { w: 13.5, d: 13.5 }, e.group);
   e.finalize();
   state.buildings.push(e);
   e.obstacle = { x, z, r: 6.9, entity: e };

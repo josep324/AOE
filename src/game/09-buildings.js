@@ -37,6 +37,10 @@ function buildingMats(team = PLAYER.id) {
 
 /* Retorna { model, height } per a cada tipus d'edifici. El model mira cap a +Z. */
 function makeBuildingModel(type, team = PLAYER.id) {
+  // Model de la biblioteca (assets/models/buildings/<tipus>.glb) si n'hi ha
+  const [fw, fd] = CONFIG.BUILDINGS[type].size;
+  const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96 });
+  if (lib) return { model: lib, height: lib.userData.height };
   const M = buildingMats(team);
   const g = new THREE.Group();
   let height = 3;

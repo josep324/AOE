@@ -23,14 +23,42 @@ function resolveObstacleCollision(u, dt) {
   }
 }
 
+/* ---------- Índex espacial: graella de cel·les de 8 unitats amb les unitats de cada cel·la ----------
+   Evita comparar cada unitat amb totes les altres (clau per a centenars d'unitats). */
+const SPATIAL = { cell: 8, map: new Map() };
+const spatialKey = (i, j) => (i + 4096) * 8192 + (j + 4096);
+function spatialRebuild() {
+  SPATIAL.map.clear();
+  const c = SPATIAL.cell;
+  for (const u of state.units) {
+    if (u.garrisoned || u.dead) continue;
+    const k = spatialKey(Math.floor(u.position.x / c), Math.floor(u.position.z / c));
+    let arr = SPATIAL.map.get(k);
+    if (!arr) SPATIAL.map.set(k, arr = []);
+    arr.push(u);
+  }
+}
+/* Unitats dins d'un radi (aproximat per cel·les; el filtre exacte el fa qui crida) */
+function unitsNear(x, z, r, out = []) {
+  out.length = 0;
+  const c = SPATIAL.cell;
+  const i0 = Math.floor((x - r) / c), i1 = Math.floor((x + r) / c);
+  const j0 = Math.floor((z - r) / c), j1 = Math.floor((z + r) / c);
+  for (let i = i0; i <= i1; i++) {
+    for (let j = j0; j <= j1; j++) {
+      const arr = SPATIAL.map.get(spatialKey(i, j));
+      if (arr) for (const u of arr) out.push(u);
+    }
+  }
+  return out;
+}
+
+const nearBuf = [];
 function separateUnits() {
-  const units = state.units;
-  for (let i = 0; i < units.length; i++) {
-    const a = units[i];
-    if (a.garrisoned) continue;
-    for (let j = i + 1; j < units.length; j++) {
-      const b = units[j];
-      if (b.garrisoned) continue;
+  for (const a of state.units) {
+    if (a.garrisoned || a.dead) continue;
+    for (const b of unitsNear(a.position.x, a.position.z, 2, nearBuf)) {
+      if (b.id <= a.id || b.garrisoned || b.dead) continue;
       if (a.target && b.target) continue;
       const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
       const min = a.radius + b.radius;

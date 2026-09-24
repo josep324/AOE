@@ -49,7 +49,7 @@ function gameParts() {
 export default defineConfig({
   root: resolve(root, 'src'),
   publicDir: false,
-  resolve: { alias: { '@data': resolve(root, 'src/data'), '@assets': resolve(root, 'assets') } },
+  resolve: { alias: { '@data': resolve(root, 'src/data'), '@src': resolve(root, 'src'), '@assets': resolve(root, 'assets') } },
   plugins: [gameParts(), viteSingleFile()],
   build: {
     outDir: resolve(root, 'dist'),
@@ -58,5 +58,5 @@ export default defineConfig({
     chunkSizeWarningLimit: 50_000,
     target: 'es2022',
   },
-  server: { port: 5173, open: false },
+  server: { port: 5173, open: false, fs: { allow: [root] } },
 });

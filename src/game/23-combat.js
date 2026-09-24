@@ -61,9 +61,10 @@ function orderAttackMove(u, point) {
 }
 
 /* Busca l'enemic més proper dins d'un radi (prioritza unitats militars) */
+const targetBuf = [];
 function findTargetNear(u, radius) {
   let best = null, bestD = Infinity;
-  for (const e of state.units) {
+  for (const e of unitsNear(u.position.x, u.position.z, radius, targetBuf)) {
     if (e.team === u.team || e.team === 0 || e.dead || e.garrisoned) continue;
     const d = hDist(e.position, u.position) * (e.isMilitary ? 1 : 1.25);
     if (d < radius && d < bestD) { bestD = d; best = e; }
@@ -188,7 +189,7 @@ function updateDefensiveBuildings(dt) {
     if (b.arrowCooldown > 0) continue;
     const C = isTC ? CONFIG.TC_ARROWS : b.def.arrows;
     let target = null, bestD = Infinity;
-    for (const u of state.units) {
+    for (const u of unitsNear(b.position.x, b.position.z, C.range + (b.footprint ? b.footprint.hw : b.radius) + 1, targetBuf)) {
       if (u.team === b.team || u.team === 0 || u.dead || u.garrisoned) continue;
       const d = entSurfaceDist(b, u.position.x, u.position.z);
       if (d <= C.range && d < bestD) { bestD = d; target = u; }
