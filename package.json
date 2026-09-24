@@ -1,0 +1,19 @@
+{
+  "name": "imperis-3d",
+  "version": "0.6.0",
+  "private": true,
+  "description": "RTS a l'estil Age of Empires II que s'executa al navegador (un sol fitxer HTML)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/publish.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.0.0"
+  }
+}

@@ -1,0 +1,328 @@
+/* =====================================================================
+   INTERFÍCIE (HUD)
+   ===================================================================== */
+const hudEl = document.getElementById('hud');
+const selContent = document.getElementById('sel-content');
+const selCount = document.getElementById('sel-count');
+const actionsEl = document.getElementById('actions');
+const toastEl = document.getElementById('toast');
+const resEls = {
+  food: document.getElementById('res-food'),
+  wood: document.getElementById('res-wood'),
+  gold: document.getElementById('res-gold'),
+  stone: document.getElementById('res-stone'),
+};
+
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1900);
+}
+
+function updateResourcesUI() {
+  for (const k of Object.keys(resEls)) {
+    const el = resEls[k];
+    const val = String(Math.floor(state.resources[k]));
+    if (el.textContent !== val) {
+      el.textContent = val;
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    }
+  }
+}
+function updatePopulationUI() {
+  const used = unitCount(PLAYER.id), cap = popCap();
+  document.getElementById('pop-val').textContent = used;
+  document.getElementById('pop-cap').textContent = cap;
+  document.querySelector('#panel-resources .pop').classList.toggle('full', used >= cap);
+}
+
+function hpBar(e, cls = '') {
+  const pct = e.maxHp ? (e.hp / e.maxHp) * 100 : 0;
+  return `<div class="bar ${cls}"><i style="width:${pct}%"></i><span>${e.hp} / ${e.maxHp}</span></div>`;
+}
+function ownerLine(e) {
+  if (e.team === 0) return `<div class="sel-owner">Natura · Recurs neutral</div>`;
+  const T = teamOf(e.team);
+  return `<div class="sel-owner"><span class="dot" style="background:#${T.color.toString(16).padStart(6, '0')};box-shadow:0 0 6px #${T.color.toString(16).padStart(6, '0')}"></span>${T.name}${e.isOwn ? '' : ' · <b style="color:#ff8a7a">enemic</b>'}</div>`;
+}
+
+function unitTaskLine(u) {
+  const tag = `<span class="state-tag ${u.state}">${STATE_LABEL[u.state]}</span>`;
+  let detail = '';
+  if (u.state === STATE.ATTACKING && u.attackTarget) detail = ` ${u.attackTarget.name}`;
+  else if (u.state === STATE.TRADING) detail = u.tradeLoaded ? ` · porta <b>${u.tradeLoaded} 🪙</b>` : ' · anant a carregar';
+  else if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
+  else if (u.state === STATE.MOVING && u.gatherNode) detail = ` cap a ${u.gatherNode.name.toLowerCase()}`;
+  else if (u.state === STATE.RETURNING) detail = u.dropTarget ? ` (${u.dropTarget.name})` : '';
+  else if (u.state === STATE.BUILDING && u.buildTarget) detail = ` ${u.buildTarget.name}`;
+  else if (u.state === STATE.MOVING && u.buildTarget) detail = ` a construir ${u.buildTarget.name.toLowerCase()}`;
+  return tag + detail;
+}
+function carryLine(u) {
+  if (!u.carry.amount || !u.carry.type) return `<span>🎒 Càrrega <b>buida</b></span>`;
+  return `<span>🎒 Càrrega <b>${RES_ICON[u.carry.type]} ${u.carry.amount}/${capOf(u)}</b></span>`;
+}
+
+/* Signatura de l'estat visible: si canvia, es refà el panell de selecció */
+function selectionSignature() {
+  return state.selected.map(e => e.kind === 'unit'
+    ? `${e.id}:${e.state}:${Math.ceil(e.hp)}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
+    : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.garrison ? e.garrison.length : 0}:${Math.ceil(e.hp / 50)}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
+}
+let lastSelSignature = '';
+let buildPage = 0;
+let lastTechSig = '';
+
+function updateSelectionUI(panelOnly = false) {
+  lastSelSignature = selectionSignature();
+  const sel = state.selected;
+  selCount.textContent = sel.length ? `${sel.length} ${sel.length === 1 ? 'element' : 'elements'}` : '';
+  if (!panelOnly) actionsEl.innerHTML = '';
+
+  if (!sel.length) {
+    selContent.innerHTML = `<div class="empty-hint">Cap element seleccionat<br><span style="font-size:12px">Fes clic o arrossega per seleccionar unitats</span></div>`;
+    if (!panelOnly) actionsEl.innerHTML = `<div class="action-hint">Selecciona el <b>Centre de Ciutat</b> (<kbd>H</kbd>) per crear aldeans.</div>`;
+    return;
+  }
+
+  const first = sel[0];
+  if (sel.length === 1) {
+    let stats = '';
+    if (first.kind === 'unit') {
+      stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.isMilitary || !first.isOwn ? (first.isMilitary && first.isOwn ? `<span>${STANCES[first.stance].icon} ${STANCES[first.stance].name}</span>` : '') : carryLine(first)}</div>
+        <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>🎯 Abast <b>${first.range ? first.range : 'cos a cos'}</b></span><span>👁 Visió <b>${first.los}</b></span></div>`;
+    } else if (first.kind === 'building') {
+      if (!first.isOwn) {
+        stats = `<div class="stats"><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>${first.underConstruction ? 'En construcció' : ''}</span></div>`;
+      } else if (first.subtype === 'towncenter') {
+        stats = `<div class="stats"><span>🏯 <b>${CONFIG.AGES[PLAYER.age].name}</b></span><span>👥 Població <b>${unitCount()}/${popCap()}</b></span><span>🔔 Refugiats <b>${first.garrison ? first.garrison.length : 0}/${CONFIG.GARRISON_MAX}</b></span><span>🏹 Fletxes <b>${1 + Math.min(10, first.garrison ? first.garrison.length : 0)}</b></span><span>🚩 Reunió <b>${first.rally ? (first.rally.node ? first.rally.node.name : 'terreny') : 'cap'}</b></span></div>`;
+      } else if (first.underConstruction) {
+        const n = state.units.filter(u => u.state === STATE.BUILDING && u.buildTarget === first).length;
+        stats = `<div class="stats"><span>🔨 Constructors <b>${n}</b></span><span>${first.def.desc}</span></div>`;
+      } else {
+        const d = first.def;
+        const parts = [];
+        if (d.pop) parts.push(`<span>🏠 Població <b>+${d.pop}</b></span>`);
+        if (d.dropoff) parts.push(`<span>📦 Magatzem <b>${d.dropoff.map(t => RES_ICON[t]).join(' ')}</b></span>`);
+        if (first.subtype === 'mill') parts.push('<span>🌱 Permet construir <b>granges</b></span>');
+        if (first.subtype === 'barracks') parts.push(`<span>🚩 Reunió <b>${first.rally ? 'establert' : 'cap'}</b></span>`);
+        stats = `<div class="stats">${parts.join('')}</div>`;
+      }
+      if (first.trainQueue && first.isOwn && !first.underConstruction) {
+        const items = first.trainQueue.map((it, i) =>
+          `<div class="q-item" data-idx="${i}" title="${itemDef(it.kind).name} · clic: cancel·lar (retorna ${costText(itemDef(it.kind).cost)})">${itemDef(it.kind).icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
+        stats += `<div class="queue-row"><div class="queue" id="train-queue">${items || '<span class="q-empty">Cua buida</span>'}</div><div class="train-status" id="train-status"></div></div>`;
+      }
+    }
+    const isRes = first.kind === 'resource';
+    const resLabel = isRes ? RES_LABEL[first.resourceType] : '';
+    const bar = isRes
+      ? `<div class="bar res"><i style="width:${(first.amount / first.maxAmount) * 100}%"></i><span>${resLabel}: ${first.amount}</span></div>`
+      : first.underConstruction
+        ? `<div class="bar build"><i style="width:${first.progress * 100}%"></i><span>Construcció: ${Math.floor(first.progress * 100)}%</span></div>`
+        : hpBar(first);
+    selContent.innerHTML = `
+      <div class="portrait ${first.isOwn ? '' : first.team ? 'enemy' : 'neutral'}">${first.icon}</div>
+      <div class="sel-info">
+        <div class="sel-name">${first.name}</div>
+        ${ownerLine(first)}
+        ${bar}
+        ${stats}
+      </div>`;
+  } else {
+    const shown = sel.slice(0, 24);
+    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨', ATTACKING: '⚔️', GARRISONED: '🏰', TRADING: '🪙' };
+    const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
+    const counts = {};
+    sel.forEach(u => { counts[u.state] = (counts[u.state] || 0) + 1; });
+    const summary = Object.entries(counts).map(([k, v]) => `<span class="state-tag ${k}">${STATE_LABEL[k]}: ${v}</span>`).join(' ');
+    const carried = { food: 0, wood: 0, gold: 0, stone: 0 };
+    sel.forEach(u => { if (u.carry.type) carried[u.carry.type] = (carried[u.carry.type] || 0) + u.carry.amount; });
+    const more = sel.length > shown.length ? `<div class="more">+${sel.length - shown.length}</div>` : '';
+    selContent.innerHTML = `
+      <div class="portrait">${first.icon}</div>
+      <div class="sel-info" style="justify-content:flex-start">
+        <div class="sel-name">${sel.length} ${sel.every(u => u.subtype === 'villager') ? 'Aldeans' : 'Unitats'}</div>
+        <div class="stats">${summary}<span>🎒 ${Object.keys(carried).filter(k => carried[k]).map(k => `${RES_ICON[k]} <b>${carried[k]}</b>`).join(' · ') || '<b>buida</b>'}</span></div>
+        <div class="multi-grid">${minis}${more}</div>
+      </div>`;
+    selContent.querySelectorAll('.mini').forEach(el => {
+      el.addEventListener('click', ev => {
+        const ent = sel.find(s => s.id === Number(el.dataset.id));
+        if (!ent) return;
+        if (ev.shiftKey) { removeFromSelection(ent); onSelectionChanged(); }
+        else setSelection([ent]);
+      });
+    });
+  }
+
+  if (panelOnly) return;
+  actionsEl.classList.remove('compact');
+
+  // Botons d'acció contextuals
+  if (first.kind === 'building' && first.isOwn && !first.underConstruction && buildingItems(first).length) {
+    // Unitats i tecnologies de l'edifici (Centre, Caserna, Estable, Ferreria, magatzems)
+    actionsEl.classList.add('compact');
+    const T = PLAYER;
+    for (const kind of buildingItems(first)) {
+      const d = itemDef(kind);
+      const tech = isTech(kind);
+      if (tech && (T.techs.has(kind) || techQueued(T.id, kind))) continue;
+      if (tech && d.ageUp && d.ageUp !== T.age + 1) continue;
+      const locked = (d.age || 0) > T.age;
+      const b = makeActionButton(locked ? '🔒' : d.icon, d.name.length > 11 ? d.name.split(' ')[0] : d.name, costText(d.cost),
+        kind === 'villager' ? 'C' : '', () => queueUnit(first, kind), true);
+      b.dataset.item = kind;
+      b.title = tech
+        ? `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
+        : `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`;
+      actionsEl.appendChild(b);
+    }
+    if (first.subtype === 'market') {
+      const P = PLAYER.prices;
+      for (const r of ['food', 'wood', 'stone']) {
+        const buy = makeActionButton(RES_ICON[r], 'Compra', `🪙 ${P[r]}`, '', () => marketTrade(PLAYER.id, r, true), true);
+        buy.title = `Compra 100 de ${RES_LABEL[r].toLowerCase()} per ${P[r]} d'or (el preu puja)`;
+        actionsEl.appendChild(buy);
+      }
+      for (const r of ['food', 'wood', 'stone']) {
+        const sell = makeActionButton(RES_ICON[r], 'Ven', `+🪙 ${Math.floor(P[r] * 0.7)}`, '', () => marketTrade(PLAYER.id, r, false), true);
+        sell.title = `Ven 100 de ${RES_LABEL[r].toLowerCase()} per ${Math.floor(P[r] * 0.7)} d'or (el preu baixa)`;
+        actionsEl.appendChild(sell);
+      }
+    }
+    if (first.subtype === 'towncenter') {
+      const inside = first.garrison && first.garrison.length;
+      const bell = makeActionButton(inside ? '🚪' : '🔔', inside ? 'A la feina' : 'Campana', inside ? `${first.garrison.length} dins` : 'Refugi', 'B', () => ringTownBell(first), true);
+      bell.title = 'Campana: els aldeans propers es refugien al Centre (+1 fletxa per aldeà).\nTorna-la a prémer perquè tornin a la feina.';
+      actionsEl.appendChild(bell);
+    } else {
+      actionsEl.appendChild(makeActionButton('🗑️', 'Enderrocar', 'Supr', '', () => demolishBuilding(first), true));
+    }
+  } else if (first.kind === 'unit' && first.isOwn && !builders().length) {
+    // Només militars: aturar i postures de combat
+    actionsEl.classList.add('compact');
+    const mil = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
+    const stop = makeActionButton('✋', 'Aturar', 'X', '', () => { commandStop(mil); updateSelectionUI(); }, true);
+    stop.title = "Aturar (X)\nClic dret sobre un enemic: atacar (l'ordre directa ignora la postura)";
+    actionsEl.appendChild(stop);
+    const cur = mil.every(u => u.stance === mil[0].stance) ? mil[0].stance : null;
+    const keysSt = { aggressive: 'Z', defensive: 'V', stand: 'N' };
+    for (const [k, st] of Object.entries(STANCES)) {
+      if (!mil.some(u => u.isMilitary)) break;
+      const b = makeActionButton(st.icon, st.name, cur === k ? '● activa' : '', keysSt[k], () => setStance(mil.filter(u => u.isMilitary), k), true);
+      b.title = `Postura ${st.name} (${keysSt[k]}): ${st.desc}`;
+      if (cur === k) b.style.boxShadow = '0 0 0 2px var(--gold) inset, 0 0 12px rgba(216,178,90,0.5)';
+      actionsEl.appendChild(b);
+    }
+  } else if (first.kind === 'unit' && first.isOwn) {
+    // Menú de construcció de l'aldeà
+    actionsEl.classList.add('compact');
+    const stop = makeActionButton('✋', 'Aturar', 'X', '', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }, true);
+    stop.title = "Aturar (X): cancel·la l'ordre actual.\nClic dret: moure / recol·lectar / descarregar / construir.\nShift + clic dret: encadenar ordres.";
+    actionsEl.appendChild(stop);
+    for (const [type, def] of Object.entries(CONFIG.BUILDINGS)) {
+      if ((def.page || 0) !== buildPage) continue;
+      const locked = (def.age || 0) > PLAYER.age;
+      const hk = Object.entries(CONFIG.BUILD_KEYS).find(([, t]) => t === type);
+      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costText(def.cost), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
+      btn.dataset.build = type;
+      btn.title = `${def.name} — ${costText(def.cost)} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
+      actionsEl.appendChild(btn);
+    }
+    const pageBtn = makeActionButton(buildPage ? '🏠' : '🛡️', buildPage ? 'Economia' : 'Militar', buildPage ? '◀ pàgina 1' : 'pàgina 2 ▶', '', () => { buildPage = 1 - buildPage; updateSelectionUI(); }, true);
+    pageBtn.title = 'Canvia la pàgina del menú de construcció';
+    actionsEl.appendChild(pageBtn);
+  } else if (first.kind === 'building' && first.isOwn) {
+    const btn = makeActionButton('🗑️', 'Enderrocar', first.underConstruction && first.progress < 0.02 ? 'Retorna el cost' : 'Supr', '', () => demolishBuilding(first));
+    actionsEl.appendChild(btn);
+    const hint = document.createElement('div');
+    hint.className = 'action-hint';
+    hint.innerHTML = first.underConstruction
+      ? 'Selecciona aldeans i fes<br><kbd>clic dret</kbd> al fonament<br>per ajudar a construir.'
+      : (first.dropoffTypes ? `Els aldeans hi poden<br>descarregar ${first.dropoffTypes.map(t => RES_ICON[t]).join(' ')}.` : first.def.desc);
+    actionsEl.appendChild(hint);
+  } else if (first.team && !first.isOwn) {
+    actionsEl.innerHTML = `<div class="action-hint">${first.kind === 'unit' ? 'Unitat' : 'Edifici'} de l'<b style="color:#ff8a7a">${teamOf(first.team).name}</b>.<br>Selecciona unitats i fes <kbd>clic dret</kbd><br>per atacar-lo.</div>`;
+  } else if (first.kind === 'resource' && first.subtype === 'farm') {
+    actionsEl.innerHTML = `<div class="action-hint">Granja: ${first.amount} d'aliment.<br>Un sol granger hi pot treballar.<br>Descarrega al Molí o al Centre.</div>`;
+  } else if (first.kind === 'resource') {
+    actionsEl.innerHTML = `<div class="action-hint">Recurs natural (${RES_LABEL[first.resourceType]}).<br>Selecciona aldeans i fes <kbd>clic dret</kbd><br>sobre el recurs per recol·lectar-lo.</div>`;
+  }
+}
+
+/* Mercat: 100 unitats de recurs per or; cada operació mou el preu */
+function marketTrade(team, r, buy) {
+  const T = teamOf(team), R = T.res, price = T.prices[r];
+  if (buy) {
+    if (R.gold < price) { if (team === PLAYER.id) toast(`Cal ${price} d'or per comprar`); return false; }
+    R.gold -= price; R[r] += 100;
+    T.prices[r] = Math.min(400, price + 6);
+  } else {
+    if (R[r] < 100) { if (team === PLAYER.id) toast(`Cal tenir 100 de ${RES_LABEL[r].toLowerCase()} per vendre`); return false; }
+    R[r] -= 100; R.gold += Math.floor(price * 0.7);
+    T.prices[r] = Math.max(25, price - 6);
+  }
+  if (team === PLAYER.id) { updateResourcesUI(); updateSelectionUI(); }
+  return true;
+}
+
+/* Llista d'unitats i tecnologies que ofereix un edifici */
+function buildingItems(b) {
+  const out = [];
+  if (b.subtype === 'towncenter') out.push('villager');
+  if (b.def && b.def.trains) out.push(...b.def.trains);
+  for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.at === b.subtype) out.push(k);
+  return out;
+}
+
+function makeActionButton(icon, label, cost, hotkey, onClick, small = false) {
+  const btn = document.createElement('button');
+  btn.className = 'action-btn' + (small ? ' small' : '');
+  btn.innerHTML = `${hotkey ? `<span class="hk">${hotkey}</span>` : ''}<span class="big">${icon}</span><span>${label}</span><span class="cost">${cost}</span>`;
+  btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); btn.blur(); });
+  return btn;
+}
+
+function onSelectionChanged() {
+  if (placing.type && !builders().length) cancelPlacement();
+  updateSelectionUI();
+}
+
+/* Actualització contínua de la barra d'entrenament i de l'estat del botó */
+function updateTrainingUI() {
+  // Botons de construcció: en vermell si no es poden pagar o falta un requisit
+  actionsEl.querySelectorAll('[data-build]').forEach(btn => btn.classList.toggle('cant', !!buildBlockReason(btn.dataset.build)));
+  actionsEl.querySelectorAll('[data-item]').forEach(btn => btn.classList.toggle('cant', !!itemBlockReason(btn.dataset.item)));
+  const b = state.selected.length === 1 ? state.selected[0] : null;
+  if (!b || !b.trainQueue || !b.isOwn) return;
+  const prog = document.querySelector('#train-queue .q-prog');
+  const status = document.getElementById('train-status');
+  const item = b.trainQueue[0];
+  if (item) {
+    const idef = itemDef(item.kind);
+    const f = Math.min(1, item.t / idef.time);
+    if (prog) prog.style.width = (f * 100) + '%';
+    if (status) status.innerHTML = item.blocked
+      ? '<b>🏠 Població plena: calen cases</b>'
+      : `${isTech(item.kind) ? 'Investigant' : 'Entrenant'} ${idef.name.toLowerCase()}… <b>${Math.floor(f * 100)}%</b> · ${Math.ceil(idef.time - item.t)}s`;
+  } else if (status) status.textContent = '';
+  actionsEl.querySelectorAll('[data-item]').forEach(btn => btn.classList.toggle('cant', !!itemBlockReason(btn.dataset.item)));
+}
+// Delegació: clic sobre un element de la cua = cancel·lar-lo
+selContent.addEventListener('click', (e) => {
+  const q = e.target.closest('.q-item');
+  if (!q) return;
+  const b = state.selected[0];
+  if (b && b.trainQueue) cancelQueued(b, Number(q.dataset.idx));
+});
+
+document.getElementById('help-toggle').addEventListener('click', () => {
+  const help = document.getElementById('help');
+  help.classList.toggle('collapsed');
+  document.getElementById('help-toggle').textContent = help.classList.contains('collapsed') ? 'mostrar ▼' : 'amagar ▲';
+});

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imperis 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div id="loading">IMPERIS 3D<small>Carregant…</small></div>
+
+<div id="selection-box"></div>
+<canvas id="hpbars"></canvas>
+
+<div id="start-screen" class="overlay">
+  <div class="card glass">
+    <h1>IMPERIS 3D</h1>
+    <h2>Civilització Blava contra l'Imperi Vermell</h2>
+    <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i destrueix tots els edificis i unitats de l'enemic.</p>
+    <div class="row" id="diff-choices">
+      <button class="choice" data-diff="easy">Fàcil</button>
+      <button class="choice on" data-diff="normal">Normal</button>
+      <button class="choice" data-diff="hard">Difícil</button>
+    </div>
+    <label><input type="checkbox" id="fog-toggle" checked> Boira de guerra</label>
+    <div><button class="big-btn" id="start-btn">COMENÇAR</button></div>
+    <div><button class="choice" id="start-load" style="margin-top:10px;display:none">📂 Continuar la partida desada</button>
+      <button class="choice" id="start-code" style="margin-top:10px">🔑 Carregar amb codi</button></div>
+    <div class="legend">
+      ⚔️ <b>Caserna</b>: Milícia · Llancer i Arquer (Feudal) · 🐎 <b>Estable</b>: Explorador (Feudal) i Cavaller (Castells).<br>
+      🔔 <b>Campana</b> (<kbd>B</kbd>): els aldeans es refugien al Centre i aquest dispara més fletxes.<br>
+      🏯 <b>Edats</b>: Fosca → Feudal → Castells. Cada edat desbloqueja edificis, unitats i tecnologies.<br>
+      ⏸️ <kbd>P</kbd> pausa · <kbd>Clic dret</kbd> sobre un enemic: atacar.
+    </div>
+  </div>
+</div>
+<div id="pause-screen" class="overlay hidden">
+  <div class="card glass"><h1>PAUSA</h1><p>Prem <kbd>P</kbd> per continuar.</p></div>
+</div>
+<div id="menu-screen" class="overlay hidden">
+  <div class="card glass">
+    <h1>MENÚ</h1>
+    <h2 id="menu-info">La partida està en pausa</h2>
+    <div class="row" style="flex-direction:column;align-items:center">
+      <button class="big-btn" id="menu-continue">CONTINUAR</button>
+      <button class="choice" id="menu-save">💾 Desar partida</button>
+      <button class="choice" id="menu-load">📂 Carregar partida desada</button>
+      <button class="choice" id="menu-code">🔑 Codi de partida amb contrasenya</button>
+      <button class="choice" id="menu-new">🔄 Nova partida</button>
+    </div>
+    <div id="code-panel" class="hidden">
+      <p style="font-size:12.5px;color:var(--muted);margin:4px 0 8px">Genera un codi per reprendre la partida més tard (també en un altre navegador).
+        Amb contrasenya, el codi queda xifrat i només es pot carregar amb la mateixa contrasenya.</p>
+      <input id="code-pass" type="password" placeholder="Contrasenya (opcional)" autocomplete="off">
+      <div class="row" style="margin:8px 0">
+        <button class="choice" id="code-make">Generar codi</button>
+        <button class="choice" id="code-copy">Copiar</button>
+        <button class="choice" id="code-load">Carregar aquest codi</button>
+      </div>
+      <textarea id="code-text" rows="4" placeholder="Enganxa aquí un codi de partida (IMP1-…)"></textarea>
+    </div>
+    <p id="menu-slot" style="font-size:12px;color:var(--muted)"></p>
+  </div>
+</div>
+<div id="end-screen" class="overlay hidden">
+  <div class="card glass">
+    <h1 id="end-title">VICTÒRIA</h1>
+    <p id="end-text"></p>
+    <button class="big-btn" id="restart-btn">TORNAR A JUGAR</button>
+  </div>
+</div>
+<div id="floaters"></div>
+
+<div id="help" class="glass collapsed">
+  <div class="title">CONTROLS <span id="help-toggle">mostrar ▼</span></div>
+  <ul>
+    <li><kbd>Clic esq.</kbd> <b>Seleccionar</b> · <kbd>Arrossegar</kbd> selecció múltiple</li>
+    <li><kbd>Shift</kbd>+clic afegir/treure · <kbd>Doble clic</kbd> tots els del tipus</li>
+    <li><kbd>Clic dret</kbd> terreny: <b>moure</b> · sobre un recurs: <b>recol·lectar</b></li>
+    <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / fletxes / vores: <b>desplaçar càmera</b></li>
+    <li><kbd>Roda</kbd> zoom · <kbd>Q</kbd><kbd>E</kbd> girar · <kbd>Espai</kbd> centrar selecció</li>
+    <li><kbd>H</kbd> Centre de Ciutat · <kbd>C</kbd> crear aldeà · <kbd>X</kbd> aturar · <kbd>Esc</kbd> desseleccionar</li>
+    <li><kbd>.</kbd> següent aldeà inactiu · càmera avall: ratolí a la vora inferior del <b>mapa</b></li>
+    <li><kbd>Ctrl</kbd>/<kbd>Alt</kbd>+<kbd>1-9</kbd> crear grup · <kbd>1-9</kbd> seleccionar (2 cops: centrar)</li>
+    <li><kbd>Shift</kbd>+<kbd>clic dret</kbd> encadenar ordres · <b>Minimapa</b>: clic mou càmera, clic dret mou unitats</li>
+    <li>Centre seleccionat + <kbd>clic dret</kbd>: <b>punt de reunió</b></li>
+    <li>Aldeans: botons de <b>construcció</b> · <kbd>Shift</kbd> col·locar-ne més · <kbd>Supr</kbd> enderrocar</li>
+    <li><kbd>Clic dret</kbd> enemic: <b>atacar</b> · <kbd>B</kbd> campana · <kbd>P</kbd> pausa</li>
+    <li>Centre: <b>avançar d'edat</b> · muralles: <b>prem i arrossega</b> · <kbd>R</kbd> girar edifici</li>
+    <li>Botó del mig: <b>arrossegar el mapa</b> · <kbd>M</kbd> menú (desar / carregar)</li>
+  </ul>
+</div>
+
+<div id="topbar" class="glass">
+  <span class="age" id="age-name">EDAT FOSCA</span>
+  <span class="sep"></span>
+  <span class="stat">⏱ <b id="clock">00:00</b></span>
+  <span class="sep"></span>
+  <span class="stat idle" id="idle-btn" title="Aldeans inactius: clic o (.) per seleccionar-ne un">💤 Inactius <b id="idle-count">0</b></span>
+  <span class="sep"></span>
+  <span class="stat">FPS <b id="fps">--</b></span>
+  <span class="sep"></span>
+  <span class="stat idle" id="menu-btn" title="Menú (M): desar, carregar, nova partida">☰ <b>Menú</b></span>
+</div>
+
+<div id="toast" class="glass"></div>
+
+<div id="hud">
+  <section class="panel" id="panel-resources">
+    <h3>Recursos <small>Civilització Blava</small></h3>
+    <div class="res-grid">
+      <div class="res"><span class="ico food">🍖</span><div><div class="lbl">Aliment</div><div class="val" id="res-food">0</div></div></div>
+      <div class="res"><span class="ico wood">🪵</span><div><div class="lbl">Fusta</div><div class="val" id="res-wood">0</div></div></div>
+      <div class="res"><span class="ico gold">🪙</span><div><div class="lbl">Or</div><div class="val" id="res-gold">0</div></div></div>
+      <div class="res"><span class="ico stone">🪨</span><div><div class="lbl">Pedra</div><div class="val" id="res-stone">0</div></div></div>
+    </div>
+    <div class="pop"><span>👥 Població</span><span><b id="pop-val">0</b> / <b id="pop-cap">200</b></span></div>
+  </section>
+
+  <section class="panel" id="panel-selection">
+    <h3>Selecció <small id="sel-count"></small></h3>
+    <div id="sel-content"></div>
+  </section>
+
+  <section class="panel" id="panel-actions">
+    <h3>Accions</h3>
+    <div id="actions"></div>
+  </section>
+
+  <section class="panel" id="panel-minimap">
+    <canvas id="minimap"></canvas>
+  </section>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>
