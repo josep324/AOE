@@ -245,6 +245,14 @@ function updateSelectionUI(panelOnly = false) {
     const stop = makeActionButton('✋', 'Aturar', 'X', '', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }, true);
     stop.title = "Aturar (X): cancel·la l'ordre actual.\nClic dret: moure / recol·lectar / descarregar / construir.\nShift + clic dret: encadenar ordres.";
     actionsEl.appendChild(stop);
+    // Pàgines del menú de construcció: Economia · Militar · Defensa (Tab per passar de pàgina)
+    const PAGES = [['🏠', 'Economia'], ['⚔️', 'Militar'], ['🏰', 'Defensa']];
+    PAGES.forEach(([ico, name], i) => {
+      const pb = makeActionButton(ico, name, i === buildPage ? '● pàgina' : `pàgina ${i + 1}`, i === (buildPage + 1) % 3 ? 'Tab' : '', () => { buildPage = i; updateSelectionUI(); }, true);
+      pb.title = `Menú de construcció: ${name} (Tab: pàgina següent)`;
+      if (i === buildPage) pb.style.boxShadow = '0 0 0 2px var(--gold) inset, 0 0 12px rgba(216,178,90,0.5)';
+      actionsEl.appendChild(pb);
+    });
     for (const [type, def] of Object.entries(CONFIG.BUILDINGS)) {
       if ((def.page || 0) !== buildPage) continue;
       const locked = (def.age || 0) > PLAYER.age;
@@ -254,12 +262,16 @@ function updateSelectionUI(panelOnly = false) {
       btn.title = `${def.name} — ${costText(costFor(type))} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
       actionsEl.appendChild(btn);
     }
-    const pageBtn = makeActionButton(buildPage ? '🏠' : '🛡️', buildPage ? 'Economia' : 'Militar', buildPage ? '◀ pàgina 1' : 'pàgina 2 ▶', '', () => { buildPage = 1 - buildPage; updateSelectionUI(); }, true);
-    pageBtn.title = 'Canvia la pàgina del menú de construcció';
-    actionsEl.appendChild(pageBtn);
   } else if (first.kind === 'building' && first.isOwn) {
     const btn = makeActionButton('🗑️', 'Enderrocar', first.underConstruction && first.progress < 0.02 ? 'Retorna el cost' : 'Supr', '', () => demolishBuilding(first));
     actionsEl.appendChild(btn);
+    if (garrisonCap(first) > 0 && !first.underConstruction) {
+      const n = first.garrison ? first.garrison.length : 0;
+      const g = makeActionButton('🚪', n ? 'Fer sortir' : 'Refugi', `${n}/${garrisonCap(first)} dins`, 'U', () => ungarrison(first));
+      g.title = 'Unitats refugiades (cada una afegeix una fletxa). Clic dret amb tropes seleccionades per fer-les entrar. U: fer-les sortir';
+      g.disabled = !n;
+      actionsEl.appendChild(g);
+    }
     const hint = document.createElement('div');
     hint.className = 'action-hint';
     hint.innerHTML = first.underConstruction

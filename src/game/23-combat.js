@@ -27,6 +27,7 @@ function orderAttack(u, target, keepAttackMove = true) {
   u.garrisonTarget = null;
   if (!keepAttackMove) u.attackMove = null;
   u.attackTarget = target;
+  u.speedCap = null;          // en combat, cadascú a la seva velocitat
   u.chaseTimer = 0;
   setUnitState(u, STATE.ATTACKING);
 }
@@ -60,6 +61,10 @@ function acquireRadius(u) {
 function orderAttackMove(u, point) {
   orderMove(u, point);
   u.attackMove = point.clone();
+}
+/* Moviment amb atac en formació (onades de la IA) */
+function commandAttackMove(units, point) {
+  for (const [u, slot] of formationSlots(units, point)) { u.orderQueue.length = 0; orderAttackMove(u, slot); }
 }
 
 /* Busca l'enemic més proper dins d'un radi (prioritza unitats militars) */

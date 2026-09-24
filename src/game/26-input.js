@@ -120,6 +120,8 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.ctrlKey || e.metaKey) return;
 
+  // Tab: pàgina següent del menú de construcció
+  if (code === 'Tab' && builders().length) { e.preventDefault(); buildPage = (buildPage + 1) % 3; updateSelectionUI(); return; }
   // Aldeans seleccionats: lletres de construcció
   if (builders().length && CONFIG.BUILD_KEYS[code]) {
     const type = CONFIG.BUILD_KEYS[code];

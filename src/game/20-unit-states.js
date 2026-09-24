@@ -275,7 +275,7 @@ function stepTowardsTarget(u, dt) {
   if (!u.target) return true;
   // Si el mapa ha canviat (nou edifici, recurs esgotat) es recalcula el camí
   if (!u.path || u.pathVersion !== NAV.version) setMoveTarget(u, u.target);
-  let step = u.speed * dt;
+  let step = Math.min(u.speed, u.speedCap || Infinity) * dt;
   while (step > 1e-6 && u.path.length) {
     const wp = u.path[0];
     const dx = wp.x - u.position.x, dz = wp.z - u.position.z;

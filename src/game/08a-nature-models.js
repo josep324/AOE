@@ -47,6 +47,7 @@ const NM = {
   },
   get bark() { return kitMat('bark'); },
   get rock() { return kitMat('granite', { flatShading: true, color: 0xd8cfc0 }); },
+  get goldRock() { return kitMat('granite', { flatShading: true, color: 0xe8c890 }); },
   get paleRock() { return kitMat('granite', { flatShading: true, color: 0xf2eee6 }); },
   get gold() { return natureMat('gold', () => new THREE.MeshStandardMaterial({ color: 0xf5c83a, metalness: 0.75, roughness: 0.25, emissive: 0x6a4600, emissiveIntensity: 0.55, flatShading: true })); },
   get berry() { return natureMat('berry', () => new THREE.MeshStandardMaterial({ color: 0xc0183e, roughness: 0.35, emissive: 0x30000c, emissiveIntensity: 0.5 })); },
@@ -216,9 +217,24 @@ function mineChunksTemplate(kind, v) {
     return mergeParts(parts);
   });
 }
+/* Vetes d'or incrustades a la roca: no s'encongeixen, així la mina es veu daurada fins que s'esgota */
+function goldVeinTemplate(v) {
+  return natureCached('goldveins' + v, () => {
+    const parts = [];
+    for (let i = 0; i < 14; i++) {
+      const a = nr(0, Math.PI * 2), d = nr(0.4, 1.7);
+      const geo = lumpGeo(nr(0.16, 0.3), 0, v * 31 + i, 0.4, false);
+      geo.scale(1, nr(0.5, 0.9), 1);
+      geo.translate(Math.cos(a) * d, nr(0.25, 0.75) * (1.9 - d * 0.6), Math.sin(a) * d);
+      parts.push(geo);
+    }
+    return mergeParts(parts);
+  });
+}
 function makeMineModel(kind, x, z) {
   const v = Math.floor(hash2(x * 0.9, z * 1.1) * 3);
-  const base = new THREE.Mesh(mineBaseTemplate(kind, v), kind === 'gold' ? NM.rock : NM.paleRock);
+  const base = new THREE.Mesh(mineBaseTemplate(kind, v), kind === 'gold' ? NM.goldRock : NM.paleRock);
+  if (kind === 'gold') base.add(new THREE.Mesh(goldVeinTemplate(v), NM.gold));
   const chunks = new THREE.Mesh(mineChunksTemplate(kind, v), kind === 'gold' ? NM.gold : kitMat('stone', { color: 0xe4e0d8 }));
   return { base, chunks };
 }

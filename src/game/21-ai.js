@@ -199,34 +199,57 @@ function aiTick() {
     }
   }
 
-  // 6) Defensa: si hi ha intrusos a prop de la base, l'exèrcit que no és en onada respon
+  // 6) Defensa: només contra intrusos a prop de la base (no contra torres o tropes llunyanes que disparen a l'onada)
+  const home = tc.position;
   let intruder = null;
-  if (AI.alert && !AI.alert.dead && now - AI.alertTime < 10) intruder = AI.alert;
+  if (AI.alert && !AI.alert.dead && now - AI.alertTime < 10 && hDist(AI.alert.position, home) < 40) intruder = AI.alert;
   if (!intruder) {
-    for (const u of state.units) if (u.isOwn && !u.garrisoned && hDist(u.position, tc.position) < 30) { intruder = u; break; }
+    for (const u of state.units) if (u.isOwn && !u.garrisoned && hDist(u.position, home) < 32) { intruder = u; break; }
   }
   if (intruder) {
-    for (const u of army) if (!u.inWave && (u.state === STATE.IDLE || u.state === STATE.MOVING)) orderAttack(u, intruder);
+    const defenders = army.filter(u => !u.inWave && u.category !== 'siege' && (u.state === STATE.IDLE || u.state === STATE.MOVING));
+    if (defenders.length) commandAttack(defenders, intruder);
   }
 
-  // 7) Onades d'atac
-  if (now >= AI.nextWaveAt) {
-    const avail = army.filter(u => !u.inWave);
+  // 7) Onades d'atac: primer es reuneixen davant la base i després avancen juntes al pas de la més lenta
+  if ((!AI.wave || AI.wave.phase === 'attack') && now >= AI.nextWaveAt) {
+    const avail = army.filter(u => !u.inWave && !u.garrisoned);
     const need = D.waveBase + AI.waveCount * 2;
-    if (avail.length >= need) {
-      const target = nearestPlayerTarget(tc.position);
-      if (target) {
-        avail.forEach(u => { u.inWave = true; orderAttackMove(u, target.position.clone()); });
-        AI.waveCount++;
-        AI.nextWaveAt = now + D.interval;
-        toast(`⚠️ L'enemic (${civOf(ENEMY.id).name}) ataca! (onada ${AI.waveCount}: ${avail.length} unitats)`);
-      }
+    const target = avail.length >= need ? nearestPlayerTarget(home) : null;
+    if (target) {
+      const dir = new THREE.Vector3(target.position.x - home.x, 0, target.position.z - home.z).normalize();
+      const rally = clampToMap(home.clone().addScaledVector(dir, 22));
+      avail.forEach(u => { u.inWave = true; u.speedCap = null; });
+      commandMove(avail, rally);
+      AI.wave = { units: avail, rally, phase: 'gather', t0: now };
     }
   }
-  // Les unitats de l'onada que queden inactives busquen el següent objectiu
-  for (const u of army) {
-    if (!u.inWave || u.state !== STATE.IDLE) continue;
-    const t = nearestPlayerTarget(u.position);
-    if (t) orderAttackMove(u, t.kind === 'unit' ? t.position.clone() : approachPoint(t, u.position));
+  const W = AI.wave;
+  if (W) {
+    W.units = W.units.filter(u => !u.dead);
+    if (!W.units.length) AI.wave = null;
+    else if (W.phase === 'gather') {
+      const ready = W.units.filter(u => hDist(u.position, W.rally) < 10).length;
+      if (ready >= W.units.length * 0.85 || now - W.t0 > 45) {
+        const target = nearestPlayerTarget(W.rally);
+        if (target) {
+          const slow = Math.min(...W.units.map(u => u.speed));
+          W.units.forEach(u => { u.speedCap = slow; });
+          commandAttackMove(W.units, target.kind === 'unit' ? target.position.clone() : approachPoint(target, W.rally));
+          W.phase = 'attack';
+          AI.waveCount++;
+          AI.nextWaveAt = now + D.interval;
+          toast(`⚠️ L'enemic (${civOf(ENEMY.id).name}) ataca! (onada ${AI.waveCount}: ${W.units.length} unitats)`);
+        } else AI.wave = null;
+      }
+    } else if (W.units.every(u => u.state === STATE.IDLE) && !nearestPlayerTarget(W.units[0].position)) {
+      AI.wave = null;
+    }
+  }
+  // Les unitats de l'onada que queden inactives busquen el següent objectiu (totes cap al mateix)
+  const idleWave = army.filter(u => u.inWave && u.state === STATE.IDLE && !(W && W.phase === 'gather' && W.units.includes(u)));
+  if (idleWave.length) {
+    const t = nearestPlayerTarget(idleWave[0].position);
+    if (t) commandAttackMove(idleWave, t.kind === 'unit' ? t.position.clone() : approachPoint(t, idleWave[0].position));
   }
 }
