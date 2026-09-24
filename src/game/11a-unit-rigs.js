@@ -153,6 +153,10 @@ const WEAPONS = {
     piece(arm, UG.box, DARK_METAL, { y: -0.6, z: 0.08, sx: 0.24, sy: 0.04, sz: 0.04, metal: true });
     piece(arm, taper(0.025, 0.025, 0.16, 6), LEATHER, { y: -0.6, z: -0.02, rx: Math.PI / 2 });
   },
+  axe(arm) {
+    piece(arm, taper(0.025, 0.025, 0.55, 6), WOOD, { y: -0.6, z: 0.22, rx: Math.PI / 2 });
+    piece(arm, UG.box, 0xa8adb5, { y: -0.52, z: 0.46, sx: 0.04, sy: 0.2, sz: 0.14, metal: true });
+  },
   katana(arm) {
     piece(arm, UG.box, 0xc8ccd2, { y: -0.6, z: 0.5, sx: 0.035, sy: 0.018, sz: 0.8, rx: -0.06, metal: true });
     piece(arm, taper(0.05, 0.05, 0.02, 10), GOLD, { y: -0.6, z: 0.09, rx: Math.PI / 2, metal: true });
@@ -214,6 +218,9 @@ function buildVillagerRig(team, arch, female) {
 function soldierLook(arch, team, kind) {
   const L = REGION_LOOK[arch], T = teamOf(team);
   const base = { skin: upick(L.skin), hair: upick(L.hair), pants: upick(L.pants), boots: L.boots, belt: LEATHER };
+  if (kind === 'throwingaxe') return { ...base, top: T.color, top2: 0x7a5a38, sleeves: 0x8a7a5a, beard: base.hair };
+  if (kind === 'mameluke') return { ...base, top: T.color, top2: 0xe8dcc0, sleeves: 0xe8dcc0, beard: base.hair };
+  if (kind === 'samurai') return { ...base, top: T.color, top2: 0x2a2622, sleeves: 0x2a2622 };
   if (arch === 'western') {
     if (kind === 'archer') return { ...base, top: 0x5a6a3a, top2: T.color, sleeves: 0x6a5a3a };
     if (kind === 'spearman') return { ...base, top: T.color, top2: 0xb8a882, sleeves: 0xb8a882 };
@@ -232,15 +239,15 @@ function soldierLook(arch, team, kind) {
 /* Detalls d'armadura sobre el tors */
 function armorDetails(torso, arch, team, kind) {
   const T = teamOf(team);
-  if (arch === 'western' && (kind === 'militia' || kind === 'knight')) {
+  if (arch === 'western' && (kind === 'militia' || kind === 'knight' || kind === 'throwingaxe')) {
     piece(torso, taper(0.32, 0.36, 0.5, 12), 0x8a9098, { y: 1.28, sz: 0.8, metal: true });
     piece(torso, UG.box, T.color, { y: 1.15, z: 0.02, sx: 0.44, sy: 0.72, sz: 0.62 });
   }
-  if (arch === 'middleeast' && (kind === 'militia' || kind === 'knight' || kind === 'spearman')) {
+  if (arch === 'middleeast' && (kind === 'militia' || kind === 'knight' || kind === 'spearman' || kind === 'mameluke')) {
     piece(torso, taper(0.32, 0.35, 0.46, 12), 0x8a9098, { y: 1.3, sz: 0.8, metal: true });
     piece(torso, UG.box, T.color, { y: 1.25, z: 0.2, sx: 0.36, sy: 0.5, sz: 0.04 });
   }
-  if (arch === 'eastasian' && kind !== 'archer') {
+  if (arch === 'eastasian' && kind !== 'archer' && kind !== 'mameluke' && kind !== 'throwingaxe') {
     // Dō lacat amb cordons de l'equip i faldons
     for (let i = 0; i < 4; i++) piece(torso, taper(0.33 - i * 0.005, 0.34, 0.12, 12), i % 2 ? 0x2a2622 : T.colorDark, { y: 1.12 + i * 0.12, sz: 0.8, metal: i % 2 === 1 });
     for (const s of [-1, 1]) piece(torso, UG.box, 0x2a2622, { x: s * 0.36, y: 1.48, sx: 0.2, sy: 0.08, sz: 0.3, rz: s * 0.3, metal: true });
@@ -254,6 +261,29 @@ function buildSoldierRig(kind, team, arch) {
   const P = humanBody(rig, look);
   armorDetails(P.torso, arch, team, kind);
   const t = P.torso;
+  // Unitats úniques
+  if (kind === 'throwingaxe') {
+    HATS.coif(t, 0x7a5a38);
+    WEAPONS.axe(P.armR);
+    for (const s of [-1, 1]) piece(t, UG.box, 0x9ca3ad, { x: s * 0.2, y: 1.02, z: 0.26, sx: 0.03, sy: 0.14, sz: 0.1, metal: true });
+    piece(t, taper(0.3, 0.3, 0.05, 14), T.color, { x: 0, y: 1.3, z: -0.3, rx: Math.PI / 2 });
+    return { rig, parts: P };
+  }
+  if (kind === 'mameluke') {
+    HATS.turban(t, 0xf0ece0);
+    piece(t, UG.box, T.color, { y: 1.3, z: -0.25, sx: 0.5, sy: 0.7, sz: 0.04, rx: 0.15 });
+    WEAPONS.sword(P.armR, true);
+    return { rig, parts: P };
+  }
+  if (kind === 'samurai') {
+    HATS.kabuto(t, GOLD);
+    WEAPONS.katana(P.armR);
+    // Sashimono: bandera a l'esquena amb el color de l'equip
+    piece(t, taper(0.02, 0.02, 1.4, 6), 0x2a2622, { y: 2.1, z: -0.3 });
+    piece(t, UG.box, T.color, { x: 0.13, y: 2.45, z: -0.3, sx: 0.25, sy: 0.6, sz: 0.02 });
+    piece(t, UG.sphere, 0xf2eee4, { x: 0.13, y: 2.5, z: -0.29, sx: 0.08, sy: 0.08, sz: 0.02 });
+    return { rig, parts: P };
+  }
   // Cap
   if (arch === 'western') {
     if (kind === 'archer') HATS.hood(t, 0x4a5a30);
@@ -369,6 +399,111 @@ function buildCart(rig, team, arch) {
   if (arch === 'eastasian') piece(c, UG.box, T.color, { y: 1.9, z: -0.55, sx: 0.3, sy: 0.05, sz: 1.6 });
 }
 
+/* ---------- Camell (Mameluc) ---------- */
+function buildCamelMount(rig, team) {
+  const T = teamOf(team);
+  const hide = upick([0xc4a070, 0xb8905e, 0xd0b080]);
+  const body = rigPart(rig, 'horse');
+  piece(body, UG.sphere, hide, { y: 1.7, sx: 0.42, sy: 0.46, sz: 0.95 });
+  piece(body, UG.sphere, hide, { y: 2.12, z: -0.1, sx: 0.3, sy: 0.3, sz: 0.4 });
+  piece(body, taper(0.12, 0.2, 1.0, 8), hide, { y: 2.05, z: 0.95, rx: 0.35 });
+  piece(body, UG.box, hide, { y: 2.55, z: 1.28, sx: 0.18, sy: 0.2, sz: 0.46 });
+  piece(body, UG.cone, hide, { y: 1.55, z: -0.95, rx: -2.4, sx: 0.06, sy: 0.4, sz: 0.06 });
+  piece(body, UG.box, T.color, { y: 2.18, z: 0.2, sx: 0.9, sy: 0.05, sz: 0.8 });
+  for (const s of [-1, 1]) piece(body, UG.box, 0x8a2a2a, { x: s * 0.44, y: 1.85, z: 0.2, sx: 0.04, sy: 0.4, sz: 0.7 });
+  const legs = [];
+  for (const [lx, lz, name] of [[-0.22, 0.6, 'hFL'], [0.22, -0.6, 'hBR'], [0.22, 0.6, 'hFR'], [-0.22, -0.6, 'hBL']]) {
+    const leg = rigPart(rig, name, lx, 1.45, lz);
+    piece(leg, taper(0.09, 0.06, 1.36, 8), hide, { y: -0.68 });
+    piece(leg, taper(0.08, 0.1, 0.08, 8), 0x3a2e24, { y: -1.4 });
+    legs.push(leg);
+  }
+  return legs;
+}
+
+/* ---------- Màquines de setge ---------- */
+function siegeLook(arch) {
+  if (arch === 'middleeast') return { wood: 0x8a6a48, dark: 0x5a4028, roof: 0xc9a878 };
+  if (arch === 'eastasian') return { wood: 0x3a2c22, dark: 0x241a14, roof: 0x9a8a50 };
+  return { wood: 0x7a5232, dark: 0x4a3220, roof: 0x6a4a2a };
+}
+function siegeWheel(rig, name, x, y, z, r, color) {
+  const w = rigPart(rig, name, x, y, z);
+  piece(w, taper(r, r, 0.12, 14), color, { rz: Math.PI / 2 });
+  piece(w, taper(r * 0.3, r * 0.3, 0.16, 8), 0x2a2622, { rz: Math.PI / 2, metal: true });
+  for (let k = 0; k < 4; k++) piece(w, UG.box, 0x2a2622, { sx: 0.06, sy: r * 1.9, sz: 0.06, rx: k * Math.PI / 4 });
+  return w;
+}
+function buildRam(rig, team, arch) {
+  const L = siegeLook(arch), T = teamOf(team);
+  const b = rigPart(rig, 'frame');
+  piece(b, UG.box, L.wood, { y: 0.55, sx: 1.4, sy: 0.14, sz: 3.0 });
+  for (const s of [-1, 1]) for (const z of [-1.2, 0, 1.2]) piece(b, UG.box, L.dark, { x: s * 0.62, y: 1.2, z, sx: 0.12, sy: 1.3, sz: 0.12 });
+  // Coberta a dues aigües (pells, lones o palla segons la regió)
+  for (const s of [-1, 1]) piece(b, UG.box, L.roof, { x: s * 0.42, y: 1.95, sx: 1.05, sy: 0.08, sz: 3.2, rz: -s * 0.75 });
+  piece(b, UG.box, T.color, { y: 2.35, sx: 0.16, sy: 0.1, sz: 3.25 });
+  for (const s of [-1, 1]) piece(b, UG.box, L.roof, { x: s * 0.72, y: 1.1, sx: 0.04, sy: 0.9, sz: 2.8 });
+  const log = rigPart(rig, 'ramLog', 0, 1.05, 0);
+  piece(log, taper(0.2, 0.2, 3.4, 10), 0x5a4030, { z: 0.4, rx: Math.PI / 2 });
+  piece(log, UG.cone, 0x4a4e55, { z: 2.25, rx: Math.PI / 2, sx: 0.26, sy: 0.4, sz: 0.26, metal: true });
+  for (const z of [-0.6, 0.8]) piece(log, UG.box, 0x3a2616, { y: 0.45, z, sx: 0.04, sy: 0.8, sz: 0.04 });
+  return [[-0.75, 0.42, -1.1], [0.75, 0.42, -1.1], [-0.75, 0.42, 1.1], [0.75, 0.42, 1.1]].map(([x, y, z], i) => siegeWheel(rig, 'wheel' + i, x, y, z, 0.42, L.dark));
+}
+function buildMangonel(rig, team, arch) {
+  const L = siegeLook(arch), T = teamOf(team);
+  const b = rigPart(rig, 'frame');
+  for (const s of [-1, 1]) piece(b, UG.box, L.wood, { x: s * 0.55, y: 0.5, sx: 0.16, sy: 0.18, sz: 2.6 });
+  for (const z of [-1.0, 0.2, 1.1]) piece(b, UG.box, L.wood, { y: 0.5, z, sx: 1.25, sy: 0.14, sz: 0.16 });
+  for (const s of [-1, 1]) piece(b, UG.box, L.dark, { x: s * 0.55, y: 1.25, z: 0.55, sx: 0.14, sy: 1.5, sz: 0.14 });
+  piece(b, UG.box, L.dark, { y: 1.95, z: 0.55, sx: 1.3, sy: 0.14, sz: 0.16 });
+  piece(b, taper(0.2, 0.2, 1.0, 10), 0xb8a070, { y: 0.62, z: -0.5, rz: Math.PI / 2 });
+  piece(b, UG.box, T.color, { x: 0.6, y: 2.2, z: 0.55, sx: 0.04, sy: 0.4, sz: 0.3 });
+  const arm = rigPart(rig, 'throwArm', 0, 0.65, -0.5);
+  piece(arm, UG.box, L.wood, { y: 0.02, z: 0.85, sx: 0.12, sy: 0.12, sz: 1.9, rx: -0.35 });
+  piece(arm, UG.hemi, L.dark, { y: 0.42, z: 1.75, sx: 0.28, sy: -0.2, sz: 0.28 });
+  return [[-0.7, 0.36, -0.9], [0.7, 0.36, -0.9], [-0.7, 0.36, 0.9], [0.7, 0.36, 0.9]].map(([x, y, z], i) => siegeWheel(rig, 'wheel' + i, x, y, z, 0.36, L.dark));
+}
+function buildScorpion(rig, team, arch) {
+  const L = siegeLook(arch), T = teamOf(team);
+  const b = rigPart(rig, 'frame');
+  piece(b, UG.box, L.wood, { y: 0.6, sx: 0.9, sy: 0.14, sz: 1.4 });
+  piece(b, UG.box, L.wood, { y: 1.05, z: 0.1, sx: 0.18, sy: 0.16, sz: 1.9 });
+  for (const s of [-1, 1]) piece(b, UG.box, L.dark, { x: s * 0.4, y: 0.85, z: 0.3, sx: 0.1, sy: 0.5, sz: 0.1 });
+  for (const s of [-1, 1]) piece(b, UG.box, L.dark, { x: s * 0.7, y: 1.12, z: 0.75, sx: 1.1, sy: 0.08, sz: 0.08, ry: s * 0.35 });
+  piece(b, taper(0.13, 0.13, 0.5, 8), 0xb8a070, { y: 1.12, z: 0.8, rz: Math.PI / 2 });
+  piece(b, taper(0.03, 0.03, 1.4, 5), 0x5a3a1e, { y: 1.18, z: 0.4, rx: Math.PI / 2 });
+  piece(b, UG.box, T.color, { y: 0.62, z: -0.72, sx: 0.8, sy: 0.3, sz: 0.04 });
+  const str = rigPart(rig, 'bowString', 0, 1.14, 0);
+  for (const s of [-1, 1]) piece(str, UG.box, 0xe8e0d0, { x: s * 0.5, z: 0.95, sx: 1.0, sy: 0.02, sz: 0.02, ry: -s * 0.55 });
+  return [[-0.55, 0.38, -0.3], [0.55, 0.38, -0.3]].map(([x, y, z], i) => siegeWheel(rig, 'wheel' + i, x, y, z, 0.38, L.dark));
+}
+function buildTrebuchet(rig, team, arch) {
+  const L = siegeLook(arch), T = teamOf(team);
+  // Desmuntat: carro llarg amb la biga plegada
+  const packed = rigPart(rig, 'packedPart');
+  piece(packed, UG.box, L.wood, { y: 0.7, sx: 1.2, sy: 0.16, sz: 3.6 });
+  piece(packed, UG.box, L.dark, { y: 1.0, z: 0.2, sx: 0.22, sy: 0.22, sz: 4.2 });
+  piece(packed, UG.box, 0x5a5a5a, { y: 1.15, z: -1.4, sx: 0.8, sy: 0.6, sz: 0.7, metal: true });
+  piece(packed, UG.box, T.color, { y: 1.18, z: 0.8, sx: 0.9, sy: 0.05, sz: 1.2 });
+  // Muntat: torre en A, biga amb contrapès i fona
+  const dep = rigPart(rig, 'deployedPart');
+  for (const s of [-1, 1]) {
+    piece(dep, UG.box, L.wood, { x: s * 0.8, y: 0.3, sx: 0.2, sy: 0.2, sz: 3.6 });
+    piece(dep, UG.box, L.dark, { x: s * 0.7, y: 2.3, z: 0.7, sx: 0.18, sy: 4.3, sz: 0.18, rx: -0.33 });
+    piece(dep, UG.box, L.dark, { x: s * 0.7, y: 2.3, z: -0.7, sx: 0.18, sy: 4.3, sz: 0.18, rx: 0.33 });
+  }
+  for (const z of [-1.5, 1.5]) piece(dep, UG.box, L.wood, { y: 0.3, z, sx: 1.8, sy: 0.18, sz: 0.2 });
+  piece(dep, taper(0.1, 0.1, 1.7, 8), 0x2a2622, { y: 4.3, rz: Math.PI / 2, metal: true });
+  piece(dep, UG.box, T.color, { x: 0.95, y: 3.6, sx: 0.04, sy: 0.7, sz: 0.5 });
+  const arm = rigPart(dep, 'deployArm', 0, 4.3, 0);
+  piece(arm, UG.box, L.wood, { z: 1.2, sx: 0.22, sy: 0.22, sz: 5.2 });
+  piece(arm, UG.box, 0x5a5a5a, { y: -0.7, z: -1.2, sx: 0.9, sy: 0.9, sz: 0.8, metal: true });
+  piece(arm, taper(0.01, 0.01, 1.6, 4), 0xd8d0c0, { y: -0.8, z: 3.8 });
+  piece(arm, UG.sphere, 0x8a7a62, { y: -1.6, z: 3.8, sx: 0.2, sy: 0.15, sz: 0.2 });
+  return [[-0.75, 0.42, -1.2], [0.75, 0.42, -1.2], [-0.75, 0.42, 1.2], [0.75, 0.42, 1.2]].map(([x, y, z], i) => siegeWheel(packed, 'wheel' + i, x, y, z, 0.42, L.dark));
+}
+const SIEGE_BUILDERS = { ram: buildRam, mangonel: buildMangonel, scorpion: buildScorpion, trebuchet: buildTrebuchet };
+
 /* ---------- Plantilles i instàncies ---------- */
 const UNIT_TEMPLATES = new Map();
 const UNIT_VARIANTS = 4;
@@ -378,7 +513,10 @@ function unitTemplate(kind, team, arch, variant) {
     let rig;
     const d = CONFIG.UNITS[kind];
     if (kind === 'villager') rig = buildVillagerRig(team, arch, variant % 2 === 1);
-    else if (kind === 'tradecart') {
+    else if (SIEGE_BUILDERS[kind]) {
+      rig = new THREE.Group();
+      SIEGE_BUILDERS[kind](rig, team, arch);
+    } else if (kind === 'tradecart') {
       rig = new THREE.Group();
       buildOx(rig, arch);
       buildCart(rig, team, arch);
@@ -393,7 +531,8 @@ function unitTemplate(kind, team, arch, variant) {
         for (const p of [s.parts.torso, s.parts.armL, s.parts.armR]) { rig.remove(p); rider.add(p); }
         rig.remove(s.parts.legL); rig.remove(s.parts.legR);
         for (const sx of [-1, 1]) piece(s.parts.torso, taper(0.1, 0.085, 0.62), soldierLook(arch, team, kind).pants, { x: sx * 0.3, y: 0.62, z: 0.1, rx: 0.5, rz: sx * 0.35 });
-        buildHorse(rig, team, arch, kind);
+        if (kind === 'mameluke') { rider.position.y = 1.18; buildCamelMount(rig, team); }
+        else buildHorse(rig, team, arch, kind);
       }
     }
     UNIT_TEMPLATES.set(key, bakeRig(rig));
@@ -408,7 +547,19 @@ function buildUnitVisual(e, kind, team) {
   const get = (n) => model.getObjectByName(n);
   e.model = model;
   const d = CONFIG.UNITS[kind];
-  if (kind === 'tradecart') {
+  if (d.cat === 'siege') {
+    e.legs = [new THREE.Object3D(), new THREE.Object3D()];
+    e.arms = [new THREE.Object3D(), new THREE.Object3D()];
+    e.wheels = [0, 1, 2, 3].map(i => get('wheel' + i)).filter(Boolean);
+    e.throwArm = get('throwArm') || get('deployArm');
+    e.deployArm = get('deployArm');
+    e.ramLog = get('ramLog');
+    e.bowString = get('bowString');
+    e.fireAnim = !!e.throwArm;
+    e.packedPart = get('packedPart');
+    e.deployedPart = get('deployedPart');
+    if (e.packedPart) { e.packedPart.visible = e.packed !== false; e.deployedPart.visible = e.packed === false; }
+  } else if (kind === 'tradecart') {
     e.legs = [0, 1, 2, 3].map(i => get('leg' + i));
     e.arms = [new THREE.Object3D(), new THREE.Object3D()];
     e.cargo = get('cargo');

@@ -114,7 +114,7 @@ function updateSelectionUI(panelOnly = false) {
       }
       if (first.trainQueue && first.isOwn && !first.underConstruction) {
         const items = first.trainQueue.map((it, i) =>
-          `<div class="q-item" data-idx="${i}" title="${itemDef(it.kind).name} · clic: cancel·lar (retorna ${costText(itemDef(it.kind).cost)})">${itemDef(it.kind).icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
+          `<div class="q-item" data-idx="${i}" title="${itemDef(it.kind).name} · clic: cancel·lar (retorna ${costText(it.paid || costFor(it.kind))})">${itemDef(it.kind).icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
         stats += `<div class="queue-row"><div class="queue" id="train-queue">${items || '<span class="q-empty">Cua buida</span>'}</div><div class="train-status" id="train-status"></div></div>`;
       }
     }
@@ -174,12 +174,13 @@ function updateSelectionUI(panelOnly = false) {
       if (tech && (T.techs.has(kind) || techQueued(T.id, kind))) continue;
       if (tech && d.ageUp && d.ageUp !== T.age + 1) continue;
       const locked = (d.age || 0) > T.age;
-      const b = makeActionButton(locked ? '🔒' : d.icon, d.name.length > 11 ? d.name.split(' ')[0] : d.name, costText(d.cost),
+      const cost = costFor(kind);
+      const b = makeActionButton(locked ? '🔒' : d.icon, d.name.length > 11 ? d.name.split(' ')[0] : d.name, costText(cost),
         kind === 'villager' ? 'C' : '', () => queueUnit(first, kind), true);
       b.dataset.item = kind;
       b.title = tech
-        ? `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
-        : `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`;
+        ? `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
+        : `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`;
       actionsEl.appendChild(b);
     }
     if (first.subtype === 'market') {
@@ -190,8 +191,8 @@ function updateSelectionUI(panelOnly = false) {
         actionsEl.appendChild(buy);
       }
       for (const r of ['food', 'wood', 'stone']) {
-        const sell = makeActionButton(RES_ICON[r], 'Ven', `+🪙 ${Math.floor(P[r] * 0.7)}`, '', () => marketTrade(PLAYER.id, r, false), true);
-        sell.title = `Ven 100 de ${RES_LABEL[r].toLowerCase()} per ${Math.floor(P[r] * 0.7)} d'or (el preu baixa)`;
+        const sell = makeActionButton(RES_ICON[r], 'Ven', `+🪙 ${Math.floor(P[r] * sellRate(PLAYER.id))}`, '', () => marketTrade(PLAYER.id, r, false), true);
+        sell.title = `Ven 100 de ${RES_LABEL[r].toLowerCase()} per ${Math.floor(P[r] * sellRate(PLAYER.id))} d'or (el preu baixa)`;
         actionsEl.appendChild(sell);
       }
     }
@@ -203,6 +204,12 @@ function updateSelectionUI(panelOnly = false) {
     } else {
       actionsEl.appendChild(makeActionButton('🗑️', 'Enderrocar', 'Supr', '', () => demolishBuilding(first), true));
     }
+    if (garrisonCap(first) > 0 && first.subtype !== 'towncenter') {
+      const n = first.garrison ? first.garrison.length : 0;
+      const g = makeActionButton('🚪', n ? 'Sortir' : 'Refugi', `${n}/${garrisonCap(first)}`, 'U', () => ungarrison(first), true);
+      g.title = 'Unitats a dins (cada una afegeix una fletxa). Clic dret amb tropes seleccionades per fer-les entrar. U: fer-les sortir';
+      actionsEl.appendChild(g);
+    }
   } else if (first.kind === 'unit' && first.isOwn && !builders().length) {
     // Només militars: aturar i postures de combat
     actionsEl.classList.add('compact');
@@ -212,6 +219,19 @@ function updateSelectionUI(panelOnly = false) {
     actionsEl.appendChild(stop);
     const cur = mil.every(u => u.stance === mil[0].stance) ? mil[0].stance : null;
     const keysSt = { aggressive: 'Z', defensive: 'V', stand: 'N' };
+    if (mil.some(u => u.canGround)) {
+      const g = makeActionButton('☄️', 'Atacar terra', '', 'T', () => setGroundMode(true), true);
+      g.title = 'Atacar el terra (T): el mangonell dispara a un punt, encara que no hi hagi ningú';
+      actionsEl.appendChild(g);
+    }
+    const tre = mil.filter(u => u.packable);
+    if (tre.length) {
+      const g = makeActionButton('🏗️', tre[0].packTo === false || !tre[0].packed ? 'Desmuntar' : 'Muntar', tre[0].packT > 0 ? 'treballant…' : '', 'G', () => { togglePack(tre); updateSelectionUI(); }, true);
+      g.title = 'Muntar / desmuntar el trabuc (G): muntat pot disparar, desmuntat es pot moure. Triga uns segons';
+      actionsEl.appendChild(g);
+    }
+    const carriers = mil.filter(u => u.garrison && u.garrison.length);
+    if (carriers.length) actionsEl.appendChild(makeActionButton('🚪', 'Sortir', `${carriers[0].garrison.length}`, 'U', () => carriers.forEach(c => ungarrison(c)), true));
     for (const [k, st] of Object.entries(STANCES)) {
       if (!mil.some(u => u.isMilitary)) break;
       const b = makeActionButton(st.icon, st.name, cur === k ? '● activa' : '', keysSt[k], () => setStance(mil.filter(u => u.isMilitary), k), true);
@@ -229,9 +249,9 @@ function updateSelectionUI(panelOnly = false) {
       if ((def.page || 0) !== buildPage) continue;
       const locked = (def.age || 0) > PLAYER.age;
       const hk = Object.entries(CONFIG.BUILD_KEYS).find(([, t]) => t === type);
-      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costText(def.cost), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
+      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costText(costFor(type)), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
       btn.dataset.build = type;
-      btn.title = `${def.name} — ${costText(def.cost)} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
+      btn.title = `${def.name} — ${costText(costFor(type))} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
       actionsEl.appendChild(btn);
     }
     const pageBtn = makeActionButton(buildPage ? '🏠' : '🛡️', buildPage ? 'Economia' : 'Militar', buildPage ? '◀ pàgina 1' : 'pàgina 2 ▶', '', () => { buildPage = 1 - buildPage; updateSelectionUI(); }, true);
@@ -256,6 +276,8 @@ function updateSelectionUI(panelOnly = false) {
 }
 
 /* Mercat: 100 unitats de recurs per or; cada operació mou el preu */
+/* Part del preu que es cobra en vendre (els Sarraïns paguen menys comissió) */
+function sellRate(team) { return civOf(team).mods.marketFee || 0.7; }
 function marketTrade(team, r, buy) {
   const T = teamOf(team), R = T.res, price = T.prices[r];
   if (buy) {
@@ -264,7 +286,7 @@ function marketTrade(team, r, buy) {
     T.prices[r] = Math.min(400, price + 6);
   } else {
     if (R[r] < 100) { if (team === PLAYER.id) toast(`Cal tenir 100 de ${RES_LABEL[r].toLowerCase()} per vendre`); return false; }
-    R[r] -= 100; R.gold += Math.floor(price * 0.7);
+    R[r] -= 100; R.gold += Math.floor(price * sellRate(team));
     T.prices[r] = Math.max(25, price - 6);
   }
   if (team === PLAYER.id) { updateResourcesUI(); updateSelectionUI(); }
@@ -274,9 +296,10 @@ function marketTrade(team, r, buy) {
 /* Llista d'unitats i tecnologies que ofereix un edifici */
 function buildingItems(b) {
   const out = [];
+  const civ = teamOf(b.team).civ;
   if (b.subtype === 'towncenter') out.push('villager');
-  if (b.def && b.def.trains) out.push(...b.def.trains);
-  for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.at === b.subtype) out.push(k);
+  if (b.def && b.def.trains) for (const k of b.def.trains) out.push(k === '@unique' ? uniqueUnitOf(b.team) : k);
+  for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.at === b.subtype && (!d.civ || d.civ === civ)) out.push(k);
   return out;
 }
 

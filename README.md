@@ -8,11 +8,14 @@ Obre **`index.html`** directament al navegador (doble clic). És un sol fitxer a
 
 Civilitzacions disponibles (es trien al menú d'inici), cadascuna amb arquitectura, vestits i dues bonificacions pròpies:
 
-| Civilització | Estil | Bonificacions |
-|---|---|---|
-| ⚜️ Francs | Europa occidental: entramat de fusta, palla i pedra | Cavalleria +20% de vida · Baies +15% |
-| 🌙 Sarraïns | Orient Mitjà: tova, arenisca, terrats, arcs i cúpules | Arquers +2 contra edificis · Comerç +20% d'or |
-| ⛩️ Japonesos | Àsia oriental: fusta fosca, parets blanques, teulades corbes | Infanteria ataca un 25% més ràpid · Fusta +10% |
+| Civilització | Estil | Unitat única (Castell) | Bonificacions |
+|---|---|---|---|
+| ⚜️ Francs | Europa occidental: entramat de fusta, palla i pedra | Llançador de destrals | Castells −25% · Cavalleria +20% vida · Baies +15% · Collar de cavall gratuït · *Destral barbuda* |
+| 🌙 Sarraïns | Orient Mitjà: tova, arenisca, terrats, arcs i cúpules | Mameluc (camell) | Arquers +2 contra edificis · Comerç +20% · Mercat −75 fusta · Menys comissió · *Zelotisme* |
+| ⛩️ Japonesos | Àsia oriental: fusta fosca, parets blanques, teulades corbes | Samurai | Infanteria +25% velocitat d'atac · Magatzems a meitat de preu · Fusta +10% · Torres +2 visió · *Yasama* |
+
+Setge i fortificacions (Edat dels Castells): **Castell** (fletxes, refugi per a 20 unitats, unitat única i trabucs) i **Taller de setge**
+(Ariet, Mangonell amb dany en àrea i atac al terra, Escorpí amb virots que travessen). El Trabuc s'ha de muntar per disparar.
 
 ## Desenvolupar
 

@@ -43,7 +43,7 @@ function aiBuild(type, near, minR, maxR, builders = 1) {
   if (!spot) return false;
   const who = aiPickBuilders(builders, near);
   if (!who.length) return false;
-  applyCost(def.cost, -1, AI.team);
+  applyCost(costFor(type, AI.team), -1, AI.team);
   const b = createBuilding(type, spot.x, spot.z, false, AI.team);
   commandBuild(who, b);
   return true;
@@ -150,13 +150,32 @@ function aiTick() {
     }
     if (!AI.saving) for (const k of ['wheelbarrow', 'doublebit', 'horsecollar', 'forging', 'goldmining', 'fletching', 'scalearmor']) if (res.food > 350) tryTech(k);
   }
-  if (E.age >= 2 && !AI.saving) tryTech('barding');
+  if (E.age >= 2 && !AI.saving) {
+    tryTech('barding');
+    // Edat dels Castells: taller de setge, castell i millores úniques
+    if (!has('siegeworkshop') && villagers.length >= 16 && res.wood >= 250) aiBuild('siegeworkshop', tc.position, 14, 32, 2);
+    if (!has('castle') && D !== DIFFICULTY.easy && canAfford(costFor('castle', T), T) && villagers.length >= 16) {
+      const toward = nearestPlayerTarget(tc.position);
+      const dir = toward ? new THREE.Vector3(toward.position.x - tc.position.x, 0, toward.position.z - tc.position.z).normalize() : new THREE.Vector3(-1, 0, -1).normalize();
+      aiBuild('castle', tc.position.clone().addScaledVector(dir, 20), 0, 16, 4);
+    }
+    if (hasCompleted('castle', T) && res.food > 900 && res.gold > 600) {
+      const u = uniqueUnitOf(T);
+      tryTech('elite_' + u);
+      for (const k of Object.keys(CONFIG.TECHS)) if (CONFIG.TECHS[k].civ === ENEMY.civ && !CONFIG.TECHS[k].elite) tryTech(k);
+    }
+  }
 
   // 4) Exèrcit (segons l'edat)
   for (const b of blds) {
     if (AI.saving) break;
     if (!b.def || !b.def.trains || b.underConstruction || b.trainQueue.length >= 2) continue;
-    const order = b.subtype === 'stable' ? ['knight', 'scout', 'knight'] : ['militia', 'archer', 'spearman', 'archer', 'spearman'];
+    const siegeCount = army.filter(u => u.category === 'siege').length;
+    if (b.subtype === 'siegeworkshop' && siegeCount >= (D === DIFFICULTY.hard ? 4 : 3)) continue;
+    const order = b.subtype === 'stable' ? ['knight', 'scout', 'knight']
+      : b.subtype === 'siegeworkshop' ? ['ram', 'mangonel', 'ram']
+      : b.subtype === 'castle' ? [uniqueUnitOf(T)]
+      : ['militia', 'archer', 'spearman', 'archer', 'spearman'];
     for (let k = 0; k < order.length; k++) {
       const kind = order[(AI.armyCycle + k) % order.length];
       if (!itemBlockReason(kind, T) && queueUnit(b, kind)) { AI.armyCycle++; break; }
@@ -166,7 +185,9 @@ function aiTick() {
   // 5) Aldeans inactius → a treballar segons les necessitats
   const gatherers = { food: 0, wood: 0, gold: 0, stone: 0 };
   for (const u of villagers) { const t = u.gatherNode ? u.gatherNode.resourceType : null; if (t) gatherers[t]++; }
-  const want = ENEMY.age >= 1 ? { food: 0.4, wood: 0.3, gold: 0.2, stone: 0.1 }
+  const wantCastle = ENEMY.age >= 2 && !has('castle') && D !== DIFFICULTY.easy;
+  const want = wantCastle ? { food: 0.35, wood: 0.25, gold: 0.2, stone: 0.2 }
+    : ENEMY.age >= 1 ? { food: 0.4, wood: 0.3, gold: 0.2, stone: 0.1 }
     : has('barracks') ? { food: 0.45, wood: 0.33, gold: 0.22 } : { food: 0.5, wood: 0.5, gold: 0 };
   for (const u of villagers) {
     if (u.state !== STATE.IDLE || u.garrisoned || u.orderQueue.length) continue;

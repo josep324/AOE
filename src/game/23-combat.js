@@ -13,11 +13,12 @@ function inAttackRange(u, t) {
   return d <= (u.range > 0 ? u.range : u.reach);
 }
 function isAttackable(t) {
-  return t && !t.dead && !t.garrisoned && (t.kind === 'unit' || t.kind === 'building' || (t.subtype === 'farm' && t.team));
+  return t && !t.dead && !t.garrisoned && (t.isGround || t.kind === 'unit' || t.kind === 'building' || (t.subtype === 'farm' && t.team));
 }
 
 function orderAttack(u, target, keepAttackMove = true) {
   if (!isAttackable(target) || target.team === u.team) return;
+  if (u.onlyBuildings && target.kind === 'unit' && target.category !== 'siege') return;   // ariets i trabucs: només edificis
   u.forcedTarget = false;
   if (!u.anchor || u.state === STATE.IDLE) u.anchor = u.position.clone();
   u.gatherNode = null;
@@ -53,6 +54,7 @@ function setStance(units, stance) {
 }
 /* Radi en què una unitat busca enemics segons la postura */
 function acquireRadius(u) {
+  if (u.packable) return u.range + u.radius;
   return u.stance === 'stand' ? (u.range > 0 ? u.range : u.reach) + u.radius + 0.6 : u.los;
 }
 function orderAttackMove(u, point) {
@@ -66,6 +68,7 @@ function findTargetNear(u, radius) {
   let best = null, bestD = Infinity;
   for (const e of unitsNear(u.position.x, u.position.z, radius, targetBuf)) {
     if (e.team === u.team || e.team === 0 || e.dead || e.garrisoned) continue;
+    if (u.onlyBuildings && e.category !== 'siege') continue;     // ariets i trabucs: només edificis i setge
     const d = hDist(e.position, u.position) * (e.isMilitary ? 1 : 1.25);
     if (d < radius && d < bestD) { bestD = d; best = e; }
   }
@@ -80,9 +83,9 @@ function findTargetNear(u, radius) {
 
 function performAttack(u, t) {
   if (u.range > 0) {
-    spawnArrow(new THREE.Vector3(u.position.x, 1.6, u.position.z), t, computeDamage(u.attack, t, 1, u.vsBuilding), u);
-  } else {
-    applyDamage(t, computeDamage(u.attack, t, 0, u.vsBuilding) + (t.category === 'cavalry' ? u.bonusCav || 0 : 0), u);
+    fireProjectile(u, t);
+  } else if (!t.isGround) {
+    applyDamage(t, hitDamage(u, t, 0), u);
     const dir = new THREE.Vector3(t.position.x - u.position.x, 0, t.position.z - u.position.z).normalize();
     spawnParticles(new THREE.Vector3(u.position.x + dir.x * 0.8, 1.1, u.position.z + dir.z * 0.8),
       t.kind === 'building' ? 0x9b958a : 0xb02020, 3, dir);
@@ -115,6 +118,7 @@ function killEntity(e, killer) {
   e.dead = true;
   e.hp = 0;
   if (e.kind === 'unit') {
+    if (e.garrison && e.garrison.length) ungarrison(e);
     state.units = state.units.filter(u => u !== e);
     e.deathKind = 'unit';
     e.model.rotation.set(0, 0, 0);
@@ -154,7 +158,7 @@ function spawnArrow(from, target, dmg, shooter, delay = 0) {
   scene.add(g);
   const end = aimPoint(target);
   const dist = from.distanceTo(end);
-  state.projectiles.push({ g, start: from.clone(), end, target, dmg, shooter, t: -delay, T: Math.max(0.2, dist / 30), dist });
+  state.projectiles.push({ g, start: from.clone(), end, target, dmg, shooter, t: -delay, T: Math.max(0.2, dist / 30), dist, homing: true });
 }
 function updateProjectiles(dt) {
   const prev = new THREE.Vector3();
@@ -162,16 +166,18 @@ function updateProjectiles(dt) {
     const p = state.projectiles[i];
     p.t += dt;
     if (p.t < 0) continue;
-    if (p.target && !p.target.dead && !p.target.garrisoned) p.end.copy(aimPoint(p.target));
+    if (p.homing && p.target && !p.target.dead && !p.target.garrisoned) p.end.copy(aimPoint(p.target));
     const k = Math.min(1, p.t / p.T);
     prev.copy(p.g.position);
     p.g.position.lerpVectors(p.start, p.end, k);
-    p.g.position.y += Math.sin(k * Math.PI) * p.dist * 0.12;
-    if (p.g.visible) p.g.lookAt(p.g.position.clone().multiplyScalar(2).sub(prev));
+    p.g.position.y += Math.sin(k * Math.PI) * p.dist * (p.arcK ?? 0.12);
+    if (p.spin) p.g.rotation.x += dt * p.spin;
+    else if (p.g.visible) p.g.lookAt(p.g.position.clone().multiplyScalar(2).sub(prev));
     // Les fletxes es veuen si el tirador o l'objectiu són visibles
     p.g.visible = (p.shooter && p.shooter.group.visible) || (p.target && p.target.group && p.target.group.visible);
     if (k >= 1) {
-      if (p.target && !p.target.dead && !p.target.garrisoned) applyDamage(p.target, p.dmg, p.shooter);
+      if (p.onHit) p.onHit(p);
+      else if (p.target && !p.target.dead && !p.target.garrisoned) applyDamage(p.target, p.dmg, p.shooter);
       scene.remove(p.g);
       state.projectiles.splice(i, 1);
     }
@@ -203,8 +209,9 @@ function updateDefensiveBuildings(dt) {
     }
     if (!target) { b.arrowCooldown = 0.3; continue; }
     b.arrowCooldown = C.reload;
-    const arrows = 1 + Math.min(10, b.garrison ? b.garrison.length : 0);
-    const spread = isTC ? 3.5 : 0.6;
+    const M = teamOf(b.team).mods;
+    const arrows = (C.count || 1) + (isTC ? 0 : M.towerArrows) + Math.min(b.subtype === 'castle' ? 20 : 10, b.garrison ? b.garrison.length : 0);
+    const spread = isTC ? 3.5 : b.subtype === 'castle' ? 4 : 0.6;
     const dmg = C.damage + teamOf(b.team).mods.buildingArrow;
     for (let i = 0; i < arrows; i++) {
       const from = new THREE.Vector3(b.position.x + randRange(-spread, spread), (isTC ? 5.5 : (b.height || 7) - 1) + rand(), b.position.z + randRange(-spread, spread));
@@ -222,7 +229,7 @@ function orderGarrison(u, b) {
 }
 function enterGarrison(u, b) {
   if (!b.garrison) b.garrison = [];
-  if (b.garrison.length >= CONFIG.GARRISON_MAX || b.dead) {
+  if (b.garrison.length >= garrisonCap(b) || b.dead) {
     u.garrisonTarget = null;
     setUnitState(u, STATE.IDLE);
     return;
@@ -234,6 +241,8 @@ function enterGarrison(u, b) {
   setUnitState(u, STATE.GARRISONED);
   u.group.visible = false;
   if (u.selected) { removeFromSelection(u); onSelectionChanged(); }
+  refreshContainer(b);
+  if (b.selected) updateSelectionUI();
 }
 function ungarrison(b) {
   if (!b.garrison) return;
@@ -251,6 +260,7 @@ function ungarrison(b) {
     else if (prev && prev.type) { u.lastResourceType = prev.type; u.lastNodePos.copy(u.position); findNextResource(u); }
   }
   b.garrison = [];
+  refreshContainer(b);
   if (b.selected) updateSelectionUI();
 }
 function ringTownBell(tc) {

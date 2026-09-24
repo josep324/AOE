@@ -230,6 +230,42 @@ ARCH.eastasian = {
     kNobori(g, team, 1.3, 1.3, 2.8);
     return 7.8;
   },
+  castle(g, { team }) {
+    // Torre principal (tenshu) de diversos pisos sobre un gran sòcol de granit
+    eaStoneBase(g, 9.8, 9.8, 2.4);
+    for (const [x, z, w, d] of [[0, 4.5, 8.4, 0.5], [0, -4.5, 8.4, 0.5], [4.5, 0, 0.5, 8.4], [-4.5, 0, 0.5, 8.4]]) {
+      kbox(g, w, 1.2, d, KM.whiteplaster, x, 3.0, z);
+      hipRoof(g, { w: w + 0.2, d: d + 0.2, h: 0.3, over: 0.2, y0: 3.6, x, z, roofMat: KM.kawara, ridge: 0 });
+    }
+    eaBody(g, { w: 6.4, d: 5.6, h: 2.3, y0: 2.4, lower: false });
+    eaRoof(g, { w: 6.4, d: 5.6, h: 1.1, y0: 4.7, over: 0.7, lift: 0.4 });
+    eaBody(g, { w: 5.0, d: 4.3, h: 1.9, y0: 5.5, lower: false });
+    eaRoof(g, { w: 5.0, d: 4.3, h: 1.0, y0: 7.4, over: 0.6, lift: 0.38 });
+    eaBody(g, { w: 3.6, d: 3.0, h: 1.7, y0: 8.1, lower: false });
+    for (const x of [-0.9, 0, 0.9]) kbox(g, 0.5, 0.8, 0.05, KM.paper, x, 9.0, 1.53);
+    eaRoof(g, { w: 3.6, d: 3.0, h: 1.6, y0: 9.8, over: 0.65, lift: 0.45, gold: true });
+    // Frontons corbats (chidori-hafu) a la façana
+    for (const [y, w] of [[4.9, 2.4], [7.6, 1.8]]) kgable(g, w, 0.9, KM.whiteplaster, 0, y, 2.9 - (y > 6 ? 0.7 : 0), 0);
+    // Portalada i banderes
+    kbox(g, 2.4, 0.3, 1.6, KM.granite, 0, 0.15, 5.2);
+    for (const sx of [-1, 1]) kbox(g, 0.22, 2.8, 0.22, KM.darkwood, sx * 0.9, 1.4, 5.0);
+    eaRoof(g, { w: 2.4, d: 0.8, h: 0.4, y0: 2.8, z: 5.0, over: 0.3, lift: 0.15 });
+    for (const [x, z] of [[-4.6, 4.9], [4.6, 4.9], [-4.6, -4.9], [4.6, -4.9]]) kNobori(g, team, x, z, 5.4);
+    kNoren(g, team, 0, 2.6, 5.12, 1.6);
+    return 13.0;
+  },
+  siegeworkshop(g, { team }) {
+    kbox(g, 6.6, 0.3, 3.8, KM.granite, 0, 0.15, -1.5);
+    kbox(g, 6.0, 2.4, 0.2, KM.darkplanks, 0, 1.5, -3.2);
+    for (const sx of [-1, 1]) kbox(g, 0.2, 2.4, 3.4, KM.darkplanks, sx * 3.0, 1.5, -1.5);
+    for (const x of [-3.0, -1, 1, 3.0]) kbox(g, 0.18, 2.6, 0.18, KM.darkwood, x, 1.6, 0.2);
+    eaRoof(g, { w: 6.2, d: 3.6, h: 1.4, y0: 2.8, z: -1.5, over: 0.55, lift: 0.35 });
+    kRamFrame(g, -1.2, -1.4, Math.PI / 2, KM.darkwood);
+    kWheelProp(g, 1.8, 1.4, 0.6, false, KM.darkwood); kWheelProp(g, 2.5, 2.2, 0.55, true, KM.darkwood);
+    kLogPile(g, -1.8, 2.0, 0, 3, 1.8);
+    kNobori(g, team, 3.0, 2.8, 3.8);
+    return 4.6;
+  },
   stonewall(g) {
     eaStoneBase(g, 1.04, 1.04, 1.1);
     kbox(g, 0.8, 1.4, 0.8, KM.whiteplaster, 0, 1.8, 0);

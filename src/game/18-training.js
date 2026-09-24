@@ -36,6 +36,18 @@ function applyCost(cost, sign = -1, team = PLAYER.id) {
   for (const [k, v] of Object.entries(cost)) r[k] += sign * v;
   if (team === PLAYER.id) updateResourcesUI();
 }
+/* Cost d'un edifici, unitat o tecnologia per a un equip (bonificacions de civilització incloses) */
+function costFor(kind, team = PLAYER.id) {
+  const def = CONFIG.BUILDINGS[kind] || CONFIG.UNITS[kind] || CONFIG.TECHS[kind];
+  const base = (def && def.cost) || {};
+  const C = CIVS[teamOf(team).civ];
+  const m = C && C.mods.cost ? C.mods.cost[kind] : undefined;
+  if (m === undefined) return base;
+  if (typeof m === 'number') return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.round(v * m)]));
+  return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.max(0, v + (m[k] || 0))]));
+}
+/* Unitat única de la civilització d'un equip */
+function uniqueUnitOf(team) { return (CIVS[teamOf(team).civ] || CIVS.franks).unique; }
 function costText(cost) {
   return Object.entries(cost).map(([k, v]) => `${RES_ICON[k]} ${v}`).join(' ');
 }
@@ -70,6 +82,8 @@ function distinctBuilt(team, list) {
 function itemBlockReason(kind, team = PLAYER.id) {
   const d = itemDef(kind), T = teamOf(team);
   if ((d.age || 0) > T.age) return `Requereix: ${CONFIG.AGES[d.age].name}`;
+  const onlyFor = d.civ || d.unique;
+  if (onlyFor && onlyFor !== T.civ) return `Només per als ${CIVS[onlyFor].name}`;
   if (isTech(kind)) {
     if (T.techs.has(kind)) return 'Ja investigada';
     if (techQueued(team, kind)) return 'En investigació';
@@ -81,7 +95,7 @@ function itemBlockReason(kind, team = PLAYER.id) {
       }
     }
   }
-  if (!canAfford(d.cost, team)) return `Recursos insuficients: cal ${costText(d.cost)}`;
+  if (!canAfford(costFor(kind, team), team)) return `Recursos insuficients: cal ${costText(costFor(kind, team))}`;
   return null;
 }
 
@@ -93,17 +107,18 @@ function queueUnit(building, kind) {
   if (building.trainQueue.length >= CONFIG.QUEUE_MAX) { if (own) toast(`Cua plena (màxim ${CONFIG.QUEUE_MAX})`); return false; }
   const block = itemBlockReason(kind, building.team);
   if (block && !block.startsWith('Recursos')) { if (own) toast(block); return false; }
-  if (!canAfford(def.cost, building.team)) {
+  const cost = costFor(kind, building.team);
+  if (!canAfford(cost, building.team)) {
     if (own) {
       const r = resOf(building.team);
-      const missing = Object.entries(def.cost).filter(([k, v]) => r[k] < v).map(([k]) => RES_LABEL[k].toLowerCase());
-      toast(`Recursos insuficients: cal ${costText(def.cost)} (falta ${missing.join(', ')})`);
+      const missing = Object.entries(cost).filter(([k, v]) => r[k] < v).map(([k]) => RES_LABEL[k].toLowerCase());
+      toast(`Recursos insuficients: cal ${costText(cost)} (falta ${missing.join(', ')})`);
     }
     return false;
   }
   if (!isTech(kind) && popUsed(building.team) >= CONFIG.POP_CAP) { if (own) toast('Límit de població assolit'); return false; }
-  applyCost(def.cost, -1, building.team);
-  building.trainQueue.push({ kind, t: 0 });
+  applyCost(cost, -1, building.team);
+  building.trainQueue.push({ kind, t: 0, paid: cost });
   if (state.selected.includes(building)) updateSelectionUI(true);
   return true;
 }
@@ -125,12 +140,18 @@ function applyTechEffect(team, kind) {
     case 'fletching': M.attack.archer += 1; M.range.archer += 1; M.buildingArrow += 1; break;
     case 'scalearmor': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 1]; break;
     case 'barding': M.armor.cavalry = [M.armor.cavalry[0] + 1, M.armor.cavalry[1] + 1]; break;
+    case 'beardedaxe': M.unitRange.throwingaxe = (M.unitRange.throwingaxe || 0) + 1; break;
+    case 'zealotry': M.unitHp.mameluke = (M.unitHp.mameluke || 0) + 20; break;
+    case 'yasama': M.towerArrows += 2; break;
+    case 'masonry': M.buildingHpMul *= 1.1; M.buildingArmor += 1; break;
+    default: if (d.elite) M.elite[d.elite] = true;
   }
 }
 function completeTech(team, kind) {
   const d = CONFIG.TECHS[kind];
   applyTechEffect(team, kind);
   for (const u of state.units) if (u.team === team) setUnitStats(u, u.unitKind);
+  if (kind === 'masonry') for (const b of state.buildings) if (b.team === team) applyBuildingMods(b, 1.1);
   if (team === PLAYER.id) {
     toast(d.ageUp ? `🎉 Heu avançat a l'${d.name}!` : `🔬 Tecnologia investigada: ${d.name}`);
     updateAgeUI();
@@ -145,7 +166,7 @@ function cancelQueued(building, idx) {
   const item = building.trainQueue[idx];
   if (!item) return;
   building.trainQueue.splice(idx, 1);
-  applyCost(itemDef(item.kind).cost, +1, building.team);
+  applyCost(item.paid || costFor(item.kind, building.team), +1, building.team);
   if (state.selected.includes(building)) updateSelectionUI(true);
 }
 

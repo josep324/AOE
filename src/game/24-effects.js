@@ -49,8 +49,8 @@ function depleteResource(node) {
   if (node.subtype === 'farm') {
     const T = teamOf(node.team);
     const farmers = state.units.filter(u => u.gatherNode === node && !u.dead);
-    if (T.mods.autoReseed && canAfford(CONFIG.BUILDINGS.farm.cost, node.team) && canPlace('farm', node.position.x, node.position.z)) {
-      applyCost(CONFIG.BUILDINGS.farm.cost, -1, node.team);
+    if (T.mods.autoReseed && canAfford(costFor('farm', node.team), node.team) && canPlace('farm', node.position.x, node.position.z)) {
+      applyCost(costFor('farm', node.team), -1, node.team);
       const nf = createBuilding('farm', node.position.x, node.position.z, false, node.team);
       farmers.forEach(u => { u.reseedFarm = nf; });
       if (node.team === PLAYER.id) toast('🔁 Granja resembrada automàticament');

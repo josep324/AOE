@@ -29,7 +29,7 @@ function buildBlockReason(type, team = PLAYER.id) {
   const def = CONFIG.BUILDINGS[type];
   if ((def.age || 0) > teamOf(team).age) return `Requereix: ${CONFIG.AGES[def.age].name}`;
   if (def.requires && !hasCompleted(def.requires, team)) return `Requereix: ${CONFIG.BUILDINGS[def.requires].name}`;
-  if (!canAfford(def.cost, team)) return `Recursos insuficients: cal ${costText(def.cost)}`;
+  if (!canAfford(costFor(type, team), team)) return `Recursos insuficients: cal ${costText(costFor(type, team))}`;
   return null;
 }
 const WALL_GHOST_GEO = new THREE.BoxGeometry(1, 2.2, 1).translate(0, 1.1, 0);
@@ -44,7 +44,7 @@ function startPlacement(type) {
     const g = new THREE.Group();
     scene.add(g);
     Object.assign(placing, { type, ghost: g, wall: true, start: null, cells: [], pool: [], valid: false, chain: 0, overlay: null });
-    toast(`${def.name}: prem i arrossega per traçar la línia (${costText(def.cost)} per tram)`);
+    toast(`${def.name}: prem i arrossega per traçar la línia (${costText(costFor(type))} per tram)`);
     updatePlacement();
     return;
   }
@@ -114,7 +114,7 @@ function updateWallPlacement(p) {
   const cells = placing.start ? lineCells(placing.start[0], placing.start[1], cur[0], cur[1]) : [cur];
   const def = CONFIG.BUILDINGS[placing.type];
   const res = resOf(PLAYER.id);
-  const perCost = def.cost;
+  const perCost = costFor(placing.type);
   let affordable = Infinity;
   for (const [k, v] of Object.entries(perCost)) affordable = Math.min(affordable, Math.floor(res[k] / v));
   while (placing.pool.length < cells.length) {
@@ -149,8 +149,8 @@ function confirmWall(shift) {
   createBuilding.batch = true;
   const segs = [];
   for (const [x, z] of cells) {
-    if (!canAfford(def.cost)) break;
-    applyCost(def.cost);
+    if (!canAfford(costFor(placing.type))) break;
+    applyCost(costFor(placing.type));
     segs.push(createBuilding(type, x, z, false));
   }
   createBuilding.batch = false;
@@ -162,7 +162,7 @@ function confirmWall(shift) {
       units.forEach(u => segs.slice(1).forEach(b => u.orderQueue.push({ type: 'build', building: b })));
     }
     placing.chain++;
-    toast(`${def.icon} ${segs.length} trams de ${def.name.toLowerCase()} (${costText(Object.fromEntries(Object.entries(def.cost).map(([k, v]) => [k, v * segs.length])))})`);
+    toast(`${def.icon} ${segs.length} trams de ${def.name.toLowerCase()} (${costText(Object.fromEntries(Object.entries(costFor(type)).map(([k, v]) => [k, v * segs.length])))})`);
   }
   placing.start = null;
   if (!shift || buildBlockReason(type)) cancelPlacement();
@@ -241,7 +241,7 @@ function confirmPlacement(shift) {
   if (!placing.valid) { toast('No es pot construir aquí'); return; }
   const units = builders();
   if (!units.length) { cancelPlacement(); return; }
-  applyCost(CONFIG.BUILDINGS[type].cost);
+  applyCost(costFor(type));
   if (CONFIG.BUILDINGS[type].gate) {
     // La porta substitueix els trams de muralla que ocupa
     const [gw, gd] = sizeOf(type, placing.rot);

@@ -75,6 +75,7 @@ function defaultMods() {
     attack: { infantry: 0, cavalry: 0, archer: 0 }, range: { archer: 0 }, buildingArrow: 0,
     armor: { infantry: [0, 0], cavalry: [0, 0], archer: [0, 0] },
     hpMul: {}, reloadMul: {}, vsBuilding: {}, tradeMul: 1,
+    elite: {}, unitRange: {}, unitHp: {}, towerArrows: 0, buildingHpMul: 1, buildingArmor: 0,
   };
 }
 for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }

@@ -263,6 +263,55 @@ ARCH.western = {
     kBanner(g, team, 1.2, 1.3, 2.6);
     return 8.6;
   },
+  castle(g, { team }) {
+    kbox(g, 9.8, 0.4, 9.8, KM.stone, 0, 0.2, 0);
+    // Muralla perimetral amb merlets
+    for (const [x, z, w, d] of [[0, 4.2, 6.2, 0.9], [0, -4.2, 6.2, 0.9], [4.2, 0, 0.9, 6.2], [-4.2, 0, 0.9, 6.2]]) {
+      kbox(g, w, 4.6, d, KM.stone, x, 2.7, z);
+      battlements(g, w, d, 5.0, KM.stone, { x, z, size: 0.36, gap: 0.3, h: 0.5, thick: 0.25 });
+    }
+    // Torres rodones a les cantonades amb teulada cònica
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * 4.1, z = sz * 4.1;
+      kcyl(g, 1.35, 1.5, 6.6, 14, KM.stone, x, 3.5, z);
+      kcyl(g, 1.5, 1.5, 0.3, 14, KM.stone, x, 6.9, z);
+      kcyl(g, 0, 1.65, 2.2, 14, KM.darkplanks, x, 8.15, z);
+      kopening(g, 0.22, 0.7, x + sx * 0.02, 4.3, z + sz * 1.36, sz > 0 ? 0 : Math.PI, 'flat');
+    }
+    // Torre de l'homenatge
+    kbox(g, 4.2, 9.6, 4.2, KM.stone, 0, 5.0, -0.3);
+    battlements(g, 4.2, 4.2, 9.8, KM.stone, { z: -0.3, size: 0.38, gap: 0.3, h: 0.55, thick: 0.28 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      kcyl(g, 0.5, 0.5, 1.6, 10, KM.stone, sx * 2.05, 10.4, -0.3 + sz * 2.05);
+      kcyl(g, 0, 0.62, 1.1, 10, KM.darkplanks, sx * 2.05, 11.75, -0.3 + sz * 2.05);
+    }
+    for (const [x, y] of [[-1.0, 6.5], [1.0, 6.5], [0, 8.2]]) kopening(g, 0.4, 0.9, x, y, 1.8, 0, 'round');
+    kBanner(g, team, 0.9, -0.3, 12.8);
+    // Porta fortificada
+    for (const sx of [-1, 1]) {
+      kbox(g, 1.2, 5.6, 1.4, KM.stone, sx * 1.3, 2.8, 4.4);
+      battlements(g, 1.2, 1.4, 5.6, KM.stone, { x: sx * 1.3, z: 4.4, size: 0.3, gap: 0.22, h: 0.45, thick: 0.22 });
+    }
+    kopening(g, 1.4, 2.8, 0, 0.4, 4.66, 0, 'round', KM.stone);
+    for (let i = 0; i < 5; i++) kbox(g, 0.05, 2.2, 0.05, KM.iron, -0.55 + i * 0.27, 1.5, 4.72);
+    for (const sx of [-1, 1]) kbox(g, 0.7, 1.5, 0.04, KM.team(team), sx * 2.6, 3.4, 4.67);
+    return 13.8;
+  },
+  siegeworkshop(g, { team }) {
+    const hz = -1.6;
+    kbox(g, 6.6, 0.25, 3.6, KM.stone, 0, 0.125, hz);
+    for (const sx of [-1, 1]) kbox(g, 0.3, 2.6, 3.4, KM.planks, sx * 3.1, 1.55, hz);
+    kbox(g, 6.2, 2.6, 0.3, KM.planks, 0, 1.55, hz - 1.55);
+    for (const x of [-3.05, -1, 1, 3.05]) kcyl(g, 0.14, 0.16, 2.9, 8, KM.timber, x, 1.45, hz + 1.6);
+    kbox(g, 6.4, 0.2, 0.2, KM.timber, 0, 2.95, hz + 1.6);
+    gableRoof(g, { w: 6.2, d: 3.4, h: 1.7, over: 0.5, y0: 2.85, z: hz, gableMat: KM.planks, frame: false });
+    kRamFrame(g, -1.2, hz + 0.1, Math.PI / 2);
+    kWheelProp(g, 1.8, 1.2, 0.6); kWheelProp(g, 2.5, 1.6, 0.6, true); kWheelProp(g, 1.4, 2.2, 0.5, true);
+    kLogPile(g, -1.9, 1.9, 0, 3, 1.8);
+    kSawhorse(g, 0.2, 1.6, 0.4);
+    kBanner(g, team, 3.0, 2.8, 3.6);
+    return 5.0;
+  },
   stonewall(g) {
     kbox(g, 1.0, 2.6, 1.0, KM.stone, 0, 1.3, 0);
     kbox(g, 1.04, 0.16, 1.04, KM.stone, 0, 2.62, 0);

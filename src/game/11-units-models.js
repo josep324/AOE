@@ -16,11 +16,15 @@ function setUnitStats(e, kind) {
   const d = CONFIG.UNITS[kind];
   const M = teamOf(e.team).mods;
   const cat = d.cat;
+  const el = d.elite && M.elite[kind] ? d.elite : null;   // versió d'elit (unitats úniques)
   e.unitKind = kind;
   e.category = cat;
+  e.name = el ? el.name : d.name;
   e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : 1);
-  e.attack = d.attack + (M.attack[cat] || 0);
-  e.range = (d.range || 0) + (d.range ? (M.range[cat] || 0) : 0);
+  e.attack = (el ? el.attack : d.attack) + (M.attack[cat] || 0);
+  const baseRange = el && el.range ? el.range : (d.range || 0);
+  e.range = baseRange + (baseRange ? (M.range[cat] || 0) + (M.unitRange[kind] || 0) : 0);
+  e.minRange = d.minRange || 0;
   e.reach = d.reach || 0.45;
   e.reload = d.reload * (M.reloadMul[cat] || 1);
   const ma = cat === 'villager' ? M.villagerArmor : (M.armor[cat] || [0, 0]);
@@ -28,14 +32,23 @@ function setUnitStats(e, kind) {
   e.los = d.los;
   e.vsBuilding = (d.vsBuilding || 0) + (M.vsBuilding[cat] || 0);
   e.bonusCav = d.bonusCav || 0;
-  const newMax = Math.round(d.hp * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : 0);
+  e.bonusUnique = d.bonusUnique || 0;
+  e.isUnique = !!d.unique;
+  e.onlyBuildings = !!d.onlyBuildings;
+  e.splash = d.splash || 0;
+  e.projectile = d.projectile || (e.range > 0 ? 'arrow' : null);
+  e.meleeShot = !!d.melee;
+  e.pierceShot = !!d.pierce;
+  e.canGround = !!d.ground;
+  e.garrisonCap = d.garrison || 0;
+  const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
-  e.barH = cat === 'cavalry' ? 3.4 : cat === 'trade' ? 2.9 : 2.75;
+  e.barH = cat === 'cavalry' ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
 }
 function applyUnitStats(e, kind) {
   setUnitStats(e, kind);
-  e.isMilitary = ['infantry', 'archer', 'cavalry'].includes(CONFIG.UNITS[kind].cat);
+  e.isMilitary = ['infantry', 'archer', 'cavalry', 'siege'].includes(CONFIG.UNITS[kind].cat);
   e.attackTarget = null;
   e.attackCooldown = 0;
   e.scanTimer = rand() * 0.5;
@@ -46,6 +59,8 @@ function applyUnitStats(e, kind) {
   e.forcedTarget = false;       // objectiu ordenat pel jugador (ignora la postura)
   e.garrisoned = null;
   e.garrisonTarget = null;
+  e.packable = !!CONFIG.UNITS[kind].packable;   // trabuc: comença desmuntat
+  e.packed = true; e.packTo = true; e.packT = 0;
   e.swingT = 0;
 }
 
@@ -105,8 +120,9 @@ function createSoldier(kind, x, z, team = PLAYER.id) {
   e.workPhase = 0;
   const model = buildUnitVisual(e, kind, team);
   if (d.cat === 'cavalry') e.radius = 0.75;
-  const hit = new THREE.Mesh(d.cat === 'cavalry' ? cavalryHitGeo : villagerGeo.hit, hitMaterial);
-  hit.position.y = d.cat === 'cavalry' ? 1.6 : 1.2;
+  if (d.cat === 'siege') e.radius = kind === 'scorpion' ? 0.7 : 1.1;
+  const hit = new THREE.Mesh(d.cat === 'cavalry' || d.cat === 'siege' ? cavalryHitGeo : villagerGeo.hit, hitMaterial);
+  hit.position.y = d.cat === 'cavalry' || d.cat === 'siege' ? 1.6 : 1.2;
   hit.userData.noShadow = true;
   e.group.add(model, hit);
   e.group.position.set(x, 0, z);

@@ -694,3 +694,20 @@ COMMON_BUILDERS.palisade = (g) => {
   }
   return 2.7;
 };
+
+/* ---------- Peces de setge (per als tallers) ---------- */
+function kWheelProp(g, x, z, r = 0.55, lying = false, material = null) {
+  const M = material || KM.timber;
+  kcyl(g, r, r, 0.12, 14, M, x, lying ? 0.07 : r, z, lying ? null : [0, 0, Math.PI / 2]);
+  kcyl(g, r * 0.3, r * 0.3, 0.16, 8, KM.iron, x, lying ? 0.09 : r, z, lying ? null : [0, 0, Math.PI / 2]);
+}
+function kRamFrame(g, x, z, rotY = 0, material = null) {
+  const f = new THREE.Group();
+  f.position.set(x, 0, z); f.rotation.y = rotY;
+  const M = material || KM.timber;
+  kbox(f, 1.3, 0.14, 2.6, M, 0, 0.5, 0);
+  for (const s of [-1, 1]) for (const zz of [-1.0, 1.0]) kbox(f, 0.1, 1.3, 0.1, M, s * 0.55, 1.1, zz);
+  for (const s of [-1, 1]) kbox(f, 0.9, 0.08, 2.6, M, s * 0.34, 1.85, 0, [0, 0, -s * 0.75]);
+  kcyl(f, 0.18, 0.18, 2.8, 8, KM.bark, 0, 0.95, 0.2, [Math.PI / 2, 0, 0]);
+  g.add(f);
+}

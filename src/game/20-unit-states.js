@@ -353,9 +353,11 @@ function updateUnit(u, dt) {
     u.group.scale.setScalar(Math.max(0.01, easeOutBack(u.spawnT)));
   }
 
+  if (updatePacking(u, dt)) return;
   let walking = false;
   switch (u.state) {
     case STATE.MOVING: {
+      if (u.packable && !u.packed) { setPacked(u, true); break; }   // el trabuc s'ha de desmuntar per moure's
       if (u.garrisonTarget) {
         const g = u.garrisonTarget;
         if (g.dead) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); break; }
@@ -415,6 +417,18 @@ function updateUnit(u, dt) {
         break;
       }
       if (inAttackRange(u, t)) {
+        // Massa a prop (abast mínim del setge): recula
+        if (u.minRange && entSurfaceDist(t, u.position.x, u.position.z) - u.radius < u.minRange) {
+          if (u.packable && !u.packed) { setPacked(u, true); break; }
+          const away = new THREE.Vector3(u.position.x - t.position.x, 0, u.position.z - t.position.z);
+          if (away.lengthSq() < 1e-4) away.set(1, 0, 0);
+          away.normalize().multiplyScalar(u.minRange + 2).add(u.position);
+          if (!u.target || u.chaseTimer <= 0) { u.chaseTimer = 0.5; setMoveTarget(u, clampToMap(away)); }
+          u.chaseTimer -= dt;
+          walking = !stepTowardsTarget(u, dt);
+          break;
+        }
+        if (u.packable && u.packed) { setPacked(u, false); break; }    // el trabuc es munta per disparar
         u.inRange = true;
         if (u.target) setMoveTarget(u, null);
         const face = Math.atan2(t.position.x - u.position.x, t.position.z - u.position.z);
@@ -435,11 +449,12 @@ function updateUnit(u, dt) {
           u.returningToAnchor = true;
           break;
         }
+        if (u.packable && !u.packed) { setPacked(u, true); break; }
         // Perseguir l'objectiu (es recalcula el camí cada mig segon)
         u.chaseTimer -= dt;
         if (!u.target || u.chaseTimer <= 0) {
           u.chaseTimer = 0.5;
-          setMoveTarget(u, t.kind === 'unit' ? t.position.clone() : approachPoint(t, u.position));
+          setMoveTarget(u, t.kind === 'unit' || t.isGround ? t.position.clone() : approachPoint(t, u.position));
         }
         walking = !stepTowardsTarget(u, dt);
         // Les unitats militars abandonen una persecució massa llarga
@@ -511,7 +526,7 @@ function updateUnit(u, dt) {
       if (u.target) setMoveTarget(u, null);
       if (u.orderQueue.length) { runOrder(u, u.orderQueue.shift()); break; }
       // Les unitats militars ataquen automàticament l'enemic que veuen (segons la postura)
-      if (u.isMilitary) {
+      if (u.isMilitary && !(u.packable && u.packed)) {
         u.returningToAnchor = false;
         u.scanTimer -= dt;
         if (u.scanTimer <= 0) {
@@ -527,6 +542,7 @@ function updateUnit(u, dt) {
   clampToMap(u.position);
 
   // ---------- Animació procedimental ----------
+  if (u.category === 'siege') { animateSiege(u, dt, walking); return; }
   const k = 1 - Math.exp(-12 * dt);
   if (walking) {
     u.walkPhase += dt * u.speed * 2.2;
@@ -589,4 +605,18 @@ function updateUnit(u, dt) {
     u.carryMesh.position.y = 2.72 + Math.sin(state.elapsed * 4 + u.id) * 0.05;
     u.carryMesh.rotation.y += dt * 1.5;
   }
+}
+
+/* Animació de les màquines de setge: rodes, braç del mangonell, cop de l'ariet, corda de l'escorpí */
+function animateSiege(u, dt, walking) {
+  if (walking && u.wheels) for (const w of u.wheels) w.rotation.x += dt * u.speed * 1.6;
+  u.fireT = Math.max(0, (u.fireT || 0) - dt);
+  if (u.throwArm) {
+    // Braç: baixa ràpid en disparar i torna a pujar lentament mentre recarrega
+    const cd = u.reload ? Math.max(0, u.attackCooldown) / u.reload : 0;
+    u.throwArm.rotation.x = u.state === STATE.ATTACKING && u.inRange ? -1.1 + 1.1 * cd : THREE.MathUtils.damp(u.throwArm.rotation.x, 0, 3, dt);
+  }
+  if (u.ramLog) u.ramLog.position.z = u.swingT > 0 ? Math.sin((u.swingT / 0.22) * Math.PI) * 0.45 : THREE.MathUtils.damp(u.ramLog.position.z, 0, 6, dt);
+  if (u.bowString) u.bowString.position.z = u.fireT > 0 ? 0 : THREE.MathUtils.damp(u.bowString.position.z, -0.25, 4, dt);
+  u.model.position.y = walking ? Math.abs(Math.sin(u.walkPhase = (u.walkPhase || 0) + dt * 8)) * 0.03 : 0;
 }

@@ -237,6 +237,47 @@ ARCH.middleeast = {
     kPennant(g, team, 0, 8.4, 0, 1.2);
     return 9.2;
   },
+  castle(g, { team }) {
+    kbox(g, 9.8, 0.4, 9.8, KM.sandstone, 0, 0.2, 0);
+    for (const [x, z, w, d] of [[0, 4.2, 6.4, 0.9], [0, -4.2, 6.4, 0.9], [4.2, 0, 0.9, 6.4], [-4.2, 0, 0.9, 6.4]]) {
+      kbox(g, w, 4.8, d, KM.adobe, x, 2.8, z);
+      kbox(g, w + 0.1, 0.2, d + 0.1, KM.tile, x, 4.6, z);
+      battlements(g, w, d, 5.2, KM.adobe, { x, z, round: true, size: 0.36, gap: 0.28, h: 0.5, thick: 0.24 });
+    }
+    // Torres quadrades amb cupuletes
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * 4.1, z = sz * 4.1;
+      kbox(g, 2.4, 7.0, 2.4, KM.sandstone, x, 3.9, z);
+      battlements(g, 2.4, 2.4, 7.4, KM.sandstone, { x, z, round: true, size: 0.34, gap: 0.26, h: 0.45, thick: 0.22 });
+      kcyl(g, 0.9, 0.9, 0.5, 12, KM.adobe, x, 7.65, z);
+      kdome(g, 0.9, 0.9, KM.adobe, x, 7.9, z, 0.6, 12);
+      kPennant(g, team, x, 8.9, z, 1.4);
+    }
+    // Sala central amb gran cúpula de rajola
+    meBody(g, { w: 4.6, d: 4.6, h: 7.2, y0: 0.4, cz: -0.4, parapet: 0.5 });
+    kcyl(g, 1.9, 2.0, 1.0, 16, KM.sandstone, 0, 8.3, -0.4);
+    kdome(g, 1.95, 1.9, KM.tile, 0, 8.8, -0.4, 0.55, 20);
+    kcyl(g, 0.05, 0.08, 0.8, 8, KM.gold, 0, 11.4, -0.4);
+    for (const x of [-1.2, 0, 1.2]) meArch(g, 0.5, 1.0, x, 5.4, 1.9, 0);
+    // Portal amb arc apuntat
+    kbox(g, 3.6, 6.4, 1.4, KM.sandstone, 0, 3.6, 4.4);
+    meArch(g, 1.6, 3.4, 0, 0.4, 5.1, 0);
+    kbox(g, 3.2, 0.35, 0.05, KM.tile, 0, 5.2, 5.12);
+    battlements(g, 3.6, 1.4, 6.8, KM.sandstone, { z: 4.4, round: true, size: 0.3, gap: 0.24, h: 0.45, thick: 0.2 });
+    return 12.0;
+  },
+  siegeworkshop(g, { team }) {
+    kbox(g, 6.8, 0.15, 6.8, KM.dirt, 0, 0.075, 0);
+    for (const [x, z, w, d] of [[0, -3.1, 6.6, 0.4], [-3.1, -1.1, 0.4, 4.2], [3.1, -1.1, 0.4, 4.2]]) kbox(g, w, 2.4, d, KM.adobe, x, 1.2, z);
+    meBody(g, { w: 3.0, d: 2.2, h: 2.8, cx: 1.6, cz: -1.9 });
+    meArch(g, 1.2, 2.0, 1.6, 0, -0.8, 0);
+    meCanopy(g, KM.team(team), -1.4, -0.6, 3.0, 3.6, 2.6);
+    kRamFrame(g, -1.4, -0.7, 0, KM.palewood);
+    kWheelProp(g, 1.8, 1.5, 0.6, false, KM.palewood); kWheelProp(g, 2.5, 2.2, 0.55, true, KM.palewood);
+    kLogPile(g, -1.2, 2.3, 0, 3, 1.8, KM.palewood);
+    kPennant(g, team, 3.1, 2.4, 3.1, 1.2);
+    return 4.2;
+  },
   stonewall(g) {
     kbox(g, 1.0, 2.7, 1.0, KM.sandstone, 0, 1.35, 0);
     kbox(g, 1.04, 0.12, 1.04, KM.sandstone, 0, 2.72, 0);

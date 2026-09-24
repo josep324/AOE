@@ -203,6 +203,16 @@ function issueRightClick(x, y, queued = false) {
     if (carts.length === units.length) return;
     units = units.filter(u => u.subtype !== 'tradecart');
   }
+  // Refugi: torres, castells, Centre de Ciutat (tropes a peu) i ariets (infanteria)
+  if (targetEnt && targetEnt.isOwn && !targetEnt.underConstruction && garrisonCap(targetEnt) > 0) {
+    const goers = units.filter(u => canGarrison(u, targetEnt) && !(u.subtype === 'villager' && targetEnt.dropoffTypes && !(targetEnt.garrison && targetEnt.garrison.length)));
+    if (goers.length) {
+      goers.forEach(u => { u.orderQueue.length = 0; orderGarrison(u, targetEnt); });
+      spawnMoveMarker(targetEnt.position, 0x6ef2ff, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
+      if (goers.length === units.length) return;
+      units = units.filter(u => !goers.includes(u));
+    }
+  }
   const vills = units.filter(u => u.subtype === 'villager');
   const soldiers = units.filter(u => u.subtype !== 'villager');
   const soldiersTo = (pos) => { if (soldiers.length) commandMove(soldiers, pos, queued); };

@@ -29,6 +29,12 @@ function makeBuildingModel(type, team = PLAYER.id) {
   bx(g, fw * 0.9, 2, fd * 0.9, mat(teamOf(team).color), 0, 1, 0);
   return { model: g, height: 2 };
 }
+/* Aplica una millora de resistència (Maçoneria) a un edifici existent */
+function applyBuildingMods(b, mul) {
+  b.maxHp = Math.round(b.maxHp * mul);
+  b.hp = Math.round(b.hp * mul);
+  b.armor = (b.armor || [0, 0]).map(a => a + 1);
+}
 /* Torna a fer el model d'un edifici (p. ex. en triar la civilització) conservant l'estat */
 function rebuildBuildingModel(b) {
   const { model, height } = makeBuildingModel(b.subtype, b.team);
@@ -81,8 +87,10 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
     radius: Math.max(sw, sd) / 2, selRadius: Math.max(sw, sd) * 0.62, hp: 1, maxHp: def.hp,
   });
   e.def = def;
-  e.armor = def.armor || [2, 6];
-  e.los = def.los || 8;
+  const M = teamOf(team).mods;
+  e.maxHp = Math.round(def.hp * M.buildingHpMul);
+  e.armor = (def.armor || [2, 6]).map(a => a + M.buildingArmor);
+  e.los = (def.los || 8) + (def.arrows ? (civOf(team).mods.towerLos || 0) : 0);
   if (def.trains || Object.values(CONFIG.TECHS).some(t => t.at === type)) e.trainQueue = [];
   if (def.trains) e.rally = null;
   e.footprint = (def.walkable || def.wall || def.gate) ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };
@@ -171,7 +179,7 @@ function updateConstruction(dt) {
 /* Enderrocar un edifici propi (un fonament sense començar retorna tot el cost) */
 function demolishBuilding(b) {
   if (!b || b.subtype === 'towncenter' || !b.isOwn || b.dead) return;
-  if (b.underConstruction && b.progress < 0.02) applyCost(b.def.cost, +1, b.team);
+  if (b.underConstruction && b.progress < 0.02) applyCost(costFor(b.subtype, b.team), +1, b.team);
   b.dead = true;
   b.depleted = true;
   state.buildings = state.buildings.filter(x => x !== b);

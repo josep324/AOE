@@ -5,8 +5,23 @@ const selBoxEl = document.getElementById('selection-box');
 const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, inside: false, overCanvas: false, down: false, dragging: false, sx: 0, sy: 0 };
 const keys = new Set();
 
+/* Mode «atacar el terra» (mangonells): el pròxim clic esquerre tria el punt */
+const groundMode = { on: false };
+function setGroundMode(on) {
+  groundMode.on = on;
+  canvas.style.cursor = on ? 'crosshair' : '';
+  if (on) toast('☄️ Clic esquerre al terra on vols disparar (clic dret o Esc: cancel·lar)');
+}
 canvas.addEventListener('mousedown', (e) => {
   canvas.focus();
+  if (groundMode.on) {
+    if (e.button === 0) {
+      const p = pickGround(e.clientX, e.clientY);
+      if (p) commandAttackGround(state.selected.filter(s => s.kind === 'unit' && s.isOwn), clampToMap(p));
+    }
+    setGroundMode(false);
+    return;
+  }
   // Mode construcció: clic esquerre col·loca, clic dret cancel·la
   if (placing.type) {
     if (e.button === 0) {
@@ -123,6 +138,7 @@ window.addEventListener('keydown', (e) => {
 
   switch (code) {
     case 'Escape':
+      if (groundMode.on) { setGroundMode(false); break; }
       if (placing.type) { cancelPlacement(); break; }
       clearSelection(); onSelectionChanged();
       break;
@@ -156,6 +172,17 @@ window.addEventListener('keydown', (e) => {
     }
     case 'KeyP':
       togglePause();
+      break;
+    case 'KeyT':
+      if (state.selected.some(s => s.kind === 'unit' && s.isOwn && s.canGround)) setGroundMode(true);
+      break;
+    case 'KeyG': {
+      const tre = state.selected.filter(s => s.kind === 'unit' && s.isOwn && s.packable);
+      if (tre.length) { togglePack(tre); updateSelectionUI(); }
+      break;
+    }
+    case 'KeyU':
+      for (const s of state.selected) if (s.isOwn && s.garrison && s.garrison.length) ungarrison(s);
       break;
     case 'KeyM':
       openMenu();
