@@ -44,7 +44,7 @@
   }
   #topbar {
     position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25;
-    display: flex; gap: 18px; align-items: center; padding: 8px 18px; font-size: 13px;
+    display: flex; gap: 14px; align-items: center; padding: 8px 18px; font-size: 13px; white-space: nowrap;
   }
   #topbar .age { font-family: 'Cinzel', serif; color: var(--gold); letter-spacing: 0.12em; font-weight: 700; }
   #topbar .sep { width: 1px; height: 16px; background: var(--gold-soft); }
@@ -193,6 +193,7 @@
   .state-tag.MOVING { background: rgba(80, 150, 255, 0.2); border-color: rgba(120, 180, 255, 0.5); }
   .state-tag.BUILDING { background: rgba(200, 140, 70, 0.25); border-color: rgba(230, 170, 100, 0.55); }
   .state-tag.ATTACKING { background: rgba(230, 60, 50, 0.25); border-color: rgba(255, 110, 100, 0.6); }
+  .state-tag.TRADING { background: rgba(230, 190, 60, 0.22); border-color: rgba(255, 215, 100, 0.55); }
   .state-tag.GARRISONED { background: rgba(160, 160, 160, 0.2); border-color: rgba(200, 200, 200, 0.5); }
   .portrait.enemy { background: radial-gradient(circle at 50% 35%, rgba(255, 110, 90, 0.35), rgba(40, 10, 10, 0.85)); border-color: rgba(255, 110, 90, 0.5); }
   #hpbars { position: fixed; inset: 0; pointer-events: none; z-index: 19; }
@@ -220,7 +221,8 @@
   .overlay label { color: var(--muted); font-size: 13px; cursor: pointer; }
   .overlay .legend { text-align: left; font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-top: 14px; }
   .bar.build > i { background: linear-gradient(180deg, #9fd6ff, #2f7fe0); }
-  .action-btn.small { width: 58px; height: 54px; gap: 0; font-size: 10px; padding: 2px; border-radius: 8px; }
+  .action-btn.small { width: 54px; height: 54px; gap: 0; font-size: 9.5px; padding: 2px; border-radius: 8px; }
+  .action-btn.small > span:nth-child(2), .action-btn.small > span:nth-child(3) { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .action-btn.small .big { font-size: 19px; }
   .action-btn.small .cost { font-size: 9px; }
   #actions.compact { gap: 5px; }
@@ -289,6 +291,7 @@
     </div>
     <label><input type="checkbox" id="fog-toggle" checked> Boira de guerra</label>
     <div><button class="big-btn" id="start-btn">COMENÇAR</button></div>
+    <div><button class="choice" id="start-load" style="margin-top:10px;display:none">📂 Continuar la partida desada</button></div>
     <div class="legend">
       ⚔️ <b>Caserna</b>: Milícia · Llancer i Arquer (Feudal) · 🐎 <b>Estable</b>: Explorador (Feudal) i Cavaller (Castells).<br>
       🔔 <b>Campana</b> (<kbd>B</kbd>): els aldeans es refugien al Centre i aquest dispara més fletxes.<br>
@@ -300,6 +303,19 @@
 <div id="pause-screen" class="overlay hidden">
   <div class="card glass"><h1>PAUSA</h1><p>Prem <kbd>P</kbd> per continuar.</p></div>
 </div>
+<div id="menu-screen" class="overlay hidden">
+  <div class="card glass">
+    <h1>MENÚ</h1>
+    <h2 id="menu-info">La partida està en pausa</h2>
+    <div class="row" style="flex-direction:column;align-items:center">
+      <button class="big-btn" id="menu-continue">CONTINUAR</button>
+      <button class="choice" id="menu-save">💾 Desar partida</button>
+      <button class="choice" id="menu-load">📂 Carregar partida desada</button>
+      <button class="choice" id="menu-new">🔄 Nova partida</button>
+    </div>
+    <p id="menu-slot" style="font-size:12px;color:var(--muted)"></p>
+  </div>
+</div>
 <div id="end-screen" class="overlay hidden">
   <div class="card glass">
     <h1 id="end-title">VICTÒRIA</h1>
@@ -309,8 +325,8 @@
 </div>
 <div id="floaters"></div>
 
-<div id="help" class="glass">
-  <div class="title">CONTROLS <span id="help-toggle">amagar ▲</span></div>
+<div id="help" class="glass collapsed">
+  <div class="title">CONTROLS <span id="help-toggle">mostrar ▼</span></div>
   <ul>
     <li><kbd>Clic esq.</kbd> <b>Seleccionar</b> · <kbd>Arrossegar</kbd> selecció múltiple</li>
     <li><kbd>Shift</kbd>+clic afegir/treure · <kbd>Doble clic</kbd> tots els del tipus</li>
@@ -324,7 +340,8 @@
     <li>Centre seleccionat + <kbd>clic dret</kbd>: <b>punt de reunió</b></li>
     <li>Aldeans: botons de <b>construcció</b> · <kbd>Shift</kbd> col·locar-ne més · <kbd>Supr</kbd> enderrocar</li>
     <li><kbd>Clic dret</kbd> enemic: <b>atacar</b> · <kbd>B</kbd> campana · <kbd>P</kbd> pausa</li>
-    <li>Centre: <b>avançar d'edat</b> · muralles: <b>prem i arrossega</b></li>
+    <li>Centre: <b>avançar d'edat</b> · muralles: <b>prem i arrossega</b> · <kbd>R</kbd> girar edifici</li>
+    <li>Botó del mig: <b>arrossegar el mapa</b> · <kbd>M</kbd> menú (desar / carregar)</li>
   </ul>
 </div>
 
@@ -336,6 +353,8 @@
   <span class="stat idle" id="idle-btn" title="Seleccionar aldeà inactiu (.)">💤 Inactius <b id="idle-count">0</b></span>
   <span class="sep"></span>
   <span class="stat">FPS <b id="fps">--</b></span>
+  <span class="sep"></span>
+  <span class="stat idle" id="menu-btn" title="Menú (M): desar, carregar, nova partida">☰ <b>Menú</b></span>
 </div>
 
 <div id="toast" class="glass"></div>
@@ -400,9 +419,12 @@ const CONFIG = {
     dist: 58, minDist: 16, maxDist: 130,
     zoomStep: 0.14,
     panSpeed: 1.05,          // multiplicat per la distància (pan proporcional al zoom)
-    edge: 14,                // píxels de vora per al pan amb el ratolí
-    bottomEdge: 28,          // franja inferior del MAPA (just a sobre del HUD) per baixar
+    edge: 26,                // franja de vora (px): com més a prop de la vora, més ràpid
+    bottomEdge: 30,          // franja inferior del MAPA (just a sobre del HUD) per baixar
     rotSpeed: 1.9,
+    accel: 9,                // suavitat en arrencar (inèrcia)
+    decel: 6,                // suavitat en frenar (lliscament)
+    glide: 6,                // suavitat en centrar la càmera (H, Espai, grups…)
   },
   VILLAGER: { speed: 5.5, radius: 0.45, hp: 25, attack: 3 },
   GATHER: {
@@ -426,6 +448,8 @@ const CONFIG = {
                 armor: [0, 0], speed: 5.6, los: 14, cat: 'archer', age: 1, desc: 'Ataca a distància' },
     scout:    { name: 'Explorador', icon: '🐎', cost: { food: 80 }, time: 18, hp: 45, attack: 3, range: 0, reach: 0.6, reload: 2.0,
                 armor: [0, 2], speed: 8.6, los: 18, cat: 'cavalry', age: 1, desc: 'Cavalleria ràpida amb molta visió' },
+    tradecart: { name: 'Carro de comerç', icon: '🐂', cost: { wood: 100, food: 50 }, time: 25, hp: 70, attack: 0, range: 0, reload: 2.0,
+                armor: [0, 1], speed: 5.0, los: 8, cat: 'trade', age: 1, desc: 'Viatja entre dos mercats teus i hi guanya or (més com més lluny)' },
     knight:   { name: 'Cavaller', icon: '🏇', cost: { food: 60, gold: 75 }, time: 28, hp: 100, attack: 10, range: 0, reach: 0.6, reload: 1.8,
                 armor: [2, 2], speed: 7.4, los: 12, cat: 'cavalry', age: 2, desc: 'Cavalleria pesant molt poderosa' },
   },
@@ -433,14 +457,14 @@ const CONFIG = {
   AGES: [
     { name: 'Edat Fosca' },
     { name: 'Edat Feudal', req: ['barracks', 'mill', 'lumbercamp', 'miningcamp'] },
-    { name: 'Edat dels Castells', req: ['blacksmith', 'stable', 'watchtower'] },
+    { name: 'Edat dels Castells', req: ['blacksmith', 'stable', 'watchtower', 'market'] },
   ],
   // Tecnologies (s'investiguen a la cua dels edificis, com les unitats)
   TECHS: {
     age1:        { name: 'Edat Feudal', icon: '🏯', cost: { food: 500 }, time: 40, age: 0, at: 'towncenter', ageUp: 1,
                    desc: 'Nous edificis, unitats i tecnologies. Cal tenir 2 edificis: Caserna, Molí, Serradora o Campament miner' },
     age2:        { name: 'Edat dels Castells', icon: '🏰', cost: { food: 800, gold: 200 }, time: 60, age: 1, at: 'towncenter', ageUp: 2,
-                   desc: 'Cavallers i millores. Cal tenir 2 edificis: Ferreria, Estable o Torre de guaita' },
+                   desc: 'Cavallers i millores. Cal tenir 2 edificis: Ferreria, Estable, Torre de guaita o Mercat' },
     loom:        { name: 'Teler', icon: '🧶', cost: { gold: 50 }, time: 15, age: 0, at: 'towncenter', desc: 'Aldeans: +15 vida, +1/+2 armadura' },
     wheelbarrow: { name: 'Carretó', icon: '🛒', cost: { food: 175, wood: 50 }, time: 30, age: 1, at: 'towncenter', desc: 'Aldeans: +10% velocitat, +3 de càrrega' },
     doublebit:   { name: 'Destral de doble fil', icon: '🪓', cost: { food: 100, wood: 50 }, time: 20, age: 1, at: 'lumbercamp', desc: '+20% de ritme tallant fusta' },
@@ -475,6 +499,10 @@ const CONFIG = {
                   techs: ['forging', 'fletching', 'scalearmor', 'barding'], desc: 'Millores d’atac i armadura' },
     watchtower: { name: 'Torre de guaita', short: 'Torre', icon: '🗼', cost: { wood: 25, stone: 125 }, size: [3, 3], hp: 700, time: 30, age: 1, page: 1,
                   armor: [1, 7], los: 16, arrows: { range: 14, damage: 5, reload: 2.0 }, desc: 'Dispara fletxes als enemics propers' },
+    market:     { name: 'Mercat', short: 'Mercat', icon: '🏪', cost: { wood: 175 }, size: [6, 6], hp: 1400, time: 35, age: 1, page: 0,
+                  trains: ['tradecart'], desc: 'Compra i ven recursos per or. Entrena carros de comerç' },
+    gate:       { name: 'Porta', short: 'Porta', icon: '🚪', cost: { stone: 30 }, size: [3, 1], hp: 1500, time: 15, age: 1, page: 1, gate: true,
+                  armor: [6, 8], los: 3, desc: 'Deixa passar les teves unitats però no les enemigues. R: girar' },
     palisade:   { name: 'Palissada', short: 'Palissada', icon: '🚧', cost: { wood: 2 }, size: [1, 1], hp: 250, time: 2.5, page: 1, wall: true,
                   armor: [2, 5], los: 2, desc: 'Mur de troncs (per tram). Arrossega per fer una línia' },
     stonewall:  { name: 'Muralla de pedra', short: 'Muralla', icon: '🧱', cost: { stone: 5 }, size: [1, 1], hp: 1800, time: 6, age: 1, page: 1, wall: true,
@@ -486,9 +514,9 @@ const CONFIG = {
 };
 
 const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING', BUILDING: 'BUILDING',
-                              ATTACKING: 'ATTACKING', GARRISONED: 'GARRISONED' });
+                              ATTACKING: 'ATTACKING', GARRISONED: 'GARRISONED', TRADING: 'TRADING' });
 const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'A descarregar', BUILDING: 'Construint',
-                      ATTACKING: 'Atacant', GARRISONED: 'Refugiat' };
+                      ATTACKING: 'Atacant', GARRISONED: 'Refugiat', TRADING: 'Comerciant' };
 const RES_LABEL = { wood: 'Fusta', gold: 'Or', food: 'Aliment', stone: 'Pedra' };
 const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 
@@ -506,7 +534,7 @@ function defaultMods() {
     armor: { infantry: [0, 0], cavalry: [0, 0], archer: [0, 0] },
   };
 }
-for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); }
+for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }
 const teamOf = (id) => TEAMS[id] || PLAYER;
 
 const state = {
@@ -606,6 +634,10 @@ scene.add(sky);
    ===================================================================== */
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.5, 4000);
 const camState = {
+  vel: new THREE.Vector3(),        // velocitat actual del desplaçament (amb inèrcia)
+  yawVel: 0,
+  goal: null,                      // punt cap on llisca la càmera en centrar
+  grab: null,                      // arrossegament amb el botó del mig
   target: new THREE.Vector3(5, 0, 5),
   yaw: CONFIG.CAM.yaw,
   pitch: CONFIG.CAM.pitch,
@@ -614,7 +646,9 @@ const camState = {
 };
 
 function updateCamera() {
-  const { target, yaw, pitch, dist } = camState;
+  const { target, yaw, dist } = camState;
+  const zt = THREE.MathUtils.clamp((dist - CONFIG.CAM.minDist) / (CONFIG.CAM.maxDist - CONFIG.CAM.minDist), 0, 1);
+  const pitch = camState.pitch - 0.16 * (1 - zt);
   const horizontal = Math.cos(pitch) * dist;
   camera.position.set(
     target.x + Math.sin(yaw) * horizontal,
@@ -642,9 +676,12 @@ scene.add(ambient, hemi, sun, sun.target);
 let shadowExtent = 0;
 function updateSun() {
   // El sol segueix el punt que mira la càmera perquè les ombres sempre cobreixin la vista
-  sun.position.copy(camState.target).add(SUN_OFFSET);
-  sun.target.position.copy(camState.target);
-  const ext = Math.round(THREE.MathUtils.clamp(camState.dist * 1.3, 45, 170));
+  const ext = Math.round(THREE.MathUtils.clamp(camState.dist * 1.3, 45, 170) / 5) * 5;
+  // Ajustem el centre de les ombres a la mida d'un texel: evita el tremolor en desplaçar
+  const texel = (ext * 2) / sun.shadow.mapSize.x;
+  const cx = Math.round(camState.target.x / texel) * texel, cz = Math.round(camState.target.z / texel) * texel;
+  sun.position.set(cx, 0, cz).add(SUN_OFFSET);
+  sun.target.position.set(cx, 0, cz);
   if (ext !== shadowExtent) {
     shadowExtent = ext;
     const c = sun.shadow.camera;
@@ -1459,6 +1496,49 @@ function makeBuildingModel(type, team = PLAYER.id) {
       height = 8.5;
       break;
     }
+    case 'market': {
+      bx(g, 5.8, 0.2, 5.8, M.stone, 0, 0.1, 0);
+      // Tres parades amb tendals de ratlles
+      const stripe = mat(0xf2e6c8, { roughness: 0.9 });
+      for (const [px, pz, ry] of [[-1.6, -1.6, 0], [1.6, -1.6, 0], [-1.6, 1.6, Math.PI]]) {
+        const st = new THREE.Group();
+        bx(st, 1.9, 0.9, 1.0, M.wood, 0, 0.55, 0);
+        for (const sx of [-0.85, 0.85]) cy(st, 0.06, 0.06, 2.2, 5, M.woodDark, sx, 1.2, -0.45);
+        for (let k = 0; k < 4; k++) {
+          const awn = bx(st, 0.5, 0.06, 1.3, k % 2 ? stripe : M.roof, -0.72 + k * 0.48, 2.2, -0.05);
+          awn.rotation.x = 0.35;
+        }
+        bx(st, 0.3, 0.25, 0.3, M.gold, -0.4, 1.12, 0.1);
+        bx(st, 0.35, 0.3, 0.3, mat(0xc0392b), 0.3, 1.15, 0.05);
+        st.position.set(px, 0, pz);
+        st.rotation.y = ry;
+        g.add(st);
+      }
+      for (let i = 0; i < 3; i++) cy(g, 0.3, 0.3, 0.7, 10, M.wood, 1.4 + (i % 2) * 0.6, 0.55, 1.2 + i * 0.5);
+      cy(g, 0.7, 0.8, 0.8, 12, M.stone, 0, 0.5, 0);
+      bx(g, 0.1, 1.6, 0.1, M.woodDark, 0, 1.2, 0);
+      height = 3.2;
+      break;
+    }
+    case 'gate': {
+      // Porta al llarg de l'eix X (3×1). Dues fulles que s'obren cap enfora
+      for (const sx of [-1, 1]) bx(g, 0.7, 3.4, 1.0, M.stone, sx * 1.15, 1.7, 0);
+      bx(g, 3.0, 0.6, 1.0, M.stone, 0, 3.1, 0);
+      bx(g, 0.9, 0.5, 0.06, M.roof, 0, 2.6, 0.52);
+      const doors = [];
+      for (const sx of [-1, 1]) {
+        const pivot = new THREE.Group();
+        pivot.position.set(sx * 0.8, 0, 0);
+        bx(pivot, 0.8, 2.6, 0.12, M.woodDark, -sx * 0.4, 1.3, 0);
+        bx(pivot, 0.82, 0.1, 0.14, mat(0x444448, { metalness: 0.7, roughness: 0.4 }), -sx * 0.4, 0.8, 0);
+        bx(pivot, 0.82, 0.1, 0.14, mat(0x444448, { metalness: 0.7, roughness: 0.4 }), -sx * 0.4, 1.9, 0);
+        g.add(pivot);
+        doors.push(pivot);
+      }
+      g.userData.doors = doors;
+      height = 3.6;
+      break;
+    }
     case 'palisade': {
       // Quatre troncs esmolats per cel·la: segments adjacents formen un mur continu
       for (const [sx, sz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
@@ -1495,9 +1575,13 @@ function makeScaffold(w, d, h) {
   return g;
 }
 
-function createBuilding(type, x, z, complete = false, team = PLAYER.id) {
+function sizeOf(type, rot = 0) {
+  const [w, d] = CONFIG.BUILDINGS[type].size;
+  return rot ? [d, w] : [w, d];
+}
+function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0) {
   const def = CONFIG.BUILDINGS[type];
-  const [sw, sd] = def.size;
+  const [sw, sd] = sizeOf(type, rot);
   const e = new Entity({
     kind: 'building', subtype: type, name: def.name, icon: def.icon, team,
     radius: Math.max(sw, sd) / 2, selRadius: Math.max(sw, sd) * 0.62, hp: 1, maxHp: def.hp,
@@ -1506,8 +1590,9 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id) {
   e.armor = def.armor || [2, 6];
   e.los = def.los || 8;
   if (def.trains) { e.trainQueue = []; e.rally = null; }
-  e.footprint = (def.walkable || def.wall) ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };
+  e.footprint = (def.walkable || def.wall || def.gate) ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };
   e.isWall = !!def.wall;
+  e.rot = rot;
   e.cells = { w: sw, d: sd };
   e.underConstruction = !complete;
   e.progress = complete ? 1 : 0;
@@ -1515,8 +1600,9 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id) {
   const { model, height } = makeBuildingModel(type, team);
   e.model = model;
   e.height = height;
+  if (rot) model.rotation.y = Math.PI / 2;
   e.group.add(model);
-  if (type !== 'farm' && !def.wall) {
+  if (type !== 'farm' && !def.wall && !def.gate) {
     e.scaffold = makeScaffold(sw, sd, Math.max(1.5, height * 0.9));
     e.group.add(e.scaffold);
   }
@@ -1524,7 +1610,7 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id) {
   e.finalize();
   state.buildings.push(e);
   if (!def.walkable) {
-    e.obstacle = { x, z, hw: e.footprint.hw, hd: e.footprint.hd, rect: true, entity: e };
+    e.obstacle = { x, z, hw: e.footprint.hw, hd: e.footprint.hd, rect: true, entity: e, gateTeam: def.gate ? team : 0 };
     state.obstacles.push(e.obstacle);
   }
   hideDecorIn(x, z, sw / 2 + 0.3, sd / 2 + 0.3);
@@ -1569,6 +1655,12 @@ function completeBuilding(b, silent = false) {
 function updateConstruction(dt) {
   for (const b of state.buildings.slice()) {
     if (b.model && b.model.userData.blades && !b.underConstruction) b.model.userData.blades.rotation.z -= dt * 0.9;
+    if (b.model && b.model.userData.doors && !b.underConstruction) {
+      const near = state.units.some(u => u.team === b.team && !u.garrisoned && hDist(u.position, b.position) < 3.2);
+      b.doorOpen = THREE.MathUtils.damp(b.doorOpen || 0, near ? 1 : 0, 6, dt);
+      b.model.userData.doors[0].rotation.y = -b.doorOpen * 1.45;
+      b.model.userData.doors[1].rotation.y = b.doorOpen * 1.45;
+    }
     if (!b.underConstruction) continue;
     let n = 0;
     for (const u of state.units) if (u.state === STATE.BUILDING && u.buildTarget === b) n++;
@@ -1681,7 +1773,8 @@ function startPlacement(type) {
   overlay.renderOrder = 6;
   g.add(model, fp, overlay);
   scene.add(g);
-  Object.assign(placing, { type, ghost: g, overlay, valid: false, chain: 0 });
+  Object.assign(placing, { type, ghost: g, overlay, valid: false, chain: 0, rot: placing.rot || 0 });
+  if (def.gate) toast('Porta: prem R per girar-la');
   updatePlacement();
 }
 function cancelPlacement() {
@@ -1771,8 +1864,8 @@ function snapToGrid(v, cells) {
   // Mida senar → centre a mitja cel·la; mida parell → centre a la vora d'una cel·la
   return cells % 2 ? Math.round(v - 0.5) + 0.5 : Math.round(v);
 }
-function canPlace(type, x, z) {
-  const [sw, sd] = CONFIG.BUILDINGS[type].size;
+function canPlace(type, x, z, rot = 0) {
+  const [sw, sd] = sizeOf(type, rot);
   const L = CONFIG.MAP_LIMIT;
   if (Math.abs(x) + sw / 2 > L - 1 || Math.abs(z) + sd / 2 > L - 1) return false;
   const N = NAV.N;
@@ -1790,12 +1883,13 @@ function updatePlacement() {
   const p = pickGround(mouse.x, mouse.y);
   if (!p) return;
   if (placing.wall) { updateWallPlacement(p); return; }
-  const [sw, sd] = CONFIG.BUILDINGS[placing.type].size;
+  const [sw, sd] = sizeOf(placing.type, placing.rot);
   placing.x = snapToGrid(p.x, sw);
   placing.z = snapToGrid(p.z, sd);
   placing.ghost.position.set(placing.x, 0, placing.z);
+  placing.ghost.rotation.y = placing.rot ? Math.PI / 2 : 0;
   placing.overlay.position.set(Math.round(placing.x) - placing.x, 0.04, Math.round(placing.z) - placing.z);
-  const valid = canPlace(placing.type, placing.x, placing.z) && !buildBlockReason(placing.type);
+  const valid = canPlace(placing.type, placing.x, placing.z, placing.rot) && !buildBlockReason(placing.type);
   if (valid !== placing.valid) {
     placing.valid = valid;
     for (const m of placing.meshes) m.material = valid ? GHOST.ok : GHOST.bad;
@@ -1810,7 +1904,7 @@ function confirmPlacement(shift) {
   const units = builders();
   if (!units.length) { cancelPlacement(); return; }
   applyCost(CONFIG.BUILDINGS[type].cost);
-  const b = createBuilding(type, placing.x, placing.z, false);
+  const b = createBuilding(type, placing.x, placing.z, false, PLAYER.id, placing.rot);
   // Amb Shift es poden col·locar diversos fonaments seguits: s'encuen com a ordres
   if (shift && placing.chain > 0) units.forEach(u => enqueueOrder(u, { type: 'build', building: b }));
   else commandBuild(units, b);
@@ -1865,11 +1959,11 @@ function setUnitStats(e, kind) {
   const newMax = d.hp + (cat === 'villager' ? M.villagerHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
-  e.barH = cat === 'cavalry' ? 3.4 : 2.75;
+  e.barH = cat === 'cavalry' ? 3.4 : cat === 'trade' ? 2.9 : 2.75;
 }
 function applyUnitStats(e, kind) {
   setUnitStats(e, kind);
-  e.isMilitary = kind !== 'villager';
+  e.isMilitary = ['infantry', 'archer', 'cavalry'].includes(CONFIG.UNITS[kind].cat);
   e.attackTarget = null;
   e.attackCooldown = 0;
   e.scanTimer = rand() * 0.5;
@@ -2118,6 +2212,89 @@ function createSoldier(kind, x, z, team = PLAYER.id) {
   return e;
 }
 
+/* ---------- Carro de comerç (bou + carro) ---------- */
+function createTradeCart(x, z, team = PLAYER.id) {
+  const d = CONFIG.UNITS.tradecart;
+  const T = teamOf(team);
+  const e = new Entity({ kind: 'unit', subtype: 'tradecart', name: d.name, icon: d.icon, team, radius: 0.8, selRadius: 1.3, hp: d.hp, maxHp: d.hp });
+  applyUnitStats(e, 'tradecart');
+  Object.assign(e, {
+    target: null, path: null, walkPhase: rand() * 10, spawnT: 1, state: STATE.IDLE, orderQueue: [],
+    gatherNode: null, dropTarget: null, buildTarget: null, buildAngle: null, gatherAngle: null, approachTries: 0,
+    lastResourceType: null, lastNodePos: new THREE.Vector3(), carry: { type: null, amount: 0 }, workPhase: 0,
+    tool: { visible: false }, axeHead: { visible: false }, pickHead: { visible: false }, hammerHead: { visible: false },
+    carryMesh: { visible: false }, tradeHome: null, tradeDest: null, tradeLoaded: 0,
+  });
+  e.radius = 0.8;
+  const model = new THREE.Group();
+  const hide = mat(0x7a5230, { roughness: 0.85 });
+  const wood = mat(0x8a5a32, { roughness: 0.9 });
+  // Bou
+  const body = new THREE.Mesh(cavalryGeo.body, hide); body.position.set(0, 0.95, 1.15); body.scale.set(0.8, 0.75, 1.3);
+  const head = new THREE.Mesh(cavalryGeo.head, hide); head.position.set(0, 1.1, 1.95); head.rotation.x = 0.3;
+  const horns = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.06), mat(0xe8dcc0)); horns.position.set(0, 1.3, 1.9);
+  model.add(body, head, horns);
+  const legs = [];
+  for (const [lx, lz] of [[-0.25, 1.6], [0.25, 0.7], [0.25, 1.6], [-0.25, 0.7]]) {
+    const leg = new THREE.Mesh(cavalryGeo.leg, hide);
+    leg.position.set(lx, 0.8, lz);
+    leg.scale.y = 0.8;
+    model.add(leg);
+    legs.push(leg);
+  }
+  // Carro
+  bx(model, 1.3, 0.12, 1.8, wood, 0, 0.95, -0.55);
+  for (const sx of [-1, 1]) bx(model, 0.08, 0.45, 1.8, wood, sx * 0.62, 1.2, -0.55);
+  bx(model, 1.3, 0.45, 0.08, wood, 0, 1.2, -1.42);
+  for (const sx of [-1, 1]) {
+    const w = cy(model, 0.5, 0.5, 0.1, 14, mat(0x5a3a1e), sx * 0.75, 0.5, -0.55);
+    w.rotation.z = Math.PI / 2;
+  }
+  bx(model, 0.06, 0.06, 1.0, wood, 0, 0.9, 0.55);
+  const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 1.6, 12, 1, true, 0, Math.PI), mat(T.color, { side: THREE.DoubleSide, roughness: 0.8 }));
+  // Mig cilindre: eix al llarg del carro (Z) i obertura cap avall
+  cover.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
+  cover.position.set(0, 1.25, -0.55);
+  model.add(cover);
+  const cargo = new THREE.Group();
+  for (let i = 0; i < 3; i++) bx(cargo, 0.35, 0.3, 0.35, CARRY_MATERIALS.gold, -0.3 + i * 0.3, 1.2, -0.3 - (i % 2) * 0.4);
+  cargo.visible = false;
+  model.add(cargo);
+  const hit = new THREE.Mesh(cavalryGeo.hit, hitMaterial);
+  hit.position.y = 1.2;
+  hit.userData.noShadow = true;
+  e.group.add(model, hit);
+  e.model = model;
+  e.cargo = cargo;
+  e.legs = legs;
+  e.arms = [new THREE.Object3D(), new THREE.Object3D()];
+  e.group.position.set(x, 0, z);
+  e.finalize();
+  state.units.push(e);
+  return e;
+}
+function markets(team) {
+  return state.buildings.filter(b => b.subtype === 'market' && b.team === team && !b.underConstruction && !b.dead);
+}
+function tradeValue(a, b) {
+  const d = hDist(a.position, b.position);
+  return Math.round(d * 0.6 + d * d * 0.004);
+}
+function orderTrade(u, dest) {
+  const home = markets(u.team).filter(m => m !== dest).sort((a, b) => hDist(a.position, u.position) - hDist(b.position, u.position))[0];
+  if (!home) { if (u.isOwn) toast('🏪 Cal un segon mercat per comerciar'); return false; }
+  u.orderQueue.length = 0;
+  u.gatherNode = null; u.attackTarget = null;
+  u.tradeHome = home;
+  u.tradeDest = dest;
+  u.tradeLoaded = 0;
+  u.cargo.visible = false;
+  u.approachTries = 0;
+  setMoveTarget(u, approachPoint(dest, u.position));
+  setUnitState(u, STATE.TRADING);
+  return true;
+}
+
 /* =====================================================================
    DECORACIÓ (herba i roques – no seleccionables)
    ===================================================================== */
@@ -2165,13 +2342,14 @@ function entSurfaceDist(ent, x, z) {
    walk[]  → cel·les no transitables per les unitats
    build[] → cel·les ocupades (no s'hi pot construir)
    ===================================================================== */
-const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, version: 0, stampId: 0 };
+const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, gate: null, team: 0, version: 0, stampId: 0 };
 function navInit() {
   const N = Math.ceil((CONFIG.MAP_LIMIT * 2) / NAV.cell);
   NAV.N = N;
   NAV.x0 = -CONFIG.MAP_LIMIT;
   NAV.walk = new Uint8Array(N * N);
   NAV.build = new Uint8Array(N * N);
+  NAV.gate = new Uint8Array(N * N);     // cel·les de porta: equip que hi pot passar
   NAV.g = new Float32Array(N * N);
   NAV.parent = new Int32Array(N * N);
   NAV.seen = new Uint32Array(N * N);
@@ -2179,12 +2357,17 @@ function navInit() {
 }
 function navCell(v) { return Math.min(NAV.N - 1, Math.max(0, Math.floor((v - NAV.x0) / NAV.cell))); }
 function navCenter(i) { return NAV.x0 + (i + 0.5) * NAV.cell; }
-function navFree(i, j) { return i >= 0 && j >= 0 && i < NAV.N && j < NAV.N && !NAV.walk[j * NAV.N + i]; }
+function navFree(i, j) {
+  if (i < 0 || j < 0 || i >= NAV.N || j >= NAV.N) return false;
+  const k = j * NAV.N + i;
+  return !NAV.walk[k] && (!NAV.gate[k] || NAV.gate[k] === NAV.team);
+}
 
 function rebuildNav() {
   const N = NAV.N;
   NAV.walk.fill(0);
   NAV.build.fill(0);
+  NAV.gate.fill(0);
   for (const o of state.obstacles) {
     if (o.entity && o.entity.mobile) continue;          // les ovelles es mouen: no bloquegen la graella
     const ex = (o.rect ? o.hw : o.r) + 1.2, ez = (o.rect ? o.hd : o.r) + 1.2;
@@ -2192,7 +2375,8 @@ function rebuildNav() {
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
         const d = obstacleSurface(o, navCenter(i), navCenter(j)).d;
-        if (d < 0.35) NAV.walk[j * N + i] = 1;
+        if (o.gateTeam) { if (d < 0) NAV.gate[j * N + i] = o.gateTeam; else if (d < 0.35) NAV.walk[j * N + i] = 1; }
+        else if (d < 0.35) NAV.walk[j * N + i] = 1;
         if (d < 0.5) NAV.build[j * N + i] = 1;
       }
     }
@@ -2234,7 +2418,8 @@ function segmentWalkable(ax, az, bx, bz) {
     const t = s / steps;
     const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
     if (t * len < 0.8 || (1 - t) * len < 0.8) continue;
-    if (NAV.walk[navCell(z) * N + navCell(x)]) return false;
+    const k = navCell(z) * N + navCell(x);
+    if (NAV.walk[k] || (NAV.gate[k] && NAV.gate[k] !== NAV.team)) return false;
   }
   return true;
 }
@@ -2332,6 +2517,7 @@ function setMoveTarget(u, p) {
   u.path = null;
   u.pathVersion = NAV.version;
   if (!p) return;
+  NAV.team = u.team;                  // les portes només deixen passar el seu equip
   if (segmentWalkable(u.position.x, u.position.z, p.x, p.z)) { u.path = [p]; return; }
   const cells = findPath(u.position.x, u.position.z, p.x, p.z);
   if (!cells) { u.path = [p]; return; }
@@ -2753,7 +2939,7 @@ function commandReturn(units, building) {
 }
 
 function issueRightClick(x, y, queued = false) {
-  const units = state.selected.filter(e => e.kind === 'unit' && e.isOwn);
+  let units = state.selected.filter(e => e.kind === 'unit' && e.isOwn);
   const targetEnt = pickEntity(x, y);
 
   // Centre de Ciutat seleccionat: clic dret = punt de reunió
@@ -2781,6 +2967,14 @@ function issueRightClick(x, y, queued = false) {
     commandAttack(units, targetEnt, queued);
     spawnMoveMarker(targetEnt.position, 0xff4a3a, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
     return;
+  }
+  // Carros de comerç sobre un mercat propi: ruta comercial
+  const carts = units.filter(u => u.subtype === 'tradecart');
+  if (carts.length && targetEnt && targetEnt.subtype === 'market' && targetEnt.isOwn && !targetEnt.underConstruction) {
+    carts.forEach(u => orderTrade(u, targetEnt));
+    spawnMoveMarker(targetEnt.position, 0xffd84a, 3.5);
+    if (carts.length === units.length) return;
+    units = units.filter(u => u.subtype !== 'tradecart');
   }
   const vills = units.filter(u => u.subtype === 'villager');
   const soldiers = units.filter(u => u.subtype !== 'villager');
@@ -2966,7 +3160,7 @@ function queueUnit(building, kind) {
 function queueVillager(building) { return queueUnit(building, 'villager'); }
 
 /* Aplica l'efecte d'una tecnologia a tot l'equip */
-function completeTech(team, kind) {
+function applyTechEffect(team, kind) {
   const T = teamOf(team), M = T.mods, d = CONFIG.TECHS[kind];
   T.techs.add(kind);
   switch (kind) {
@@ -2981,6 +3175,10 @@ function completeTech(team, kind) {
     case 'scalearmor': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 1]; break;
     case 'barding': M.armor.cavalry = [M.armor.cavalry[0] + 1, M.armor.cavalry[1] + 1]; break;
   }
+}
+function completeTech(team, kind) {
+  const d = CONFIG.TECHS[kind];
+  applyTechEffect(team, kind);
   for (const u of state.units) if (u.team === team) setUnitStats(u, u.unitKind);
   if (team === PLAYER.id) {
     toast(d.ageUp ? `🎉 Heu avançat a l'${d.name}!` : `🔬 Tecnologia investigada: ${d.name}`);
@@ -3022,7 +3220,9 @@ function updateTraining(dt) {
 
 function spawnUnit(building, kind) {
   const spot = findSpawnSpot(building);
-  const v = kind === 'villager' ? createVillager(spot.x, spot.z, building.team) : createSoldier(kind, spot.x, spot.z, building.team);
+  const v = kind === 'villager' ? createVillager(spot.x, spot.z, building.team)
+    : kind === 'tradecart' ? createTradeCart(spot.x, spot.z, building.team)
+    : createSoldier(kind, spot.x, spot.z, building.team);
   v.group.rotation.y = spot.angle;
   v.spawnT = 0;
   v.group.scale.setScalar(0.01);
@@ -3038,6 +3238,12 @@ function spawnUnit(building, kind) {
   }
   if (state.selected.includes(building)) updateSelectionUI(true);
   if (building.onSpawn) building.onSpawn(v);
+  // El carro comença sol la ruta cap al mercat més llunyà
+  if (kind === 'tradecart') {
+    const far = markets(building.team).filter(m => m !== building).sort((a, b) => hDist(b.position, building.position) - hDist(a.position, building.position))[0];
+    if (far) orderTrade(v, far);
+    else if (building.isOwn) toast('🏪 Construeix un segon mercat lluny del primer per comerciar');
+  }
   return v;
 }
 
@@ -3079,6 +3285,7 @@ const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math
 
 function resolveObstacleCollision(u, dt) {
   for (const o of state.obstacles) {
+    if (o.gateTeam === u.team) continue;
     const s = pushOutOf(u.position, o, u.radius);
     if (s && u.target) {
       // Llisquem per la tangent cap al costat del destí per no quedar encallats
@@ -3377,6 +3584,8 @@ function stepTowardsTarget(u, dt) {
     const wp = u.path[0];
     const dx = wp.x - u.position.x, dz = wp.z - u.position.z;
     const dist = Math.hypot(dx, dz);
+    // Als punts intermedis del camí es tomba abans d'arribar-hi: trajectòria arrodonida
+    if (u.path.length > 1 && dist < 0.55) { u.path.shift(); continue; }
     if (dist <= step) {
       u.position.x = wp.x;
       u.position.z = wp.z;
@@ -3386,7 +3595,7 @@ function stepTowardsTarget(u, dt) {
     }
     u.position.x += (dx / dist) * step;
     u.position.z += (dz / dist) * step;
-    u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-14 * dt));
+    u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-11 * dt));
     step = 0;
   }
   if (!u.path.length) {
@@ -3558,6 +3767,32 @@ function updateUnit(u, dt) {
     case STATE.GATHERING:
       gatherTick(u, dt);
       break;
+    case STATE.TRADING: {
+      const dest = u.tradeDest, home = u.tradeHome;
+      if (!dest || dest.dead || !home || home.dead) { u.tradeDest = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
+      if (inReach(u, dest)) {
+        if (u.tradeLoaded > 0) {
+          resOf(u.team).gold += u.tradeLoaded;
+          if (u.isOwn) { spawnFloater(`+${u.tradeLoaded} 🪙`, u.position, 3.2, 'gold'); updateResourcesUI(); }
+          u.tradeLoaded = 0;
+        } else {
+          u.tradeLoaded = tradeValue(home, dest);
+        }
+        u.cargo.visible = u.tradeLoaded > 0;
+        u.tradeHome = dest;
+        u.tradeDest = home;
+        u.approachTries = 0;
+        setMoveTarget(u, approachPoint(home, u.position));
+        break;
+      }
+      const arrived = stepTowardsTarget(u, dt);
+      walking = !arrived;
+      if (arrived) {
+        if (++u.approachTries > 6) { setUnitState(u, STATE.IDLE); break; }
+        setMoveTarget(u, approachPoint(dest, u.position, 0.5 * u.approachTries));
+      }
+      break;
+    }
     case STATE.IDLE:
     default:
       if (u.target) setMoveTarget(u, null);
@@ -4384,6 +4619,7 @@ function unitTaskLine(u) {
   const tag = `<span class="state-tag ${u.state}">${STATE_LABEL[u.state]}</span>`;
   let detail = '';
   if (u.state === STATE.ATTACKING && u.attackTarget) detail = ` ${u.attackTarget.name}`;
+  else if (u.state === STATE.TRADING) detail = u.tradeLoaded ? ` · porta <b>${u.tradeLoaded} 🪙</b>` : ' · anant a carregar';
   else if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
   else if (u.state === STATE.MOVING && u.gatherNode) detail = ` cap a ${u.gatherNode.name.toLowerCase()}`;
   else if (u.state === STATE.RETURNING) detail = u.dropTarget ? ` (${u.dropTarget.name})` : '';
@@ -4464,7 +4700,7 @@ function updateSelectionUI(panelOnly = false) {
       </div>`;
   } else {
     const shown = sel.slice(0, 24);
-    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨', ATTACKING: '⚔️', GARRISONED: '🏰' };
+    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨', ATTACKING: '⚔️', GARRISONED: '🏰', TRADING: '🪙' };
     const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
     const counts = {};
     sel.forEach(u => { counts[u.state] = (counts[u.state] || 0) + 1; });
@@ -4510,6 +4746,19 @@ function updateSelectionUI(panelOnly = false) {
         ? `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
         : `${d.name} — ${costText(d.cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`;
       actionsEl.appendChild(b);
+    }
+    if (first.subtype === 'market') {
+      const P = PLAYER.prices;
+      for (const r of ['food', 'wood', 'stone']) {
+        const buy = makeActionButton(RES_ICON[r], 'Compra', `🪙 ${P[r]}`, '', () => marketTrade(PLAYER.id, r, true), true);
+        buy.title = `Compra 100 de ${RES_LABEL[r].toLowerCase()} per ${P[r]} d'or (el preu puja)`;
+        actionsEl.appendChild(buy);
+      }
+      for (const r of ['food', 'wood', 'stone']) {
+        const sell = makeActionButton(RES_ICON[r], 'Ven', `+🪙 ${Math.floor(P[r] * 0.7)}`, '', () => marketTrade(PLAYER.id, r, false), true);
+        sell.title = `Ven 100 de ${RES_LABEL[r].toLowerCase()} per ${Math.floor(P[r] * 0.7)} d'or (el preu baixa)`;
+        actionsEl.appendChild(sell);
+      }
     }
     if (first.subtype === 'towncenter') {
       const inside = first.garrison && first.garrison.length;
@@ -4559,6 +4808,22 @@ function updateSelectionUI(panelOnly = false) {
   } else if (first.kind === 'resource') {
     actionsEl.innerHTML = `<div class="action-hint">Recurs natural (${RES_LABEL[first.resourceType]}).<br>Selecciona aldeans i fes <kbd>clic dret</kbd><br>sobre el recurs per recol·lectar-lo.</div>`;
   }
+}
+
+/* Mercat: 100 unitats de recurs per or; cada operació mou el preu */
+function marketTrade(team, r, buy) {
+  const T = teamOf(team), R = T.res, price = T.prices[r];
+  if (buy) {
+    if (R.gold < price) { if (team === PLAYER.id) toast(`Cal ${price} d'or per comprar`); return false; }
+    R.gold -= price; R[r] += 100;
+    T.prices[r] = Math.min(400, price + 6);
+  } else {
+    if (R[r] < 100) { if (team === PLAYER.id) toast(`Cal tenir 100 de ${RES_LABEL[r].toLowerCase()} per vendre`); return false; }
+    R[r] -= 100; R.gold += Math.floor(price * 0.7);
+    T.prices[r] = Math.max(25, price - 6);
+  }
+  if (team === PLAYER.id) { updateResourcesUI(); updateSelectionUI(); }
+  return true;
 }
 
 /* Llista d'unitats i tecnologies que ofereix un edifici */
@@ -4641,10 +4906,27 @@ canvas.addEventListener('mousedown', (e) => {
     mouse.dragging = false;
     mouse.sx = e.clientX;
     mouse.sy = e.clientY;
+  } else if (e.button === 1) {
+    // Botó del mig: agafar i arrossegar el mapa
+    e.preventDefault();
+    camState.grab = { x: e.clientX, y: e.clientY };
+    camState.goal = null;
+    camState.vel.set(0, 0, 0);
+    canvas.style.cursor = 'grabbing';
   } else if (e.button === 2) {
     issueRightClick(e.clientX, e.clientY, e.shiftKey);
   }
 });
+window.addEventListener('mousemove', (e) => {
+  if (!camState.grab) return;
+  const dx = e.clientX - camState.grab.x, dy = e.clientY - camState.grab.y;
+  camState.grab.x = e.clientX; camState.grab.y = e.clientY;
+  // Píxels → unitats del món a la distància actual de la càmera
+  const s = (2 * camState.dist * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / window.innerHeight;
+  camState.target.addScaledVector(right, -dx * s).addScaledVector(fwd, dy * s * 1.25);
+  clampToMap(camState.target);
+});
+window.addEventListener('mouseup', (e) => { if (e.button === 1 && camState.grab) { camState.grab = null; canvas.style.cursor = ''; } });
 
 window.addEventListener('mousemove', (e) => {
   mouse.x = e.clientX;
@@ -4685,11 +4967,10 @@ window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  const dir = Math.sign(e.deltaY);
-  camState.targetDist = THREE.MathUtils.clamp(
-    camState.targetDist * (1 + dir * CONFIG.CAM.zoomStep),
-    CONFIG.CAM.minDist, CONFIG.CAM.maxDist
-  );
+  // Proporcional al gir: una osca de ratolí ≈ 13 %, el trackpad fa passos petits i continus
+  const delta = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+  const factor = Math.exp(THREE.MathUtils.clamp(delta, -300, 300) * 0.00125);
+  camState.targetDist = THREE.MathUtils.clamp(camState.targetDist * factor, CONFIG.CAM.minDist, CONFIG.CAM.maxDist);
 }, { passive: false });
 
 window.addEventListener('keydown', (e) => {
@@ -4732,6 +5013,9 @@ window.addEventListener('keydown', (e) => {
       if (units.length) { commandStop(units); updateSelectionUI(); }
       break;
     }
+    case 'KeyR':
+      if (placing.type && !placing.wall) { placing.rot = placing.rot ? 0 : 1; placing.valid = null; updatePlacement(); }
+      break;
     case 'KeyB': {
       const tc = state.buildings.find(b => b.isOwn && b.subtype === 'towncenter');
       ringTownBell(state.selected.find(s => s.subtype === 'towncenter' && s.isOwn) || tc);
@@ -4739,6 +5023,9 @@ window.addEventListener('keydown', (e) => {
     }
     case 'KeyP':
       togglePause();
+      break;
+    case 'KeyM':
+      openMenu();
       break;
     case 'F9':
       FOG.enabled = !FOG.enabled;
@@ -4804,9 +5091,17 @@ function selectNextIdle() {
 }
 document.getElementById('idle-btn').addEventListener('click', selectNextIdle);
 
-function centerOn(p) {
-  camState.target.x = p.x;
-  camState.target.z = p.z;
+/* Centra la càmera lliscant suaument (o de cop, per al minimapa) */
+function centerOn(p, instant = false) {
+  if (instant) {
+    camState.goal = null;
+    camState.vel.set(0, 0, 0);
+    camState.target.x = p.x;
+    camState.target.z = p.z;
+    clampToMap(camState.target);
+  } else {
+    camState.goal = clampToMap(new THREE.Vector3(p.x, 0, p.z));
+  }
 }
 
 /* =====================================================================
@@ -4962,7 +5257,7 @@ mm.el.addEventListener('mousedown', (e) => {
   const w = clampToMap(mmToWorld(px, py));
   if (e.button === 0) {
     mm.dragging = true;
-    centerOn(w);
+    centerOn(w, true);
   } else if (e.button === 2) {
     const units = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
     if (units.length) {
@@ -4974,7 +5269,7 @@ mm.el.addEventListener('mousedown', (e) => {
 window.addEventListener('mousemove', (e) => {
   if (!mm.dragging) return;
   const [px, py] = mmEventPos(e);
-  centerOn(clampToMap(mmToWorld(px, py)));
+  centerOn(clampToMap(mmToWorld(px, py)), true);
 });
 window.addEventListener('mouseup', () => { mm.dragging = false; });
 window.addEventListener('resize', mmResize);
@@ -4982,46 +5277,62 @@ window.addEventListener('resize', mmResize);
 /* ---------- Controls de càmera (WASD / fletxes / vores / Q-E) ---------- */
 const fwd = new THREE.Vector3();
 const right = new THREE.Vector3();
+const desiredVel = new THREE.Vector3();
+const edgeFactor = (d, band) => d >= band ? 0 : THREE.MathUtils.smoothstep(1 - d / band, 0, 1);
 function updateCameraControls(dt) {
+  const C = CONFIG.CAM;
   let mx = 0, mz = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) mz += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) mz -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-
-  if (mouse.inside) {
-    const edge = CONFIG.CAM.edge;
+  // Vores de la pantalla: intensitat progressiva (més a prop de la vora = més ràpid)
+  if (mouse.inside && !camState.grab && !mm.dragging) {
     const mapBottom = window.innerHeight - hudHeight();
-    // Sobre el HUD no hi ha pan (per poder fer clic als botons tranquil·lament)
     if (mouse.y < mapBottom) {
-      if (mouse.x <= edge) mx -= 1;
-      if (mouse.x >= window.innerWidth - edge) mx += 1;
-      if (mouse.y <= edge) mz += 1;
-      if (mouse.y >= mapBottom - CONFIG.CAM.bottomEdge) mz -= 1;
+      mx -= edgeFactor(mouse.x, C.edge);
+      mx += edgeFactor(window.innerWidth - 1 - mouse.x, C.edge);
+      mz += edgeFactor(mouse.y, C.edge);
+      mz -= edgeFactor(mapBottom - 1 - mouse.y, C.bottomEdge);
     }
   }
+  const len = Math.hypot(mx, mz);
+  if (len > 1) { mx /= len; mz /= len; }
+  if (len > 0.01) camState.goal = null;     // el control manual cancel·la el lliscament
 
-  if (keys.has('KeyQ')) camState.yaw += CONFIG.CAM.rotSpeed * dt;
-  if (keys.has('KeyE')) camState.yaw -= CONFIG.CAM.rotSpeed * dt;
+  // Rotació suau (Q/E)
+  const yawInput = (keys.has('KeyQ') ? 1 : 0) - (keys.has('KeyE') ? 1 : 0);
+  camState.yawVel = THREE.MathUtils.damp(camState.yawVel, yawInput * C.rotSpeed, yawInput ? C.accel : C.decel, dt);
+  camState.yaw += camState.yawVel * dt;
 
-  if (mx || mz) {
-    const len = Math.hypot(mx, mz);
-    mx /= len; mz /= len;
-    const yaw = camState.yaw;
-    fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-    right.set(Math.cos(yaw), 0, -Math.sin(yaw));
-    const speed = CONFIG.CAM.panSpeed * camState.dist * dt;
-    camState.target.addScaledVector(fwd, mz * speed).addScaledVector(right, mx * speed);
+  // Desplaçament amb inèrcia: la velocitat s'acosta suaument a la desitjada
+  const yaw = camState.yaw;
+  fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+  right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+  const speed = C.panSpeed * camState.dist;
+  desiredVel.set(0, 0, 0).addScaledVector(fwd, mz * speed).addScaledVector(right, mx * speed);
+  const k = 1 - Math.exp(-(len > 0.01 ? C.accel : C.decel) * dt);
+  camState.vel.lerp(desiredVel, k);
+  if (camState.vel.lengthSq() < 1e-4 && len <= 0.01) camState.vel.set(0, 0, 0);
+  camState.target.addScaledVector(camState.vel, dt);
+
+  // Lliscament cap a un punt (H, Espai, grups, aldeà inactiu)
+  if (camState.goal) {
+    const g = 1 - Math.exp(-C.glide * dt);
+    camState.target.x += (camState.goal.x - camState.target.x) * g;
+    camState.target.z += (camState.goal.z - camState.target.z) * g;
+    if (Math.hypot(camState.goal.x - camState.target.x, camState.goal.z - camState.target.z) < 0.05) camState.goal = null;
   }
   clampToMap(camState.target);
 
-  camState.dist = THREE.MathUtils.damp(camState.dist, camState.targetDist, 10, dt);
+  camState.dist = THREE.MathUtils.damp(camState.dist, camState.targetDist, 8, dt);
   updateCamera();
 }
 
 /* ---------- Cursor segons el que hi ha sota el ratolí ---------- */
 let hoverFrame = 0;
 function updateHoverCursor() {
+  if (camState.grab) return;
   if (placing.type) { canvas.style.cursor = 'crosshair'; return; }
   if (++hoverFrame % 3 !== 0) return;
   if (!mouse.overCanvas || mouse.down) return;
@@ -5094,11 +5405,188 @@ document.getElementById('start-btn').addEventListener('click', () => {
   canvas.focus();
   toast(`Dificultat: ${AI.diff.label}. Recursos inicials: 200 🍖 · 200 🪵 · 100 🪙 · 200 🪨`);
 });
+/* =====================================================================
+   DESAR I CARREGAR PARTIDA (localStorage)
+   ===================================================================== */
+const SAVE_KEY = 'imperis3d-save-v1';
+function r2(v) { return Math.round(v * 100) / 100; }
+function serializeGame() {
+  const ents = [], idx = new Map();
+  const add = (e, data) => { idx.set(e, ents.length); ents.push(data); };
+  for (const n of state.resourceNodes) {
+    if (n.subtype === 'farm') continue;
+    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, scale: r2(n.group.scale.x), killed: !!n.killed });
+  }
+  const farms = state.resourceNodes.filter(n => n.subtype === 'farm');
+  for (const b of state.buildings.concat(farms)) {
+    add(b, {
+      k: 'bld', sub: b.subtype, team: b.team, x: r2(b.position.x), z: r2(b.position.z), rot: b.rot || 0,
+      progress: b.subtype === 'towncenter' ? 1 : b.progress, hp: Math.round(b.hp), amount: b.subtype === 'farm' ? b.amount : undefined,
+      queue: b.trainQueue ? b.trainQueue.map(q => ({ kind: q.kind, t: r2(q.t) })) : null,
+      rally: b.rally ? { x: r2(b.rally.point.x), z: r2(b.rally.point.z) } : null, seen: !!b.seen,
+    });
+  }
+  for (const u of state.units) {
+    add(u, { k: 'unit', sub: u.subtype, team: u.team, x: r2(u.position.x), z: r2(u.position.z), ry: r2(u.group.rotation.y),
+             hp: r2(u.hp), carry: u.carry.amount ? { ...u.carry } : null, inWave: !!u.inWave });
+  }
+  // Segona passada: tasques (referències entre entitats)
+  for (const u of state.units) {
+    const d = ents[idx.get(u)];
+    if (u.garrisoned) d.garrison = idx.get(u.garrisoned);
+    else if (u.buildTarget && idx.has(u.buildTarget)) d.build = idx.get(u.buildTarget);
+    else if (u.gatherNode && idx.has(u.gatherNode)) d.gather = idx.get(u.gatherNode);
+    else if (u.subtype === 'tradecart' && u.tradeDest && idx.has(u.tradeDest)) d.trade = idx.get(u.tradeDest);
+  }
+  const team = (T) => ({ res: { ...T.res }, age: T.age, techs: [...T.techs], prices: { ...T.prices } });
+  let explored = '';
+  for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
+  return {
+    v: 1, date: new Date().toISOString(), elapsed: state.elapsed,
+    teams: { 1: team(PLAYER), 2: team(ENEMY) },
+    ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), waveCount: AI.waveCount, nextWaveAt: AI.nextWaveAt, armyCycle: AI.armyCycle },
+    fog: { enabled: FOG.enabled, explored },
+    cam: { x: camState.target.x, z: camState.target.z, yaw: camState.yaw, dist: camState.targetDist },
+    ents,
+  };
+}
+function saveGame() {
+  try {
+    const data = serializeGame();
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    toast(`💾 Partida desada (${formatTime(data.elapsed)})`);
+    refreshSaveInfo();
+    return true;
+  } catch (err) {
+    toast('No s\'ha pogut desar la partida (emmagatzematge no disponible)');
+    return false;
+  }
+}
+function readSave() {
+  try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function formatTime(sec) { return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`; }
+function clearWorld() {
+  for (const e of [...state.units, ...state.buildings, ...state.resourceNodes, ...state.dying]) scene.remove(e.group);
+  for (const p of state.projectiles) scene.remove(p.g);
+  for (const m of state.markers) scene.remove(m.g);
+  for (const f of state.floaters) f.el.remove();
+  Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [],
+                         projectiles: [], markers: [], floaters: [], pings: [], controlGroups: {} });
+  cancelPlacement();
+}
+function loadGame(data) {
+  if (!data || data.v !== 1) { toast('No hi ha cap partida desada vàlida'); return false; }
+  clearWorld();
+  // Equips: recursos, preus, edat i tecnologies (abans de crear les unitats)
+  for (const [id, T] of [[1, PLAYER], [2, ENEMY]]) {
+    const d = data.teams[id];
+    Object.assign(T.res, d.res);
+    T.prices = { ...d.prices };
+    T.age = 0; T.techs = new Set(); T.mods = defaultMods();
+    for (const k of d.techs) applyTechEffect(id, k);
+    T.age = d.age;
+  }
+  createBuilding.batch = true;
+  const made = [];
+  for (const d of data.ents) {
+    let e = null;
+    if (d.k === 'res') {
+      if (d.sub === 'tree') e = createTree(d.x, d.z, d.scale);
+      else if (d.sub === 'gold') e = createGoldMine(d.x, d.z);
+      else if (d.sub === 'stone') e = createStoneMine(d.x, d.z);
+      else if (d.sub === 'berries') e = createBerryBush(d.x, d.z);
+      else if (d.sub === 'sheep') {
+        e = createSheep(d.x, d.z);
+        if (d.killed) { e.killed = true; e.mobile = false; e.name = 'Ovella (carn)'; }
+      }
+      if (e) { e.amount = d.amount; onNodeHarvested(e); }
+    } else if (d.k === 'bld') {
+      if (d.sub === 'towncenter') e = createTownCenter(d.x, d.z, d.team);
+      else {
+        e = createBuilding(d.sub, d.x, d.z, false, d.team, d.rot);
+        if (d.progress >= 1) completeBuilding(e, true);
+        else { e.progress = d.progress; applyConstructionVisual(e); }
+        if (d.sub === 'farm' && d.progress >= 1) { e.amount = d.amount; onNodeHarvested(e); }
+      }
+      e.hp = d.hp;
+      if (d.queue && e.trainQueue) e.trainQueue = d.queue.map(q => ({ ...q }));
+      if (d.rally) e.rally = { point: new THREE.Vector3(d.rally.x, 0, d.rally.z), node: null };
+      e.seen = d.seen;
+    } else if (d.k === 'unit') {
+      e = d.sub === 'villager' ? createVillager(d.x, d.z, d.team)
+        : d.sub === 'tradecart' ? createTradeCart(d.x, d.z, d.team)
+        : createSoldier(d.sub, d.x, d.z, d.team);
+      e.hp = d.hp;
+      e.group.rotation.y = d.ry || 0;
+      e.inWave = d.inWave;
+      if (d.carry) { e.carry = { ...d.carry }; updateCarryVisual(e); }
+    }
+    made.push(e);
+  }
+  createBuilding.batch = false;
+  rebuildNav();
+  // Tasques
+  data.ents.forEach((d, i) => {
+    const u = made[i];
+    if (d.k !== 'unit' || !u) return;
+    if (d.garrison !== undefined && made[d.garrison]) enterGarrison(u, made[d.garrison]);
+    else if (d.build !== undefined && made[d.build] && made[d.build].underConstruction) orderBuild(u, made[d.build], null);
+    else if (d.gather !== undefined && made[d.gather] && !made[d.gather].depleted) orderGather(u, made[d.gather], null);
+    else if (d.trade !== undefined && made[d.trade]) orderTrade(u, made[d.trade]);
+  });
+  // IA, boira, temps i càmera
+  AI.diff = DIFFICULTY[data.ai.diff] || DIFFICULTY.normal;
+  AI.waveCount = data.ai.waveCount; AI.nextWaveAt = data.ai.nextWaveAt; AI.armyCycle = data.ai.armyCycle || 0;
+  FOG.enabled = data.fog.enabled;
+  for (let k = 0; k < FOG.explored.length; k++) FOG.explored[k] = data.fog.explored.charCodeAt(k) === 49 ? 1 : 0;
+  state.elapsed = data.elapsed;
+  camState.target.set(data.cam.x, 0, data.cam.z);
+  camState.yaw = data.cam.yaw;
+  camState.targetDist = camState.dist = data.cam.dist;
+  camState.vel.set(0, 0, 0); camState.goal = null;
+  state.over = false;
+  updateFog();
+  updateResourcesUI();
+  updatePopulationUI();
+  updateAgeUI();
+  updateSelectionUI();
+  toast(`📂 Partida carregada (${formatTime(data.elapsed)}, ${AI.diff.label})`);
+  return true;
+}
+const menuScreen = document.getElementById('menu-screen');
+function refreshSaveInfo() {
+  const d = readSave();
+  document.getElementById('menu-slot').textContent = d
+    ? `Partida desada: ${formatTime(d.elapsed)} de joc · ${new Date(d.date).toLocaleString('ca')}`
+    : 'Encara no hi ha cap partida desada en aquest navegador.';
+  document.getElementById('menu-load').disabled = !d;
+  document.getElementById('start-load').style.display = d ? 'inline-block' : 'none';
+}
+function openMenu(open) {
+  if (state.over || !startScreen.classList.contains('hidden')) return;
+  const show = open ?? menuScreen.classList.contains('hidden');
+  menuScreen.classList.toggle('hidden', !show);
+  state.paused = show || !pauseScreen.classList.contains('hidden');
+  if (show) refreshSaveInfo();
+}
+document.getElementById('menu-btn').addEventListener('click', () => openMenu(true));
+document.getElementById('menu-continue').addEventListener('click', () => openMenu(false));
+document.getElementById('menu-save').addEventListener('click', () => saveGame());
+document.getElementById('menu-load').addEventListener('click', () => { if (loadGame(readSave())) openMenu(false); });
+document.getElementById('menu-new').addEventListener('click', () => location.reload());
+document.getElementById('start-load').addEventListener('click', () => {
+  const d = readSave();
+  startScreen.classList.add('hidden');
+  if (loadGame(d)) { state.paused = false; canvas.focus(); }
+  else startScreen.classList.remove('hidden');
+});
+
 function updateAgeUI() {
   document.getElementById('age-name').textContent = CONFIG.AGES[PLAYER.age].name.toUpperCase();
 }
 function togglePause() {
-  if (state.over || !startScreen.classList.contains('hidden')) return;
+  if (state.over || !startScreen.classList.contains('hidden') || !menuScreen.classList.contains('hidden')) return;
   state.paused = !state.paused;
   pauseScreen.classList.toggle('hidden', !state.paused);
 }
@@ -5218,6 +5706,7 @@ rebuildNav();
 fogInit();
 updateFog();
 updateAgeUI();
+refreshSaveInfo();
 resizeHpCanvas();
 mmResize();
 updateCamera();
@@ -5235,7 +5724,8 @@ setTimeout(() => loadingEl.remove(), 500);
 // Exposem l'estat per depurar des de la consola
 window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, queueUnit, townCenter, enemyTC, mouse, NAV, createBuilding,
   commandBuild, startPlacement, placing, findPath, popCap, createSoldier, commandAttack, AI, FOG, ENEMY, DIFFICULTY, ringTownBell, kill: (e) => killEntity(e, null),
-  PLAYER, completeTech, itemBlockReason, createSoldierAt: createSoldier };
+  PLAYER, completeTech, itemBlockReason, createSoldierAt: createSoldier, saveGame, loadGame, readSave, serializeGame,
+  createTradeCart, marketTrade, orderTrade };
 </script>
 </body>
 </html>
