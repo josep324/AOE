@@ -6,6 +6,14 @@ Joc d'estratègia en temps real a l'estil **Age of Empires II**, fet amb [Three.
 
 Obre **`index.html`** directament al navegador (doble clic). És un sol fitxer autònom: no cal Internet ni instal·lar res.
 
+Civilitzacions disponibles (es trien al menú d'inici), cadascuna amb arquitectura, vestits i dues bonificacions pròpies:
+
+| Civilització | Estil | Bonificacions |
+|---|---|---|
+| ⚜️ Francs | Europa occidental: entramat de fusta, palla i pedra | Cavalleria +20% de vida · Baies +15% |
+| 🌙 Sarraïns | Orient Mitjà: tova, arenisca, terrats, arcs i cúpules | Arquers +2 contra edificis · Comerç +20% d'or |
+| ⛩️ Japonesos | Àsia oriental: fusta fosca, parets blanques, teulades corbes | Infanteria ataca un 25% més ràpid · Fusta +10% |
+
 ## Desenvolupar
 
 Cal [Node.js](https://nodejs.org) 18 o superior.
@@ -23,11 +31,13 @@ src/
   index.html        pàgina (HUD, menús)
   styles.css        estils de la interfície
   main.js           punt d'entrada
-  data/             dades del joc: unitats, edificis, tecnologies, edats, tecles, dificultats
+  data/             dades del joc: civilitzacions, unitats, edificis, tecnologies, edats, tecles, dificultats
   game/             codi del joc, un fitxer per sistema, en ordre:
     00-config        configuració i estat global
-    01…06            render, càmera, llum, materials, terreny, indicadors de selecció
-    07…12            entitats, recursos, edificis, col·locació, models d'unitats, decoració
+    01…06            render, càmera, llum, materials, terreny pintat, indicadors de selecció
+    07…08a           entitats, biblioteca de models .glb, recursos i models de la natura
+    09…09d           edificis: kit comú (textures, teulades, cúpules…) i arquitectura de cada regió
+    10…12            col·locació, unitats (esquelet i vestits per regió), decoració
     13 navegació     graella, A*, portes per equip
     14 món           generació simètrica del mapa
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
@@ -35,7 +45,7 @@ src/
     22…24            boira de guerra, combat, efectes
     25…30            HUD, entrada, minimapa, barres de vida, flux de partida, desar/carregar
     31 bucle         simulació a pas fix (60 passos/s) i renderitzat
-assets/models/      models 3D opcionals (.glb) que substitueixen els fets amb primitives
+assets/models/      models 3D opcionals (.glb) que substitueixen els generats pel codi
 docs/MODELS.md      on trobar models gratuïts i com afegir-los
 scripts/publish.js  copia el fitxer compilat a index.html
 ```
