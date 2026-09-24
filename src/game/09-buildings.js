@@ -35,11 +35,14 @@ function buildingMats(team = PLAYER.id) {
   };
 }
 
+/* Alçada màxima dels models de la biblioteca, perquè les proporcions entre edificis siguin creïbles */
+const LIB_MAX_HEIGHT = { watchtower: 8.5, house: 4.8, mill: 7 };
+
 /* Retorna { model, height } per a cada tipus d'edifici. El model mira cap a +Z. */
 function makeBuildingModel(type, team = PLAYER.id) {
   // Model de la biblioteca (assets/models/buildings/<tipus>.glb) si n'hi ha
   const [fw, fd] = CONFIG.BUILDINGS[type].size;
-  const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96 });
+  const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96, maxH: LIB_MAX_HEIGHT[type] });
   if (lib) return { model: lib, height: lib.userData.height };
   const M = buildingMats(team);
   const g = new THREE.Group();
