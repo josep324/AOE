@@ -44,6 +44,9 @@ function makeBuildingModel(type, team = PLAYER.id) {
   const [fw, fd] = CONFIG.BUILDINGS[type].size;
   const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96, maxH: LIB_MAX_HEIGHT[type] });
   if (lib) return { model: lib, height: lib.userData.height };
+  // Model del kit d'estil AoE II (09a-building-kit.js), si el tipus ja hi és
+  const kit = kitBuildingModel(type, team);
+  if (kit) return kit;
   const M = buildingMats(team);
   const g = new THREE.Group();
   let height = 3;
