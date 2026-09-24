@@ -188,6 +188,14 @@
   .state-tag.GATHERING { background: rgba(80, 200, 90, 0.2); border-color: rgba(120, 230, 120, 0.5); }
   .state-tag.RETURNING { background: rgba(230, 180, 60, 0.2); border-color: rgba(255, 210, 100, 0.5); }
   .state-tag.MOVING { background: rgba(80, 150, 255, 0.2); border-color: rgba(120, 180, 255, 0.5); }
+  .state-tag.BUILDING { background: rgba(200, 140, 70, 0.25); border-color: rgba(230, 170, 100, 0.55); }
+  .bar.build > i { background: linear-gradient(180deg, #9fd6ff, #2f7fe0); }
+  .action-btn.small { width: 58px; height: 54px; gap: 0; font-size: 10px; padding: 2px; border-radius: 8px; }
+  .action-btn.small .big { font-size: 19px; }
+  .action-btn.small .cost { font-size: 9px; }
+  #actions.compact { gap: 5px; }
+  .pop.full b#pop-val { color: #ff6b6b; }
+  .pop.full { color: #ffb3b3; }
   .mini .st { position: absolute; top: 1px; right: 2px; font-size: 9px; }
   .mini { position: relative; }
 
@@ -252,6 +260,7 @@
     <li><kbd>Ctrl</kbd>/<kbd>Alt</kbd>+<kbd>1-9</kbd> crear grup · <kbd>1-9</kbd> seleccionar (2 cops: centrar)</li>
     <li><kbd>Shift</kbd>+<kbd>clic dret</kbd> encadenar ordres · <b>Minimapa</b>: clic mou càmera, clic dret mou unitats</li>
     <li>Centre seleccionat + <kbd>clic dret</kbd>: <b>punt de reunió</b></li>
+    <li>Aldeans: botons de <b>construcció</b> · <kbd>Shift</kbd> col·locar-ne més · <kbd>Supr</kbd> enderrocar</li>
   </ul>
 </div>
 
@@ -335,7 +344,7 @@ const CONFIG = {
   GATHER: {
     capacity: 10,                         // càrrega màxima per viatge
     // unitats per segon segons el tipus de recurs
-    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1 },
+    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1, farm: 0.7 },
     reach: 0.75,                          // distància extra per començar a treballar
     autoSearchRadius: 32,                 // radi per buscar un recurs nou quan s'esgota
   },
@@ -345,13 +354,29 @@ const CONFIG = {
     villager: { name: 'Aldeà', icon: '🧑‍🌾', cost: { food: 50 }, time: 12 },
   },
   QUEUE_MAX: 15,
+  TC_POP: 5,                 // població que dona el Centre de Ciutat
+  // Edificis construïbles pels aldeans (mida en cel·les de la graella; 1 cel·la = 1 unitat)
+  BUILDINGS: {
+    house:      { name: 'Casa', short: 'Casa', icon: '🏠', cost: { wood: 25 }, size: [4, 4], hp: 550, time: 15, pop: 5,
+                  desc: '+5 de població' },
+    lumbercamp: { name: 'Serradora', short: 'Serradora', icon: '🪓', cost: { wood: 100 }, size: [5, 5], hp: 600, time: 18, dropoff: ['wood'],
+                  desc: 'Magatzem de fusta' },
+    miningcamp: { name: 'Campament miner', short: 'Miner', icon: '⛏️', cost: { wood: 100 }, size: [5, 5], hp: 600, time: 18, dropoff: ['gold', 'stone'],
+                  desc: "Magatzem d'or i pedra" },
+    mill:       { name: 'Molí', short: 'Molí', icon: '🌾', cost: { wood: 100 }, size: [5, 5], hp: 600, time: 18, dropoff: ['food'],
+                  desc: "Magatzem d'aliment. Permet construir granges" },
+    farm:       { name: 'Granja', short: 'Granja', icon: '🌱', cost: { wood: 60 }, size: [6, 6], hp: 480, time: 10, walkable: true, food: 175, requires: 'mill',
+                  desc: "175 d'aliment. Un sol granger. Requereix un Molí" },
+    barracks:   { name: 'Caserna', short: 'Caserna', icon: '⚔️', cost: { wood: 175 }, size: [7, 7], hp: 1200, time: 30,
+                  desc: 'Unitats militars (Fase 3B)' },
+  },
   TIME_SCALE: 1,             // velocitat de simulació (útil per depurar: RTS.CONFIG.TIME_SCALE = 3)
   DOUBLE_CLICK_MS: 350,
   DRAG_THRESHOLD: 6,
 };
 
-const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING' });
-const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'Tornant al Centre' };
+const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING', BUILDING: 'BUILDING' });
+const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'A descarregar', BUILDING: 'Construint' };
 const RES_LABEL = { wood: 'Fusta', gold: 'Or', food: 'Aliment', stone: 'Pedra' };
 const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 
@@ -906,12 +931,7 @@ function updateSheep(n, dt) {
     // Col·lisió amb els obstacles (excepte ella mateixa)
     for (const o of state.obstacles) {
       if (o.entity === n) continue;
-      const dx = n.position.x - o.x, dz = n.position.z - o.z, min = o.r + n.radius;
-      if (dx * dx + dz * dz < min * min) {
-        const d = Math.hypot(dx, dz) || 0.001;
-        n.position.x = o.x + dx / d * min; n.position.z = o.z + dz / d * min;
-        n.wanderTarget = null;
-      }
+      if (pushOutOf(n.position, o, n.radius)) n.wanderTarget = null;
     }
     clampToMap(n.position);
     n.obstacle.x = n.position.x;
@@ -930,6 +950,7 @@ function createTownCenter(x, z) {
     team: PLAYER.id, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
   });
   e.dropoff = true;   // accepta tots els recursos
+  e.dropoffTypes = ['food', 'wood', 'gold', 'stone'];
   e.trainQueue = [];  // [{ kind, t }]
   e.rally = null;     // { point: Vector3, node: Entity|null }
   const stone = mat(0x9b958a, { roughness: 0.92, flatShading: true });
@@ -1050,6 +1071,430 @@ function createTownCenter(x, z) {
   return e;
 }
 
+/* =====================================================================
+   EDIFICIS CONSTRUÏBLES (models amb primitives)
+   ===================================================================== */
+function bx(g, w, h, d, material, x, y, z) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  m.position.set(x, y, z);
+  g.add(m);
+  return m;
+}
+function cy(g, rt, rb, h, seg, material, x, y, z) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), material);
+  m.position.set(x, y, z);
+  g.add(m);
+  return m;
+}
+function buildingMats() {
+  return {
+    stone: mat(0x9b958a, { roughness: 0.92, flatShading: true }),
+    wall: mat(0xe6d6b0, { roughness: 0.9 }),
+    wood: mat(0x8a5a32, { roughness: 0.9 }),
+    woodDark: mat(0x5a3a1e, { roughness: 0.9 }),
+    log: mat(0x7a4a24, { roughness: 0.95 }),
+    roof: mat(PLAYER.color, { roughness: 0.6 }),
+    roofDark: mat(PLAYER.colorDark, { roughness: 0.65 }),
+    window: mat(0x2a1a08, { emissive: 0xffb347, emissiveIntensity: 0.5, roughness: 0.4 }),
+    soil: mat(0x6b4a2b, { roughness: 1 }),
+    crop: mat(0xd6c14a, { roughness: 0.8 }),
+    cropGreen: mat(0x8fb13a, { roughness: 0.8 }),
+    gold: mat(0xffc53a, { metalness: 0.7, roughness: 0.3, emissive: 0x3d2a00, emissiveIntensity: 0.5 }),
+    rock: mat(0xa9a59d, { roughness: 0.9, flatShading: true }),
+    cloth: mat(0xeee2c4, { roughness: 0.9 }),
+    straw: mat(0xd9b35b, { roughness: 0.9 }),
+    metal: mat(0x8d9199, { metalness: 0.8, roughness: 0.35 }),
+  };
+}
+
+/* Retorna { model, height } per a cada tipus d'edifici. El model mira cap a +Z. */
+function makeBuildingModel(type) {
+  const M = buildingMats();
+  const g = new THREE.Group();
+  let height = 3;
+  const shed = () => {
+    bx(g, 4.6, 0.2, 4.6, M.wood, 0, 0.1, 0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) cy(g, 0.13, 0.15, 2.9, 8, M.woodDark, sx * 2.05, 1.55, sz * 2.05);
+    const roof = bx(g, 5.0, 0.16, 5.0, M.roof, 0, 3.05, 0);
+    roof.rotation.x = 0.16;
+    bx(g, 4.2, 2.5, 0.15, M.wood, 0, 1.45, -2.0);
+  };
+  switch (type) {
+    case 'house': {
+      bx(g, 3.7, 0.3, 3.7, M.stone, 0, 0.15, 0);
+      bx(g, 3.1, 2.0, 3.1, M.wall, 0, 1.3, 0);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) bx(g, 0.2, 2.0, 0.2, M.woodDark, sx * 1.55, 1.3, sz * 1.55);
+      bx(g, 3.3, 0.15, 3.3, M.woodDark, 0, 2.37, 0);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(2.7, 1.8, 4), M.roof);
+      roof.rotation.y = Math.PI / 4;
+      roof.position.y = 2.45 + 0.9;
+      g.add(roof);
+      bx(g, 0.75, 1.25, 0.08, M.woodDark, 0, 0.93, 1.56);
+      bx(g, 0.08, 0.5, 0.55, M.window, 1.56, 1.55, 0.55);
+      bx(g, 0.08, 0.5, 0.55, M.window, -1.56, 1.55, -0.55);
+      bx(g, 0.42, 1.1, 0.42, M.stone, 0.8, 3.3, -0.7);
+      height = 4.3;
+      break;
+    }
+    case 'lumbercamp': {
+      shed();
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3 - r; c++) {
+          const log = cy(g, 0.26, 0.26, 2.5, 10, M.log, -0.3, 0.46 + r * 0.44, 0.1 + (c - (2 - r) / 2) * 0.54);
+          log.rotation.z = Math.PI / 2;
+        }
+      }
+      cy(g, 0.4, 0.46, 0.6, 10, M.wood, 1.45, 0.5, 1.45);
+      const axe = bx(g, 0.06, 0.7, 0.06, M.woodDark, 1.45, 1.05, 1.45);
+      axe.rotation.z = 0.4;
+      bx(g, 0.06, 0.22, 0.3, M.metal, 1.3, 1.35, 1.45);
+      height = 3.3;
+      break;
+    }
+    case 'miningcamp': {
+      shed();
+      for (let i = 0; i < 7; i++) {
+        const s = 0.35 + (i % 3) * 0.12;
+        const b = bx(g, s, s, s, M.gold, -1.1 + (i % 3) * 0.35, 0.35 + Math.floor(i / 3) * 0.3, 0.2 + (i % 2) * 0.35);
+        b.rotation.y = i * 0.7;
+      }
+      for (let i = 0; i < 6; i++) {
+        const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + (i % 3) * 0.08, 0), M.rock);
+        r.position.set(0.8 + (i % 3) * 0.4, 0.4 + Math.floor(i / 3) * 0.3, -0.6 + (i % 2) * 0.4);
+        g.add(r);
+      }
+      bx(g, 1.15, 0.55, 0.8, M.woodDark, 1.25, 0.7, 1.55);
+      for (const sx of [-1, 1]) {
+        const w = cy(g, 0.22, 0.22, 0.08, 12, M.metal, 1.25 + sx * 0.4, 0.42, 1.98);
+        w.rotation.x = Math.PI / 2;
+      }
+      height = 3.3;
+      break;
+    }
+    case 'mill': {
+      bx(g, 4.4, 0.35, 4.4, M.stone, 0, 0.175, 0);
+      cy(g, 1.35, 1.7, 4.2, 14, M.wall, 0, 2.45, 0);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.9, 1.9, 14), M.roof);
+      roof.position.y = 0.35 + 4.2 + 0.95;
+      g.add(roof);
+      bx(g, 0.8, 1.3, 0.1, M.woodDark, 0, 1.0, 1.62);
+      bx(g, 0.45, 0.45, 0.08, M.window, 0, 3.0, 1.45);
+      const blades = new THREE.Group();
+      blades.position.set(0, 3.9, 1.62);
+      const hub = cy(blades, 0.2, 0.2, 0.35, 10, M.woodDark, 0, 0, 0);
+      hub.rotation.x = Math.PI / 2;
+      for (let k = 0; k < 4; k++) {
+        const arm = new THREE.Group();
+        arm.rotation.z = k * Math.PI / 2;
+        bx(arm, 0.09, 2.5, 0.09, M.woodDark, 0, 1.25, 0.12);
+        bx(arm, 0.55, 2.0, 0.04, M.cloth, 0.3, 1.45, 0.14);
+        blades.add(arm);
+      }
+      g.add(blades);
+      g.userData.blades = blades;
+      for (let i = 0; i < 3; i++) {
+        const sack = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), M.cloth);
+        sack.scale.set(1, 1.2, 1);
+        sack.position.set(1.5 - i * 0.55, 0.7, 1.7);
+        g.add(sack);
+      }
+      height = 6.5;
+      break;
+    }
+    case 'farm': {
+      bx(g, 5.8, 0.14, 5.8, M.soil, 0, 0.07, 0);
+      const crops = new THREE.Group();
+      for (let r = 0; r < 6; r++) {
+        const row = bx(crops, 5.1, 0.55, 0.42, r % 2 ? M.crop : M.cropGreen, 0, 0.275, -2.25 + r * 0.9);
+        row.userData.noShadow = false;
+      }
+      crops.position.y = 0.14;
+      g.add(crops);
+      g.userData.crops = crops;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) cy(g, 0.07, 0.08, 0.7, 6, M.woodDark, sx * 2.85, 0.35, sz * 2.85);
+      height = 0.9;
+      break;
+    }
+    case 'barracks': {
+      bx(g, 6.6, 0.3, 6.6, M.stone, 0, 0.15, 0);
+      bx(g, 6.0, 2.6, 3.8, M.wood, 0, 1.6, -1.1);
+      for (const sx of [-1, 1]) bx(g, 0.25, 2.6, 3.9, M.woodDark, sx * 3.0, 1.6, -1.1);
+      const r1 = bx(g, 6.4, 0.14, 2.35, M.roof, 0, 3.42, -1.1 + 0.98);
+      r1.rotation.x = 0.5;
+      const r2 = bx(g, 6.4, 0.14, 2.35, M.roof, 0, 3.42, -1.1 - 0.98);
+      r2.rotation.x = -0.5;
+      bx(g, 6.5, 0.18, 0.18, M.woodDark, 0, 3.95, -1.1);
+      bx(g, 1.4, 1.9, 0.1, M.woodDark, 0, 1.25, 0.86);
+      bx(g, 0.5, 0.5, 0.08, M.window, -1.9, 2.0, 0.86);
+      bx(g, 0.5, 0.5, 0.08, M.window, 1.9, 2.0, 0.86);
+      // Armer amb llances
+      bx(g, 1.8, 0.1, 0.1, M.woodDark, -1.8, 1.2, 2.3);
+      for (let i = 0; i < 4; i++) {
+        const spear = cy(g, 0.03, 0.03, 2.0, 5, M.wood, -2.5 + i * 0.45, 1.1, 2.35);
+        spear.rotation.x = -0.15;
+        bx(g, 0.07, 0.22, 0.07, M.metal, -2.5 + i * 0.45, 2.15, 2.5);
+      }
+      // Ninot d'entrenament
+      cy(g, 0.08, 0.08, 1.7, 6, M.woodDark, 2.2, 0.95, 2.1);
+      bx(g, 1.0, 0.12, 0.12, M.woodDark, 2.2, 1.35, 2.1);
+      cy(g, 0.3, 0.3, 0.7, 10, M.straw, 2.2, 1.25, 2.1);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), M.straw);
+      head.position.set(2.2, 1.85, 2.1);
+      g.add(head);
+      // Estendard
+      cy(g, 0.05, 0.05, 3.2, 6, M.woodDark, -2.9, 1.9, 2.9);
+      const banner = bx(g, 0.04, 0.9, 0.6, M.roof, -2.9, 3.0, 3.22);
+      banner.userData.noShadow = false;
+      height = 4.2;
+      break;
+    }
+  }
+  return { model: g, height };
+}
+
+function makeScaffold(w, d, h) {
+  const g = new THREE.Group();
+  const pole = mat(0xa0784a, { roughness: 0.95 });
+  bx(g, w - 0.1, 0.05, d - 0.1, mat(0x8b7355, { roughness: 1 }), 0, 0.03, 0);
+  const hw = w / 2 - 0.15, hd = d / 2 - 0.15;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) cy(g, 0.06, 0.06, h, 5, pole, sx * hw, h / 2, sz * hd);
+  for (const y of [h * 0.35, h * 0.72]) {
+    for (const sz of [-1, 1]) bx(g, w - 0.3, 0.07, 0.07, pole, 0, y, sz * hd);
+    for (const sx of [-1, 1]) bx(g, 0.07, 0.07, d - 0.3, pole, sx * hw, y, 0);
+  }
+  return g;
+}
+
+function createBuilding(type, x, z, complete = false) {
+  const def = CONFIG.BUILDINGS[type];
+  const [sw, sd] = def.size;
+  const e = new Entity({
+    kind: 'building', subtype: type, name: def.name, icon: def.icon, team: PLAYER.id,
+    radius: Math.max(sw, sd) / 2, selRadius: Math.max(sw, sd) * 0.62, hp: 1, maxHp: def.hp,
+  });
+  e.def = def;
+  e.footprint = def.walkable ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };
+  e.cells = { w: sw, d: sd };
+  e.underConstruction = !complete;
+  e.progress = complete ? 1 : 0;
+  e.dropoffTypes = def.dropoff || null;
+  const { model, height } = makeBuildingModel(type);
+  e.model = model;
+  e.height = height;
+  e.group.add(model);
+  if (type !== 'farm') {
+    e.scaffold = makeScaffold(sw, sd, Math.max(1.5, height * 0.9));
+    e.group.add(e.scaffold);
+  }
+  e.group.position.set(x, 0, z);
+  e.finalize();
+  state.buildings.push(e);
+  if (!def.walkable) {
+    e.obstacle = { x, z, hw: e.footprint.hw, hd: e.footprint.hd, rect: true, entity: e };
+    state.obstacles.push(e.obstacle);
+  }
+  hideDecorIn(x, z, sw / 2 + 0.3, sd / 2 + 0.3);
+  applyConstructionVisual(e);
+  rebuildNav();
+  if (complete) completeBuilding(e, true);
+  return e;
+}
+
+function applyConstructionVisual(b) {
+  const f = b.progress;
+  b.model.scale.y = 0.04 + 0.96 * f;
+  if (b.scaffold) b.scaffold.visible = b.underConstruction;
+  b.hp = Math.max(1, Math.round(b.maxHp * (0.1 + 0.9 * f)));
+}
+
+function completeBuilding(b, silent = false) {
+  b.underConstruction = false;
+  b.progress = 1;
+  applyConstructionVisual(b);
+  b.hp = b.maxHp;
+  if (b.subtype === 'farm') {
+    // La granja acabada passa a ser un recurs d'aliment (propi i trepitjable)
+    b.kind = 'resource';
+    b.resourceType = 'food';
+    b.amount = b.maxAmount = b.def.food;
+    b.depleted = false;
+    b.shakeT = 0;
+    b.particleColor = 0x7a5a32;
+    state.buildings = state.buildings.filter(x => x !== b);
+    state.resourceNodes.push(b);
+  }
+  if (!silent) {
+    toast(`🏗️ ${b.name} completat${b.def.pop ? ` (+${b.def.pop} població)` : ''}`);
+    spawnParticles(new THREE.Vector3(b.position.x, 1.2, b.position.z), 0xc8b28a, 14, null);
+  }
+  updatePopulationUI();
+  if (b.selected) updateSelectionUI();
+}
+
+/* Progrés de construcció: com a l'AoE II, cada constructor extra aporta menys (3/(n+2)) */
+function updateConstruction(dt) {
+  for (const b of state.buildings.slice()) {
+    if (b.model && b.model.userData.blades && !b.underConstruction) b.model.userData.blades.rotation.z -= dt * 0.9;
+    if (!b.underConstruction) continue;
+    let n = 0;
+    for (const u of state.units) if (u.state === STATE.BUILDING && u.buildTarget === b) n++;
+    if (!n) continue;
+    b.progress = Math.min(1, b.progress + (dt / b.def.time) * n * 3 / (n + 2));
+    applyConstructionVisual(b);
+    if (b.progress >= 1) completeBuilding(b);
+  }
+}
+
+/* Enderrocar un edifici propi (un fonament sense començar retorna tot el cost) */
+function demolishBuilding(b) {
+  if (!b || b.subtype === 'towncenter' || !b.isOwn || b.dead) return;
+  if (b.underConstruction && b.progress < 0.02) applyCost(b.def.cost, +1);
+  b.dead = true;
+  b.depleted = true;
+  state.buildings = state.buildings.filter(x => x !== b);
+  state.resourceNodes = state.resourceNodes.filter(x => x !== b);
+  state.obstacles = state.obstacles.filter(o => o.entity !== b);
+  state.pickables = state.pickables.filter(m => m.userData.entity !== b);
+  if (b.selected) { removeFromSelection(b); onSelectionChanged(); }
+  b.dieT = 0;
+  state.dying.push(b);
+  spawnParticles(new THREE.Vector3(b.position.x, 1.0, b.position.z), 0x9b958a, 16, null);
+  rebuildNav();
+  updatePopulationUI();
+  toast(`🗑️ ${b.name} enderrocat`);
+}
+
+/* ---------- Mode de col·locació (fantasma sobre la graella) ---------- */
+const gridTex = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(255,255,255,0.22)';
+  g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = 'rgba(255,255,255,0.95)';
+  g.lineWidth = 3;
+  g.strokeRect(1.5, 1.5, 61, 61);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+const GHOST = {
+  ok: new THREE.MeshStandardMaterial({ color: 0x7dff8a, transparent: true, opacity: 0.5, emissive: 0x1f7a2a, depthWrite: false }),
+  bad: new THREE.MeshStandardMaterial({ color: 0xff6a6a, transparent: true, opacity: 0.5, emissive: 0x7a1f1f, depthWrite: false }),
+};
+const placing = { type: null, ghost: null, meshes: [], fpMat: null, overlay: null, valid: false, x: 0, z: 0, chain: 0 };
+
+function builders() {
+  return state.selected.filter(s => s.kind === 'unit' && s.isOwn && s.subtype === 'villager');
+}
+function hasCompleted(subtype) {
+  return state.buildings.some(b => b.subtype === subtype && b.isOwn && !b.underConstruction);
+}
+function buildBlockReason(type) {
+  const def = CONFIG.BUILDINGS[type];
+  if (def.requires && !hasCompleted(def.requires)) return `Requereix: ${CONFIG.BUILDINGS[def.requires].name}`;
+  if (!canAfford(def.cost)) return `Recursos insuficients: cal ${costText(def.cost)}`;
+  return null;
+}
+function startPlacement(type) {
+  if (!builders().length) return;
+  const reason = buildBlockReason(type);
+  if (reason) { toast(reason); return; }
+  cancelPlacement();
+  const def = CONFIG.BUILDINGS[type];
+  const [sw, sd] = def.size;
+  const g = new THREE.Group();
+  const { model } = makeBuildingModel(type);
+  placing.meshes = [];
+  model.traverse(o => {
+    if (!o.isMesh) return;
+    o.material = GHOST.ok;
+    o.castShadow = false;
+    o.raycast = () => {};
+    placing.meshes.push(o);
+  });
+  // Petjada de l'edifici (una cel·la per unitat)
+  const tex = gridTex.clone();
+  tex.needsUpdate = true;
+  tex.repeat.set(sw, sd);
+  placing.fpMat = new THREE.MeshBasicMaterial({ map: tex, color: 0x7dff8a, transparent: true, opacity: 0.75, depthWrite: false, fog: false, toneMapped: false });
+  const fp = new THREE.Mesh(new THREE.PlaneGeometry(sw, sd), placing.fpMat);
+  fp.rotation.x = -Math.PI / 2;
+  fp.position.y = 0.06;
+  fp.renderOrder = 7;
+  // Graella de referència al voltant
+  const otex = gridTex.clone();
+  otex.needsUpdate = true;
+  otex.repeat.set(24, 24);
+  const overlay = new THREE.Mesh(new THREE.PlaneGeometry(24, 24),
+    new THREE.MeshBasicMaterial({ map: otex, color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false, fog: false, toneMapped: false }));
+  overlay.rotation.x = -Math.PI / 2;
+  overlay.position.y = 0.04;
+  overlay.renderOrder = 6;
+  g.add(model, fp, overlay);
+  scene.add(g);
+  Object.assign(placing, { type, ghost: g, overlay, valid: false, chain: 0 });
+  updatePlacement();
+}
+function cancelPlacement() {
+  if (placing.ghost) scene.remove(placing.ghost);
+  placing.type = null;
+  placing.ghost = null;
+  placing.meshes = [];
+}
+function snapToGrid(v, cells) {
+  // Mida senar → centre a mitja cel·la; mida parell → centre a la vora d'una cel·la
+  return cells % 2 ? Math.round(v - 0.5) + 0.5 : Math.round(v);
+}
+function canPlace(type, x, z) {
+  const [sw, sd] = CONFIG.BUILDINGS[type].size;
+  const L = CONFIG.MAP_LIMIT;
+  if (Math.abs(x) + sw / 2 > L - 1 || Math.abs(z) + sd / 2 > L - 1) return false;
+  const N = NAV.N;
+  for (let j = navCell(z - sd / 2 + 0.01); j <= navCell(z + sd / 2 - 0.01); j++)
+    for (let i = navCell(x - sw / 2 + 0.01); i <= navCell(x + sw / 2 - 0.01); i++)
+      if (NAV.build[j * N + i]) return false;
+  // Tampoc a sobre de les ovelles
+  for (const n of state.resourceNodes) {
+    if (n.subtype === 'sheep' && Math.abs(n.position.x - x) < sw / 2 + 0.6 && Math.abs(n.position.z - z) < sd / 2 + 0.6) return false;
+  }
+  return true;
+}
+function updatePlacement() {
+  if (!placing.type) return;
+  const p = pickGround(mouse.x, mouse.y);
+  if (!p) return;
+  const [sw, sd] = CONFIG.BUILDINGS[placing.type].size;
+  placing.x = snapToGrid(p.x, sw);
+  placing.z = snapToGrid(p.z, sd);
+  placing.ghost.position.set(placing.x, 0, placing.z);
+  placing.overlay.position.set(Math.round(placing.x) - placing.x, 0.04, Math.round(placing.z) - placing.z);
+  const valid = canPlace(placing.type, placing.x, placing.z) && !buildBlockReason(placing.type);
+  if (valid !== placing.valid) {
+    placing.valid = valid;
+    for (const m of placing.meshes) m.material = valid ? GHOST.ok : GHOST.bad;
+    placing.fpMat.color.setHex(valid ? 0x7dff8a : 0xff6a6a);
+  }
+}
+function confirmPlacement(shift) {
+  const type = placing.type;
+  const reason = buildBlockReason(type);
+  if (reason) { toast(reason); cancelPlacement(); return; }
+  if (!placing.valid) { toast('No es pot construir aquí'); return; }
+  const units = builders();
+  if (!units.length) { cancelPlacement(); return; }
+  applyCost(CONFIG.BUILDINGS[type].cost);
+  const b = createBuilding(type, placing.x, placing.z, false);
+  // Amb Shift es poden col·locar diversos fonaments seguits: s'encuen com a ordres
+  if (shift && placing.chain > 0) units.forEach(u => enqueueOrder(u, { type: 'build', building: b }));
+  else commandBuild(units, b);
+  placing.chain++;
+  spawnMoveMarker(b.position, 0x6ef2ff, b.radius * 0.8);
+  placing.valid = null;   // força el refresc del color
+  if (!shift || buildBlockReason(type)) cancelPlacement();
+}
+
 /* ---------- Aldeà ---------- */
 const villagerGeo = {
   leg: new THREE.CylinderGeometry(0.11, 0.1, 0.72, 8).translate(0, -0.36, 0),
@@ -1064,6 +1509,7 @@ const villagerGeo = {
   toolHandle: new THREE.CylinderGeometry(0.035, 0.035, 0.8, 6),
   axeHead: new THREE.BoxGeometry(0.05, 0.3, 0.22),
   pickHead: new THREE.BoxGeometry(0.06, 0.5, 0.07),
+  hammerHead: new THREE.BoxGeometry(0.14, 0.14, 0.26),
   carry: new THREE.BoxGeometry(0.46, 0.46, 0.46),
 };
 const CARRY_MATERIALS = {
@@ -1094,6 +1540,10 @@ function createVillager(x, z) {
   e.dropTarget = null;          // Centre de Ciutat on descarregar
   e.carry = { type: null, amount: 0 };
   e.orderQueue = [];            // ordres encadenades amb Shift
+  e.path = null;                // camí actual (punts intermedis)
+  e.buildTarget = null;         // fonament que construeix
+  e.buildAngle = null;
+  e.approachTries = 0;
   e.gatherProgress = 0;
   e.workPhase = 0;
 
@@ -1125,7 +1575,10 @@ function createVillager(x, z) {
   axeHead.position.set(0, 0.1, 0.66);
   const pickHead = new THREE.Mesh(villagerGeo.pickHead, mat(0x8d9199, { metalness: 0.8, roughness: 0.35 }));
   pickHead.position.set(0, 0, 0.68);
-  tool.add(handle, axeHead, pickHead);
+  const hammerHead = new THREE.Mesh(villagerGeo.hammerHead, mat(0x55504a, { metalness: 0.6, roughness: 0.4 }));
+  hammerHead.position.set(0, 0, 0.7);
+  hammerHead.visible = false;
+  tool.add(handle, axeHead, pickHead, hammerHead);
   tool.position.set(0, -0.58, 0);
   tool.visible = false;
   armR.add(tool);
@@ -1147,6 +1600,7 @@ function createVillager(x, z) {
   e.tool = tool;
   e.axeHead = axeHead;
   e.pickHead = pickHead;
+  e.hammerHead = hammerHead;
   e.carryMesh = carryMesh;
   e.group.position.set(x, 0, z);
   e.finalize();
@@ -1157,12 +1611,238 @@ function createVillager(x, z) {
 /* =====================================================================
    DECORACIÓ (herba i roques – no seleccionables)
    ===================================================================== */
-function isNearObstacle(x, z, margin) {
-  for (const o of state.obstacles) {
-    const dx = x - o.x, dz = z - o.z;
-    if (dx * dx + dz * dz < (o.r + margin) ** 2) return true;
+/* ---------- Geometria d'obstacles: cercles (recursos, Centre) i rectangles (edificis) ---------- */
+function obstacleSurface(o, x, z) {
+  // Retorna la distància amb signe a la superfície de l'obstacle i la normal cap a fora
+  const dx = x - o.x, dz = z - o.z;
+  if (o.rect) {
+    const qx = Math.abs(dx) - o.hw, qz = Math.abs(dz) - o.hd;
+    if (qx > 0 || qz > 0) {
+      const cx = Math.max(qx, 0), cz = Math.max(qz, 0);
+      const d = Math.hypot(cx, cz) || 1e-4;
+      return { d, nx: (dx < 0 ? -1 : 1) * cx / d, nz: (dz < 0 ? -1 : 1) * cz / d };
+    }
+    return qx > qz ? { d: qx, nx: dx < 0 ? -1 : 1, nz: 0 } : { d: qz, nx: 0, nz: dz < 0 ? -1 : 1 };
   }
+  const l = Math.hypot(dx, dz);
+  if (l < 1e-4) return { d: -o.r, nx: 1, nz: 0 };
+  return { d: l - o.r, nx: dx / l, nz: dz / l };
+}
+function pushOutOf(p, o, margin) {
+  const s = obstacleSurface(o, p.x, p.z);
+  if (s.d >= margin) return null;
+  const k = margin - s.d;
+  p.x += s.nx * k;
+  p.z += s.nz * k;
+  return s;
+}
+function isNearObstacle(x, z, margin) {
+  for (const o of state.obstacles) if (obstacleSurface(o, x, z).d < margin) return true;
   return false;
+}
+/* Distància d'un punt a la vora d'una entitat (0 si és a dins d'un edifici) */
+function entSurfaceDist(ent, x, z) {
+  if (ent.footprint) {
+    const qx = Math.abs(x - ent.position.x) - ent.footprint.hw;
+    const qz = Math.abs(z - ent.position.z) - ent.footprint.hd;
+    return Math.hypot(Math.max(qx, 0), Math.max(qz, 0));
+  }
+  return Math.hypot(x - ent.position.x, z - ent.position.z) - ent.radius;
+}
+
+/* =====================================================================
+   NAVEGACIÓ: GRAELLA (1 cel·la = 1 unitat) + A* + SUAVITZAT DEL CAMÍ
+   walk[]  → cel·les no transitables per les unitats
+   build[] → cel·les ocupades (no s'hi pot construir)
+   ===================================================================== */
+const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, version: 0, stampId: 0 };
+function navInit() {
+  const N = Math.ceil((CONFIG.MAP_LIMIT * 2) / NAV.cell);
+  NAV.N = N;
+  NAV.x0 = -CONFIG.MAP_LIMIT;
+  NAV.walk = new Uint8Array(N * N);
+  NAV.build = new Uint8Array(N * N);
+  NAV.g = new Float32Array(N * N);
+  NAV.parent = new Int32Array(N * N);
+  NAV.seen = new Uint32Array(N * N);
+  NAV.closed = new Uint32Array(N * N);
+}
+function navCell(v) { return Math.min(NAV.N - 1, Math.max(0, Math.floor((v - NAV.x0) / NAV.cell))); }
+function navCenter(i) { return NAV.x0 + (i + 0.5) * NAV.cell; }
+function navFree(i, j) { return i >= 0 && j >= 0 && i < NAV.N && j < NAV.N && !NAV.walk[j * NAV.N + i]; }
+
+function rebuildNav() {
+  const N = NAV.N;
+  NAV.walk.fill(0);
+  NAV.build.fill(0);
+  for (const o of state.obstacles) {
+    if (o.entity && o.entity.mobile) continue;          // les ovelles es mouen: no bloquegen la graella
+    const ex = (o.rect ? o.hw : o.r) + 1.2, ez = (o.rect ? o.hd : o.r) + 1.2;
+    const i0 = navCell(o.x - ex), i1 = navCell(o.x + ex), j0 = navCell(o.z - ez), j1 = navCell(o.z + ez);
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const d = obstacleSurface(o, navCenter(i), navCenter(j)).d;
+        if (d < 0.35) NAV.walk[j * N + i] = 1;
+        if (d < 0.5) NAV.build[j * N + i] = 1;
+      }
+    }
+  }
+  // Les granges es poden trepitjar però ocupen terreny
+  for (const e of state.buildings.concat(state.resourceNodes)) {
+    if (e.subtype !== 'farm' || e.dead || e.depleted) continue;
+    const fp = e.footprint;
+    for (let j = navCell(e.position.z - fp.hd + 0.01); j <= navCell(e.position.z + fp.hd - 0.01); j++)
+      for (let i = navCell(e.position.x - fp.hw + 0.01); i <= navCell(e.position.x + fp.hw - 0.01); i++)
+        NAV.build[j * N + i] = 1;
+  }
+  NAV.version++;
+}
+
+function nearestFreeCell(i, j, maxR = 8) {
+  if (navFree(i, j)) return [i, j];
+  for (let r = 1; r <= maxR; r++) {
+    let best = null, bestD = Infinity;
+    for (let dj = -r; dj <= r; dj++) {
+      for (let di = -r; di <= r; di++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        if (!navFree(i + di, j + dj)) continue;
+        const d = di * di + dj * dj;
+        if (d < bestD) { bestD = d; best = [i + di, j + dj]; }
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+/* Comprova si un segment és transitable (ignora els extrems, on la unitat pot tocar l'objectiu) */
+function segmentWalkable(ax, az, bx, bz) {
+  const len = Math.hypot(bx - ax, bz - az);
+  const steps = Math.ceil(len / 0.3);
+  const N = NAV.N;
+  for (let s = 1; s < steps; s++) {
+    const t = s / steps;
+    const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+    if (t * len < 0.8 || (1 - t) * len < 0.8) continue;
+    if (NAV.walk[navCell(z) * N + navCell(x)]) return false;
+  }
+  return true;
+}
+
+/* A* sobre la graella (8 direccions, sense tallar cantonades) */
+const NAV_DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
+function findPath(sx, sz, tx, tz) {
+  const N = NAV.N;
+  const s = nearestFreeCell(navCell(sx), navCell(sz), 4);
+  const g = nearestFreeCell(navCell(tx), navCell(tz), 12);
+  if (!s || !g) return null;
+  const si = s[1] * N + s[0], gi = g[1] * N + g[0];
+  if (si === gi) return [];
+  const stamp = ++NAV.stampId;
+  const gx = g[0], gz = g[1];
+  const H = (idx) => {
+    const dx = Math.abs((idx % N) - gx), dz = Math.abs(((idx / N) | 0) - gz);
+    return dx + dz + (Math.SQRT2 - 2) * Math.min(dx, dz);
+  };
+  // Munt binari (heap) amb prioritat f = g + h
+  const heap = [], fOf = [];
+  const push = (idx, f) => {
+    heap.push(idx); fOf.push(f);
+    let c = heap.length - 1;
+    while (c > 0) {
+      const p = (c - 1) >> 1;
+      if (fOf[p] <= fOf[c]) break;
+      [heap[p], heap[c]] = [heap[c], heap[p]]; [fOf[p], fOf[c]] = [fOf[c], fOf[p]];
+      c = p;
+    }
+  };
+  const pop = () => {
+    const top = heap[0];
+    const lastI = heap.pop(), lastF = fOf.pop();
+    if (heap.length) {
+      heap[0] = lastI; fOf[0] = lastF;
+      let c = 0;
+      for (;;) {
+        const l = c * 2 + 1, r = l + 1;
+        let m = c;
+        if (l < heap.length && fOf[l] < fOf[m]) m = l;
+        if (r < heap.length && fOf[r] < fOf[m]) m = r;
+        if (m === c) break;
+        [heap[m], heap[c]] = [heap[c], heap[m]]; [fOf[m], fOf[c]] = [fOf[c], fOf[m]];
+        c = m;
+      }
+    }
+    return top;
+  };
+  NAV.seen[si] = stamp; NAV.g[si] = 0; NAV.parent[si] = -1;
+  push(si, H(si));
+  let found = false, iter = 0;
+  while (heap.length && iter++ < 60000) {
+    const cur = pop();
+    if (cur === gi) { found = true; break; }
+    if (NAV.closed[cur] === stamp) continue;
+    NAV.closed[cur] = stamp;
+    const ci = cur % N, cj = (cur / N) | 0;
+    for (const [dx, dz, cost] of NAV_DIRS) {
+      const ni = ci + dx, nj = cj + dz;
+      if (!navFree(ni, nj)) continue;
+      if (dx && dz && (!navFree(ci + dx, cj) || !navFree(ci, cj + dz))) continue;
+      const n = nj * N + ni;
+      if (NAV.closed[n] === stamp) continue;
+      const ng = NAV.g[cur] + cost;
+      if (NAV.seen[n] !== stamp || ng < NAV.g[n]) {
+        NAV.seen[n] = stamp; NAV.g[n] = ng; NAV.parent[n] = cur;
+        push(n, ng + H(n));
+      }
+    }
+  }
+  if (!found) return null;
+  const cells = [];
+  for (let c = gi; c !== si && c !== -1; c = NAV.parent[c]) cells.push([navCenter(c % N), navCenter((c / N) | 0)]);
+  return cells.reverse();
+}
+
+/* Elimina punts intermedis innecessaris: el camí queda en trams rectes */
+function smoothPath(start, pts) {
+  const out = [];
+  let cur = start, i = 0;
+  while (i < pts.length) {
+    let j = i;
+    while (j + 1 < pts.length && segmentWalkable(cur.x, cur.z, pts[j + 1].x, pts[j + 1].z)) j++;
+    out.push(pts[j]);
+    cur = pts[j];
+    i = j + 1;
+  }
+  return out;
+}
+
+/* Assigna un destí a una unitat: línia recta si és lliure, si no camí A* */
+function setMoveTarget(u, p) {
+  u.target = p;
+  u.path = null;
+  u.pathVersion = NAV.version;
+  if (!p) return;
+  if (segmentWalkable(u.position.x, u.position.z, p.x, p.z)) { u.path = [p]; return; }
+  const cells = findPath(u.position.x, u.position.z, p.x, p.z);
+  if (!cells) { u.path = [p]; return; }
+  const pts = cells.map(([x, z]) => new THREE.Vector3(x, 0, z));
+  pts.push(p);
+  u.path = smoothPath(u.position, pts);
+}
+const decor = { grass: null, grassPos: [], rocks: null, rockPos: [] };
+const zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+function hideDecorIn(x, z, hw, hd) {
+  for (const [mesh, pos] of [[decor.grass, decor.grassPos], [decor.rocks, decor.rockPos]]) {
+    if (!mesh) continue;
+    let changed = false;
+    for (let i = 0; i < pos.length / 2; i++) {
+      if (Math.abs(pos[i * 2] - x) < hw && Math.abs(pos[i * 2 + 1] - z) < hd) {
+        mesh.setMatrixAt(i, zeroMatrix);
+        changed = true;
+      }
+    }
+    if (changed) mesh.instanceMatrix.needsUpdate = true;
+  }
 }
 function createDecorations() {
   const dummy = new THREE.Object3D();
@@ -1186,6 +1866,7 @@ function createDecorations() {
       dummy.scale.setScalar(randRange(0.6, 1.3));
       dummy.updateMatrix();
       grass.setMatrixAt(gi, dummy.matrix);
+      decor.grassPos.push(dummy.position.x, dummy.position.z);
       tint.setHSL(0.26 + randRange(-0.03, 0.03), 0.55, 0.3 + randRange(-0.06, 0.08));
       grass.setColorAt(gi, tint);
       gi++;
@@ -1210,10 +1891,13 @@ function createDecorations() {
     dummy.scale.set(s, s * randRange(0.5, 0.9), s * randRange(0.8, 1.2));
     dummy.updateMatrix();
     rocks.setMatrixAt(ri++, dummy.matrix);
+    decor.rockPos.push(x, z);
   }
   rocks.castShadow = true;
   rocks.receiveShadow = true;
   scene.add(rocks);
+  decor.grass = grass;
+  decor.rocks = rocks;
 }
 
 /* =====================================================================
@@ -1373,17 +2057,7 @@ function clampToMap(v) {
 function pushOutOfObstacles(p, margin) {
   for (let iter = 0; iter < 3; iter++) {
     let moved = false;
-    for (const o of state.obstacles) {
-      const dx = p.x - o.x, dz = p.z - o.z;
-      const min = o.r + margin;
-      const d2 = dx * dx + dz * dz;
-      if (d2 < min * min) {
-        const d = Math.sqrt(d2) || 0.0001;
-        p.x = o.x + (dx / d) * min;
-        p.z = o.z + (dz / d) * min;
-        moved = true;
-      }
-    }
+    for (const o of state.obstacles) if (pushOutOf(p, o, margin)) moved = true;
     if (!moved) break;
   }
   return p;
@@ -1442,6 +2116,10 @@ function enqueueOrder(u, order) {
   else u.orderQueue.push(order);
 }
 function runOrder(u, order) {
+  if (order.type === 'build') {
+    if (order.building && !order.building.dead && order.building.underConstruction) orderBuild(u, order.building, null);
+    return;
+  }
   if (order.type === 'move') orderMove(u, order.point);
   else if (order.type === 'gather') {
     if (order.node && !order.node.depleted) orderGather(u, order.node, null);
@@ -1451,15 +2129,47 @@ function runOrder(u, order) {
 function commandStop(units) {
   for (const u of units) {
     u.orderQueue.length = 0;
-    u.target = null;
+    setMoveTarget(u, null);
+    u.buildTarget = null;
     u.gatherNode = null;
     u.dropTarget = null;
     setUnitState(u, STATE.IDLE);
   }
 }
 
+/* Envia aldeans a construir un fonament, repartits al voltant */
+function commandBuild(units, b) {
+  const centroid = new THREE.Vector3();
+  units.forEach(u => centroid.add(u.position));
+  centroid.divideScalar(units.length);
+  const base = Math.atan2(centroid.x - b.position.x, centroid.z - b.position.z);
+  units.forEach((u, k) => {
+    const off = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.45;
+    u.orderQueue.length = 0;
+    orderBuild(u, b, base + off);
+  });
+}
+
+function farmTaken(n, u) {
+  return n.subtype === 'farm' && state.units.some(o => o !== u && o.gatherNode === n);
+}
+
 /* Envia un grup d'aldeans a treballar un recurs, repartint-los al seu voltant */
 function commandGather(units, node) {
+  if (node.subtype === 'farm') {
+    // Una granja només admet un granger
+    const sorted = units.slice().sort((a, b) => a.position.distanceToSquared(node.position) - b.position.distanceToSquared(node.position));
+    const others = [];
+    for (const u of sorted) {
+      if (!farmTaken(node, u) && !others.assigned) { u.orderQueue.length = 0; orderGather(u, node, null); others.assigned = true; }
+      else others.push(u);
+    }
+    if (others.length) {
+      toast('Una granja només admet un granger');
+      commandMove(others, approachPoint(node, others[0].position));
+    }
+    return;
+  }
   const centroid = new THREE.Vector3();
   units.forEach(u => centroid.add(u.position));
   centroid.divideScalar(units.length);
@@ -1520,15 +2230,23 @@ function issueRightClick(x, y, queued = false) {
     return;
   }
 
+  // Fonament propi: ajudar a construir
+  if (targetEnt && targetEnt.kind === 'building' && targetEnt.isOwn && targetEnt.underConstruction) {
+    if (queued) units.forEach(u => enqueueOrder(u, { type: 'build', building: targetEnt }));
+    else commandBuild(units, targetEnt);
+    spawnMoveMarker(targetEnt.position, 0x6ef2ff, targetEnt.radius * 0.8);
+    return;
+  }
   if (targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted) {
     if (queued) units.forEach(u => enqueueOrder(u, { type: 'gather', node: targetEnt }));
     else commandGather(units, targetEnt);
     spawnMoveMarker(targetEnt.position, 0xffd84a, targetEnt.radius + 0.9);
     return;
   }
-  if (targetEnt && targetEnt.dropoff && targetEnt.isOwn) {
-    commandReturn(units, targetEnt);
-    spawnMoveMarker(targetEnt.position, 0x6ef2ff, targetEnt.radius + 1.2);
+  if (targetEnt && targetEnt.kind === 'building' && targetEnt.isOwn) {
+    if (targetEnt.dropoffTypes) commandReturn(units, targetEnt);
+    else commandMove(units, approachPoint(targetEnt, units[0].position), queued);
+    spawnMoveMarker(targetEnt.position, 0x6ef2ff, targetEnt.radius * 0.8);
     return;
   }
 
@@ -1612,6 +2330,14 @@ function applyCost(cost, sign = -1) {
 function costText(cost) {
   return Object.entries(cost).map(([k, v]) => `${RES_ICON[k]} ${v}`).join(' ');
 }
+function popCap() {
+  let cap = 0;
+  for (const b of state.buildings) {
+    if (!b.isOwn || b.underConstruction) continue;
+    cap += b.subtype === 'towncenter' ? CONFIG.TC_POP : ((b.def && b.def.pop) || 0);
+  }
+  return Math.min(CONFIG.POP_CAP, cap);
+}
 function popUsed() {
   let queued = 0;
   for (const b of state.buildings) if (b.isOwn && b.trainQueue) queued += b.trainQueue.length;
@@ -1648,8 +2374,11 @@ function updateTraining(dt) {
     if (!b.trainQueue || !b.trainQueue.length) continue;
     const item = b.trainQueue[0];
     const def = CONFIG.UNITS[item.kind];
-    item.blocked = state.units.filter(u => u.isOwn).length >= CONFIG.POP_CAP;
-    if (item.blocked) continue;
+    item.blocked = state.units.filter(u => u.isOwn).length >= popCap();
+    if (item.blocked) {
+      if (!item.warned) { item.warned = true; toast('🏠 Població plena: construeix més cases'); }
+      continue;
+    }
     item.t += dt;
     if (item.t >= def.time) {
       b.trainQueue.shift();
@@ -1713,18 +2442,12 @@ const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math
 
 function resolveObstacleCollision(u, dt) {
   for (const o of state.obstacles) {
-    const dx = u.position.x - o.x, dz = u.position.z - o.z;
-    const min = o.r + u.radius;
-    const d2 = dx * dx + dz * dz;
-    if (d2 >= min * min) continue;
-    const d = Math.sqrt(d2) || 0.0001;
-    const nx = dx / d, nz = dz / d;
-    u.position.x = o.x + nx * min;
-    u.position.z = o.z + nz * min;
-    if (u.target) {
+    const s = pushOutOf(u.position, o, u.radius);
+    if (s && u.target) {
       // Llisquem per la tangent cap al costat del destí per no quedar encallats
-      let tx = -nz, tz = nx;
-      const toX = u.target.x - u.position.x, toZ = u.target.z - u.position.z;
+      const wp = (u.path && u.path[0]) || u.target;
+      let tx = -s.nz, tz = s.nx;
+      const toX = wp.x - u.position.x, toZ = wp.z - u.position.z;
       if (tx * toX + tz * toZ < 0) { tx = -tx; tz = -tz; }
       u.position.x += tx * u.speed * dt * 0.4;
       u.position.z += tz * u.speed * dt * 0.4;
@@ -1764,31 +2487,50 @@ function separateUnits() {
    ===================================================================== */
 function setUnitState(u, st) {
   u.state = st;
-  const working = st === STATE.GATHERING;
-  u.tool.visible = working;
-  if (working && u.gatherNode) {
+  u.tool.visible = false;
+  u.hammerHead.visible = false;
+  if (st === STATE.GATHERING && u.gatherNode) {
     const sub = u.gatherNode.subtype;
-    // Destral (arbres i ovelles), pic (or i pedra), mans (baies)
+    // Destral (arbres i ovelles), pic (or, pedra; aixada a la granja), mans (baies)
     u.tool.visible = sub !== 'berries';
     u.axeHead.visible = sub === 'tree' || sub === 'sheep';
-    u.pickHead.visible = sub === 'gold' || sub === 'stone';
+    u.pickHead.visible = sub === 'gold' || sub === 'stone' || sub === 'farm';
+  } else if (st === STATE.BUILDING) {
+    u.tool.visible = true;
+    u.axeHead.visible = false;
+    u.pickHead.visible = false;
+    u.hammerHead.visible = true;
   }
 }
 
 function hDist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
-function inReach(u, ent) { return hDist(u.position, ent.position) <= ent.radius + u.radius + CONFIG.GATHER.reach; }
+function inReach(u, ent) {
+  const d = entSurfaceDist(ent, u.position.x, u.position.z);
+  if (ent.subtype === 'farm') return d <= 0.25;          // el granger treballa a sobre de la granja
+  return d - u.radius <= CONFIG.GATHER.reach;
+}
 
 function approachPointAt(ent, angle) {
-  const r = ent.radius + CONFIG.VILLAGER.radius + 0.3;
-  const p = new THREE.Vector3(ent.position.x + Math.sin(angle) * r, 0, ent.position.z + Math.cos(angle) * r);
+  const m = CONFIG.VILLAGER.radius + 0.3;
+  const sx = Math.sin(angle), sz = Math.cos(angle);
+  let p;
+  if (ent.subtype === 'farm') {
+    const r = Math.min(ent.footprint.hw, ent.footprint.hd) * 0.45;
+    return clampToMap(new THREE.Vector3(ent.position.x + sx * r, 0, ent.position.z + sz * r));
+  }
+  if (ent.footprint) {
+    // Intersecció del raig amb el rectangle de l'edifici (ampliat amb el marge)
+    const hw = ent.footprint.hw + m, hd = ent.footprint.hd + m;
+    const t = Math.min(Math.abs(sx) > 1e-6 ? hw / Math.abs(sx) : Infinity, Math.abs(sz) > 1e-6 ? hd / Math.abs(sz) : Infinity);
+    p = new THREE.Vector3(ent.position.x + sx * t, 0, ent.position.z + sz * t);
+  } else {
+    const r = ent.radius + m;
+    p = new THREE.Vector3(ent.position.x + sx * r, 0, ent.position.z + sz * r);
+  }
   // Evitem que el punt quedi dins d'un altre obstacle (p. ex. un arbre veí)
   for (const o of state.obstacles) {
     if (o.entity === ent) continue;
-    const dx = p.x - o.x, dz = p.z - o.z, min = o.r + CONFIG.VILLAGER.radius + 0.1;
-    if (dx * dx + dz * dz < min * min) {
-      const d = Math.hypot(dx, dz) || 0.001;
-      p.x = o.x + dx / d * min; p.z = o.z + dz / d * min;
-    }
+    pushOutOf(p, o, CONFIG.VILLAGER.radius + 0.1);
   }
   return clampToMap(p);
 }
@@ -1796,19 +2538,23 @@ function approachPoint(ent, fromPos, angleOffset = 0) {
   return approachPointAt(ent, Math.atan2(fromPos.x - ent.position.x, fromPos.z - ent.position.z) + angleOffset);
 }
 
-function nearestDropoff(pos) {
+function acceptsDropoff(b, type) {
+  return b && !b.dead && b.isOwn && !b.underConstruction && b.dropoffTypes && (!type || b.dropoffTypes.includes(type));
+}
+function nearestDropoff(pos, type = null) {
   let best = null, bestD = Infinity;
   for (const b of state.buildings) {
-    if (!b.dropoff || !b.isOwn) continue;
-    const d = hDist(b.position, pos);
+    if (!acceptsDropoff(b, type)) continue;
+    const d = entSurfaceDist(b, pos.x, pos.z);
     if (d < bestD) { bestD = d; best = b; }
   }
   return best;
 }
-function nearestResource(type, pos, maxDist = Infinity) {
+function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
   let best = null, bestD = maxDist;
   for (const n of state.resourceNodes) {
     if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
+    if (farmTaken(n, forUnit)) continue;
     const d = hDist(n.position, pos);
     if (d < bestD) { bestD = d; best = n; }
   }
@@ -1818,8 +2564,63 @@ function nearestResource(type, pos, maxDist = Infinity) {
 function orderMove(u, point) {
   u.gatherNode = null;
   u.dropTarget = null;
-  u.target = point;
+  u.buildTarget = null;
+  setMoveTarget(u, point);
   setUnitState(u, STATE.MOVING);
+}
+
+function orderBuild(u, b, angle = null) {
+  u.gatherNode = null;
+  u.dropTarget = null;
+  u.buildTarget = b;
+  u.buildAngle = angle;
+  u.approachTries = 0;
+  goToBuild(u);
+}
+function goToBuild(u) {
+  const b = u.buildTarget;
+  const p = u.buildAngle !== null ? approachPointAt(b, u.buildAngle) : approachPoint(b, u.position, ((u.id % 5) - 2) * 0.3);
+  setMoveTarget(u, p);
+  setUnitState(u, STATE.MOVING);
+}
+function startBuilding(u) {
+  setMoveTarget(u, null);
+  u.workPhase = 0;
+  u.approachTries = 0;
+  setUnitState(u, STATE.BUILDING);
+}
+/* Després d'acabar un edifici: com a l'AoE, el constructor es posa a treballar a prop */
+function afterBuild(u, b) {
+  u.buildTarget = null;
+  setMoveTarget(u, null);
+  if (u.orderQueue.length) { setUnitState(u, STATE.IDLE); return; }
+  if (b.subtype === 'farm' && !b.depleted && !b.dead && !farmTaken(b, u)) { orderGather(u, b, null); return; }
+  if (b.dropoffTypes && b.subtype !== 'towncenter') {
+    let best = null, bestD = Infinity;
+    for (const type of b.dropoffTypes) {
+      const n = nearestResource(type, b.position, 25, u);
+      if (n && hDist(n.position, b.position) < bestD) { bestD = hDist(n.position, b.position); best = n; }
+    }
+    if (best) { orderGather(u, best, null); return; }
+  }
+  setUnitState(u, STATE.IDLE);
+}
+/* Si en arribar no és prou a prop (punt bloquejat), prova un altre angle */
+function retryApproach(u) {
+  u.approachTries++;
+  if (u.approachTries > 6) {
+    u.buildTarget = null;
+    u.gatherNode = null;
+    setUnitState(u, STATE.IDLE);
+    return;
+  }
+  if (u.buildTarget) {
+    u.buildAngle = (u.buildAngle ?? Math.atan2(u.position.x - u.buildTarget.position.x, u.position.z - u.buildTarget.position.z)) + 0.9;
+    goToBuild(u);
+  } else if (u.gatherNode) {
+    u.gatherAngle = (u.gatherAngle ?? Math.atan2(u.position.x - u.gatherNode.position.x, u.position.z - u.gatherNode.position.z)) + 0.9;
+    goToResource(u);
+  }
 }
 
 function orderGather(u, node, angle = null) {
@@ -1832,6 +2633,8 @@ function orderGather(u, node, angle = null) {
   u.gatherNode = node;
   u.gatherAngle = angle;
   u.dropTarget = null;
+  u.buildTarget = null;
+  u.approachTries = 0;
   u.lastResourceType = node.resourceType;
   u.lastNodePos.copy(node.position);
   goToResource(u);
@@ -1840,25 +2643,25 @@ function orderGather(u, node, angle = null) {
 function goToResource(u) {
   const node = u.gatherNode;
   if (!node || node.depleted) { findNextResource(u); return; }
-  u.target = u.gatherAngle !== null
+  setMoveTarget(u, u.gatherAngle !== null
     ? approachPointAt(node, u.gatherAngle)
-    : approachPoint(node, u.position, ((u.id % 5) - 2) * 0.35);
+    : approachPoint(node, u.position, ((u.id % 5) - 2) * 0.35));
   setUnitState(u, STATE.MOVING);
 }
 
 function goToDropoff(u, building = null) {
-  const tc = building || nearestDropoff(u.position);
-  if (!tc) { u.target = null; setUnitState(u, STATE.IDLE); return; }
+  // El magatzem més proper que accepti el tipus de càrrega (Centre, Serradora, Campament miner, Molí)
+  const tc = acceptsDropoff(building, u.carry.type) ? building : nearestDropoff(u.position, u.carry.type);
+  if (!tc) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); return; }
   u.dropTarget = tc;
-  // Punt d'arribada a la cara del Centre de Ciutat que mira cap a l'aldeà
-  u.target = approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06);
+  setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06));
   setUnitState(u, STATE.RETURNING);
 }
 
 /* Quan el recurs actual desapareix, en busca un altre del mateix tipus a prop */
 function findNextResource(u) {
   const type = u.lastResourceType;
-  const next = type ? nearestResource(type, u.lastNodePos, CONFIG.GATHER.autoSearchRadius) : null;
+  const next = type ? nearestResource(type, u.lastNodePos, CONFIG.GATHER.autoSearchRadius, u) : null;
   if (next) {
     u.gatherNode = next;
     u.gatherAngle = null;
@@ -1875,7 +2678,8 @@ function findNextResource(u) {
 }
 
 function startGathering(u) {
-  u.target = null;
+  setMoveTarget(u, null);
+  u.approachTries = 0;
   u.gatherProgress = 0;
   u.workPhase = 0;
   setUnitState(u, STATE.GATHERING);
@@ -1911,22 +2715,33 @@ function updateCarryVisual(u) {
   m.scale.setScalar(0.45 + 0.55 * f);
 }
 
-/* Moviment en línia recta a velocitat constant. Retorna true si ha arribat. */
+/* Moviment a velocitat constant per trams rectes del camí. Retorna true si ha arribat. */
 function stepTowardsTarget(u, dt) {
   if (!u.target) return true;
-  const dx = u.target.x - u.position.x;
-  const dz = u.target.z - u.position.z;
-  const dist = Math.hypot(dx, dz);
-  const step = u.speed * dt;
-  if (dist <= step || dist < 0.05) {
-    u.position.x = u.target.x;
-    u.position.z = u.target.z;
+  // Si el mapa ha canviat (nou edifici, recurs esgotat) es recalcula el camí
+  if (!u.path || u.pathVersion !== NAV.version) setMoveTarget(u, u.target);
+  let step = u.speed * dt;
+  while (step > 1e-6 && u.path.length) {
+    const wp = u.path[0];
+    const dx = wp.x - u.position.x, dz = wp.z - u.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist <= step) {
+      u.position.x = wp.x;
+      u.position.z = wp.z;
+      step -= dist;
+      u.path.shift();
+      continue;
+    }
+    u.position.x += (dx / dist) * step;
+    u.position.z += (dz / dist) * step;
+    u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-14 * dt));
+    step = 0;
+  }
+  if (!u.path.length) {
     u.target = null;
+    u.path = null;
     return true;
   }
-  u.position.x += (dx / dist) * step;
-  u.position.z += (dz / dist) * step;
-  u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-14 * dt));
   return false;
 }
 
@@ -1978,6 +2793,12 @@ function updateUnit(u, dt) {
   let walking = false;
   switch (u.state) {
     case STATE.MOVING: {
+      const bt = u.buildTarget;
+      if (bt) {
+        if (bt.dead) { u.buildTarget = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
+        if (!bt.underConstruction) { afterBuild(u, bt); break; }
+        if (inReach(u, bt)) { startBuilding(u); break; }
+      }
       const node = u.gatherNode;
       if (node) {
         if (node.depleted) { findNextResource(u); break; }
@@ -1986,22 +2807,40 @@ function updateUnit(u, dt) {
       const arrived = stepTowardsTarget(u, dt);
       walking = !arrived;
       if (arrived) {
-        if (node) {
-          if (inReach(u, node)) startGathering(u); else goToResource(u);
+        if (bt) {
+          if (inReach(u, bt)) startBuilding(u); else retryApproach(u);
+        } else if (node) {
+          if (inReach(u, node)) startGathering(u); else retryApproach(u);
         } else {
           setUnitState(u, STATE.IDLE);
         }
       }
       break;
     }
+    case STATE.BUILDING: {
+      const b = u.buildTarget;
+      if (!b || b.dead) { u.buildTarget = null; setUnitState(u, STATE.IDLE); break; }
+      if (!b.underConstruction) { afterBuild(u, b); break; }
+      if (!inReach(u, b)) { goToBuild(u); break; }
+      // Mirar cap al punt més proper de l'edifici
+      const fp = b.footprint;
+      const cx = THREE.MathUtils.clamp(u.position.x, b.position.x - fp.hw, b.position.x + fp.hw);
+      const cz = THREE.MathUtils.clamp(u.position.z, b.position.z - fp.hd, b.position.z + fp.hd);
+      if (Math.hypot(cx - u.position.x, cz - u.position.z) > 0.01) {
+        u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(cx - u.position.x, cz - u.position.z), 1 - Math.exp(-10 * dt));
+      }
+      break;
+    }
     case STATE.RETURNING: {
       const tc = u.dropTarget;
-      if (!tc) { goToDropoff(u); break; }
+      if (!acceptsDropoff(tc, u.carry.type)) { goToDropoff(u); break; }
       if (inReach(u, tc)) { depositCarry(u); break; }
       const arrived = stepTowardsTarget(u, dt);
       walking = !arrived;
       if (arrived) {
-        if (inReach(u, tc)) depositCarry(u); else goToDropoff(u, tc);
+        if (inReach(u, tc)) depositCarry(u);
+        else if (++u.approachTries > 6) { u.approachTries = 0; setUnitState(u, STATE.IDLE); }
+        else goToDropoff(u, tc);
       }
       break;
     }
@@ -2010,7 +2849,7 @@ function updateUnit(u, dt) {
       break;
     case STATE.IDLE:
     default:
-      u.target = null;
+      if (u.target) setMoveTarget(u, null);
       if (u.orderQueue.length) runOrder(u, u.orderQueue.shift());
       break;
   }
@@ -2035,7 +2874,7 @@ function updateUnit(u, dt) {
     }
     u.model.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.09;
     u.model.rotation.x *= (1 - k);
-  } else if (u.state === STATE.GATHERING && u.gatherNode) {
+  } else if ((u.state === STATE.GATHERING && u.gatherNode) || (u.state === STATE.BUILDING && u.buildTarget)) {
     // Cop de destral / pic: pujada lenta i baixada ràpida
     const prev = u.workPhase;
     u.workPhase = (u.workPhase + dt * 1.5) % 1;
@@ -2048,7 +2887,10 @@ function updateUnit(u, dt) {
     u.model.rotation.x = p < 0.7 ? -0.08 * (p / 0.7) : 0.18 * Math.sin(((p - 0.7) / 0.3) * Math.PI);
     u.model.position.y = 0;
     for (const l of u.legs) l.rotation.x *= (1 - k);
-    if (p < prev) onToolStrike(u, u.gatherNode);   // el cicle ha acabat: impacte
+    if (p < prev) {                                  // el cicle ha acabat: impacte
+      if (u.state === STATE.BUILDING) onBuildStrike(u, u.buildTarget);
+      else onToolStrike(u, u.gatherNode);
+    }
   } else {
     for (const l of u.legs) l.rotation.x *= (1 - k);
     for (const a of u.arms) a.rotation.x *= (1 - k);
@@ -2068,9 +2910,17 @@ function updateUnit(u, dt) {
 /* =====================================================================
    RECURSOS: IMPACTES, PARTÍCULES I ESGOTAMENT
    ===================================================================== */
+function onBuildStrike(u, b) {
+  if (!b) return;
+  const fp = b.footprint;
+  const cx = THREE.MathUtils.clamp(u.position.x, b.position.x - fp.hw, b.position.x + fp.hw);
+  const cz = THREE.MathUtils.clamp(u.position.z, b.position.z - fp.hd, b.position.z + fp.hd);
+  spawnParticles(new THREE.Vector3(cx, 0.6, cz), 0xc8a26a, 3, null);
+}
+
 function onToolStrike(u, node) {
   if (!node || node.depleted) return;
-  node.shakeT = 0.25;
+  if (node.subtype !== 'farm') node.shakeT = 0.25;
   // Punt d'impacte entre l'aldeà i el recurs
   const dir = new THREE.Vector3(node.position.x - u.position.x, 0, node.position.z - u.position.z).normalize();
   const hitY = node.subtype === 'tree' ? 1.2 : node.subtype === 'sheep' ? 0.4 : 0.8;
@@ -2088,6 +2938,7 @@ function onNodeHarvested(node) {
     const visible = Math.ceil(f * node.berries.length);
     node.berries.forEach((b, i) => { b.visible = i < visible; });
   }
+  if (node.model && node.model.userData.crops) node.model.userData.crops.scale.y = 0.2 + 0.8 * f;
 }
 
 function depleteResource(node) {
@@ -2103,6 +2954,8 @@ function depleteResource(node) {
   state.dying.push(node);
   if (node.subtype === 'gold') toast("⛏️ Una Veta d'Or s'ha esgotat");
   if (node.subtype === 'stone') toast('🪨 Una Mina de Pedra s\'ha esgotat');
+  if (node.subtype === 'farm') toast('🌱 Una granja s\'ha esgotat');
+  rebuildNav();
   spawnParticles(new THREE.Vector3(node.position.x, 1.5, node.position.z), node.particleColor, 14, null);
 }
 
@@ -2238,8 +3091,10 @@ function updateResourcesUI() {
   }
 }
 function updatePopulationUI() {
-  document.getElementById('pop-val').textContent = state.units.filter(u => u.isOwn).length;
-  document.getElementById('pop-cap').textContent = CONFIG.POP_CAP;
+  const used = state.units.filter(u => u.isOwn).length, cap = popCap();
+  document.getElementById('pop-val').textContent = used;
+  document.getElementById('pop-cap').textContent = cap;
+  document.querySelector('#panel-resources .pop').classList.toggle('full', used >= cap);
 }
 
 function hpBar(e, cls = '') {
@@ -2257,7 +3112,9 @@ function unitTaskLine(u) {
   let detail = '';
   if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
   else if (u.state === STATE.MOVING && u.gatherNode) detail = ` cap a ${u.gatherNode.name.toLowerCase()}`;
-  else if (u.state === STATE.RETURNING) detail = ' a descarregar';
+  else if (u.state === STATE.RETURNING) detail = u.dropTarget ? ` (${u.dropTarget.name})` : '';
+  else if (u.state === STATE.BUILDING && u.buildTarget) detail = ` ${u.buildTarget.name}`;
+  else if (u.state === STATE.MOVING && u.buildTarget) detail = ` a construir ${u.buildTarget.name.toLowerCase()}`;
   return tag + detail;
 }
 function carryLine(u) {
@@ -2268,8 +3125,8 @@ function carryLine(u) {
 /* Signatura de l'estat visible: si canvia, es refà el panell de selecció */
 function selectionSignature() {
   return state.selected.map(e => e.kind === 'unit'
-    ? `${e.id}:${e.state}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}`
-    : `${e.id}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.trainQueue ? e.trainQueue.length : ''}`).join('|');
+    ? `${e.id}:${e.state}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
+    : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
 }
 let lastSelSignature = '';
 
@@ -2292,7 +3149,20 @@ function updateSelectionUI(panelOnly = false) {
       stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${carryLine(first)}</div>
         <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>0/0</b></span><span>👟 Velocitat <b>${first.speed.toFixed(1)}</b></span></div>`;
     } else if (first.kind === 'building') {
-      stats = `<div class="stats"><span>👥 Població <b>${state.units.filter(u => u.isOwn).length}/${CONFIG.POP_CAP}</b></span><span>🚩 Reunió <b>${first.rally ? (first.rally.node ? first.rally.node.name : 'terreny') : 'cap'}</b></span></div>`;
+      if (first.subtype === 'towncenter') {
+        stats = `<div class="stats"><span>👥 Població <b>${state.units.filter(u => u.isOwn).length}/${popCap()}</b></span><span>🚩 Reunió <b>${first.rally ? (first.rally.node ? first.rally.node.name : 'terreny') : 'cap'}</b></span></div>`;
+      } else if (first.underConstruction) {
+        const n = state.units.filter(u => u.state === STATE.BUILDING && u.buildTarget === first).length;
+        stats = `<div class="stats"><span>🔨 Constructors <b>${n}</b></span><span>${first.def.desc}</span></div>`;
+      } else {
+        const d = first.def;
+        const parts = [];
+        if (d.pop) parts.push(`<span>🏠 Població <b>+${d.pop}</b></span>`);
+        if (d.dropoff) parts.push(`<span>📦 Magatzem <b>${d.dropoff.map(t => RES_ICON[t]).join(' ')}</b></span>`);
+        if (first.subtype === 'mill') parts.push('<span>🌱 Permet construir <b>granges</b></span>');
+        if (first.subtype === 'barracks') parts.push('<span>⚔️ Unitats militars: <b>Fase 3B</b></span>');
+        stats = `<div class="stats">${parts.join('')}</div>`;
+      }
       if (first.trainQueue) {
         const items = first.trainQueue.map((it, i) =>
           `<div class="q-item" data-idx="${i}" title="Clic: cancel·lar (retorna ${costText(CONFIG.UNITS[it.kind].cost)})">${CONFIG.UNITS[it.kind].icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
@@ -2303,7 +3173,9 @@ function updateSelectionUI(panelOnly = false) {
     const resLabel = isRes ? RES_LABEL[first.resourceType] : '';
     const bar = isRes
       ? `<div class="bar res"><i style="width:${(first.amount / first.maxAmount) * 100}%"></i><span>${resLabel}: ${first.amount}</span></div>`
-      : hpBar(first);
+      : first.underConstruction
+        ? `<div class="bar build"><i style="width:${first.progress * 100}%"></i><span>Construcció: ${Math.floor(first.progress * 100)}%</span></div>`
+        : hpBar(first);
     selContent.innerHTML = `
       <div class="portrait ${first.isOwn ? '' : 'neutral'}">${first.icon}</div>
       <div class="sel-info">
@@ -2314,7 +3186,7 @@ function updateSelectionUI(panelOnly = false) {
       </div>`;
   } else {
     const shown = sel.slice(0, 24);
-    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒' };
+    const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨' };
     const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
     const counts = {};
     sel.forEach(u => { counts[u.state] = (counts[u.state] || 0) + 1; });
@@ -2340,6 +3212,7 @@ function updateSelectionUI(panelOnly = false) {
   }
 
   if (panelOnly) return;
+  actionsEl.classList.remove('compact');
 
   // Botons d'acció contextuals
   if (first.kind === 'building' && first.subtype === 'towncenter' && first.isOwn) {
@@ -2352,30 +3225,50 @@ function updateSelectionUI(panelOnly = false) {
     hint.innerHTML = 'Clic a la cua per cancel·lar.<br><kbd>Clic dret</kbd>: punt de reunió<br>(sobre un recurs: hi treballaran).';
     actionsEl.appendChild(hint);
   } else if (first.kind === 'unit' && first.isOwn) {
-    actionsEl.appendChild(makeActionButton('✋', 'Aturar', 'Cancel·la l\'ordre', 'X', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }));
+    // Menú de construcció de l'aldeà
+    actionsEl.classList.add('compact');
+    const stop = makeActionButton('✋', 'Aturar', 'X', '', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }, true);
+    stop.title = "Aturar (X): cancel·la l'ordre actual.\nClic dret: moure / recol·lectar / descarregar / construir.\nShift + clic dret: encadenar ordres.";
+    actionsEl.appendChild(stop);
+    for (const [type, def] of Object.entries(CONFIG.BUILDINGS)) {
+      const btn = makeActionButton(def.icon, def.short, costText(def.cost), '', () => startPlacement(type), true);
+      btn.dataset.build = type;
+      btn.title = `${def.name} — ${costText(def.cost)} · ${def.time}s\n${def.desc}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
+      actionsEl.appendChild(btn);
+    }
+  } else if (first.kind === 'building' && first.isOwn) {
+    const btn = makeActionButton('🗑️', 'Enderrocar', first.underConstruction && first.progress < 0.02 ? 'Retorna el cost' : 'Supr', '', () => demolishBuilding(first));
+    actionsEl.appendChild(btn);
     const hint = document.createElement('div');
     hint.className = 'action-hint';
-    hint.innerHTML = '<kbd>Clic dret</kbd> terreny: moure<br><kbd>Clic dret</kbd> recurs: recol·lectar<br><kbd>Clic dret</kbd> Centre: descarregar<br><kbd>Shift</kbd>: encadenar ordres';
+    hint.innerHTML = first.underConstruction
+      ? 'Selecciona aldeans i fes<br><kbd>clic dret</kbd> al fonament<br>per ajudar a construir.'
+      : (first.dropoffTypes ? `Els aldeans hi poden<br>descarregar ${first.dropoffTypes.map(t => RES_ICON[t]).join(' ')}.` : first.def.desc);
     actionsEl.appendChild(hint);
+  } else if (first.kind === 'resource' && first.subtype === 'farm') {
+    actionsEl.innerHTML = `<div class="action-hint">Granja: ${first.amount} d'aliment.<br>Un sol granger hi pot treballar.<br>Descarrega al Molí o al Centre.</div>`;
   } else if (first.kind === 'resource') {
     actionsEl.innerHTML = `<div class="action-hint">Recurs natural (${RES_LABEL[first.resourceType]}).<br>Selecciona aldeans i fes <kbd>clic dret</kbd><br>sobre el recurs per recol·lectar-lo.</div>`;
   }
 }
 
-function makeActionButton(icon, label, cost, hotkey, onClick) {
+function makeActionButton(icon, label, cost, hotkey, onClick, small = false) {
   const btn = document.createElement('button');
-  btn.className = 'action-btn';
-  btn.innerHTML = `<span class="hk">${hotkey}</span><span class="big">${icon}</span><span>${label}</span><span class="cost">${cost}</span>`;
+  btn.className = 'action-btn' + (small ? ' small' : '');
+  btn.innerHTML = `${hotkey ? `<span class="hk">${hotkey}</span>` : ''}<span class="big">${icon}</span><span>${label}</span><span class="cost">${cost}</span>`;
   btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); btn.blur(); });
   return btn;
 }
 
 function onSelectionChanged() {
+  if (placing.type && !builders().length) cancelPlacement();
   updateSelectionUI();
 }
 
 /* Actualització contínua de la barra d'entrenament i de l'estat del botó */
 function updateTrainingUI() {
+  // Botons de construcció: en vermell si no es poden pagar o falta un requisit
+  actionsEl.querySelectorAll('[data-build]').forEach(btn => btn.classList.toggle('cant', !!buildBlockReason(btn.dataset.build)));
   const b = state.selected.length === 1 ? state.selected[0] : null;
   if (!b || !b.trainQueue) return;
   const prog = document.querySelector('#train-queue .q-prog');
@@ -2385,7 +3278,7 @@ function updateTrainingUI() {
     const f = Math.min(1, item.t / CONFIG.UNITS[item.kind].time);
     if (prog) prog.style.width = (f * 100) + '%';
     if (status) status.innerHTML = item.blocked
-      ? '<b>Població plena</b>'
+      ? '<b>🏠 Població plena: calen cases</b>'
       : `Entrenant ${CONFIG.UNITS[item.kind].name.toLowerCase()}… <b>${Math.floor(f * 100)}%</b> · ${Math.ceil(CONFIG.UNITS[item.kind].time - item.t)}s`;
   } else if (status) status.textContent = '';
   const btn = actionsEl.querySelector('[data-action="villager"]');
@@ -2414,6 +3307,12 @@ const keys = new Set();
 
 canvas.addEventListener('mousedown', (e) => {
   canvas.focus();
+  // Mode construcció: clic esquerre col·loca, clic dret cancel·la
+  if (placing.type) {
+    if (e.button === 0) confirmPlacement(e.shiftKey);
+    else if (e.button === 2) cancelPlacement();
+    return;
+  }
   if (e.button === 0) {
     mouse.down = true;
     mouse.dragging = false;
@@ -2486,8 +3385,14 @@ window.addEventListener('keydown', (e) => {
 
   switch (code) {
     case 'Escape':
+      if (placing.type) { cancelPlacement(); break; }
       clearSelection(); onSelectionChanged();
       break;
+    case 'Delete': {
+      const b = state.selected.length === 1 ? state.selected[0] : null;
+      if (b && b.kind === 'building') demolishBuilding(b);
+      break;
+    }
     case 'KeyH':
       setSelection([townCenter]);
       centerOn(townCenter.position);
@@ -2601,7 +3506,17 @@ function mmToWorld(px, py) {
   const r = (px - c) / mm.scale, f = -(py - c) / mm.scale;
   return new THREE.Vector3(r * ax.rx + f * ax.fx, 0, r * ax.rz + f * ax.fz);
 }
-const MM_COLORS = { tree: '#1f5a24', gold: '#ffd23a', stone: '#c8c8c8', berries: '#e0457f', sheep: '#ffffff' };
+const MM_COLORS = { tree: '#1f5a24', gold: '#ffd23a', stone: '#c8c8c8', berries: '#e0457f', sheep: '#ffffff', farm: '#b08a4a' };
+function mmRect(ctx, e, ax, fill, stroke) {
+  const { hw, hd } = e.footprint;
+  const pts = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([dx, dz]) => worldToMM(e.position.x + dx, e.position.z + dz, ax));
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+}
 function drawMinimap() {
   const ctx = mm.ctx, L = CONFIG.MAP_LIMIT, ax = mmAxes();
   ctx.setTransform(mm.dpr, 0, 0, mm.dpr, 0, 0);
@@ -2621,6 +3536,7 @@ function drawMinimap() {
   ctx.stroke();
   // Recursos
   for (const n of state.resourceNodes) {
+    if (n.footprint) { mmRect(ctx, n, ax, n.selected ? '#ffffff' : MM_COLORS.farm, null); continue; }
     const [x, y] = worldToMM(n.position.x, n.position.z, ax);
     ctx.fillStyle = MM_COLORS[n.subtype] || '#fff';
     const r = n.subtype === 'tree' ? 1.8 : n.subtype === 'sheep' ? 1.6 : n.subtype === 'berries' ? 1.8 : 3;
@@ -2628,6 +3544,10 @@ function drawMinimap() {
   }
   // Edificis
   for (const b of state.buildings) {
+    if (b.footprint) {
+      mmRect(ctx, b, ax, b.selected ? '#ffffff' : (b.underConstruction ? 'rgba(90,150,255,0.55)' : '#2f6fe0'), '#0b1a3a');
+      continue;
+    }
     const [x, y] = worldToMM(b.position.x, b.position.z, ax);
     const r = Math.max(3.5, b.radius * mm.scale * 0.8);
     ctx.fillStyle = b.selected ? '#ffffff' : '#2f6fe0';
@@ -2736,6 +3656,7 @@ function updateCameraControls(dt) {
 /* ---------- Cursor segons el que hi ha sota el ratolí ---------- */
 let hoverFrame = 0;
 function updateHoverCursor() {
+  if (placing.type) { canvas.style.cursor = 'crosshair'; return; }
   if (++hoverFrame % 3 !== 0) return;
   if (!mouse.overCanvas || mouse.down) return;
   const e = pickEntity(mouse.x, mouse.y);
@@ -2774,6 +3695,8 @@ function animate() {
   updateParticles(dt);
   updateFloaters(dt);
   updateTraining(dt);
+  updateConstruction(dt);
+  updatePlacement();
   updateTrainingUI();
   updateRallyFlag(t);
   mm.timer += dt;
@@ -2785,6 +3708,7 @@ function animate() {
     uiTimer = 0;
     if (selectionSignature() !== lastSelSignature) updateSelectionUI(true);
     idleCountEl.textContent = state.units.filter(u => u.isOwn && u.state === STATE.IDLE).length;
+    updatePopulationUI();
   }
   for (const a of state.animated) a.update(t, dt);
 
@@ -2819,6 +3743,8 @@ function animate() {
    INICI
    ===================================================================== */
 Object.assign(state.resources, CONFIG.STARTING_RESOURCES);
+navInit();
+rebuildNav();
 mmResize();
 updateCamera();
 updateSun();
@@ -2834,7 +3760,7 @@ setTimeout(() => loadingEl.remove(), 500);
 toast('Benvingut! Recursos inicials: 200 🍖 · 200 🪵 · 100 🪙 · 200 🪨');
 
 // Exposem l'estat per depurar des de la consola
-window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, townCenter, mouse };
+window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, townCenter, mouse, NAV, createBuilding, commandBuild, startPlacement, placing, findPath, popCap };
 </script>
 </body>
 </html>
