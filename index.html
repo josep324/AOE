@@ -2438,6 +2438,23 @@ createGoldMine(70, 86);
 [[70, 36], [72.6, 37.4], [69.2, 39], [72.2, 40.4], [74.8, 39.2]].forEach(([x, z]) => createBerryBush(x, z));
 [[50, 52], [52.5, 49], [48, 47]].forEach(([x, z]) => createSheep(x, z));
 createStoneMine(34, 86);
+// Boscos grans repartits pel mapa (fusta per a tota la partida)
+function createForest(cx, cz, n, r) {
+  let placed = 0, tries = 0;
+  while (placed < n && tries++ < n * 12) {
+    const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * r;
+    const x = cx + Math.cos(a) * d, z = cz + Math.sin(a) * d;
+    if (Math.abs(x) > CONFIG.MAP_LIMIT - 3 || Math.abs(z) > CONFIG.MAP_LIMIT - 3 || isNearObstacle(x, z, 1.6)) continue;
+    createTree(x, z, randRange(0.85, 1.25));
+    placed++;
+  }
+}
+createForest(-8, -58, 18, 11);
+createForest(-62, 30, 18, 11);
+createForest(88, 18, 14, 8);
+createForest(22, 88, 14, 9);
+createForest(-50, -60, 14, 10);
+createForest(60, -45, 14, 10);
 const enemyTC = createTownCenter(62, 60, ENEMY.id);
 createDecorations();
 // Tres aldeans inicials (com als RTS clàssics)
@@ -3715,9 +3732,10 @@ function aiTick() {
   }
 
   // 3) Edificis econòmics i militars
-  if (villagers.length >= 6 && !has('lumbercamp')) {
-    const tree = nearestResource('wood', tc.position, 60);
-    if (tree) aiBuild('lumbercamp', tree.position, 4, 10);
+  // Serradora al costat del bosc que s'explota (se'n fa una de nova quan el bosc queda lluny)
+  const tree = nearestResource('wood', tc.position, 160);
+  if (villagers.length >= 6 && tree && !blds.some(b => b.subtype === 'lumbercamp' && (b.underConstruction || hDist(b.position, tree.position) < 16))) {
+    aiBuild('lumbercamp', tree.position, 4, 10);
   }
   if (villagers.length >= 8 && !has('barracks')) aiBuild('barracks', tc.position, 13, 26, 2);
   if (villagers.length >= 9 && !has('mill')) {
@@ -3784,7 +3802,7 @@ function aiTick() {
     const types = Object.keys(want).sort((a, b) => (gatherers[a] - want[a] * villagers.length) - (gatherers[b] - want[b] * villagers.length));
     for (const type of types) {
       if (!want[type]) continue;
-      const node = nearestResource(type, tc.position, 65, u);
+      const node = nearestResource(type, tc.position, 65, u) || nearestResource(type, tc.position, 160, u);
       if (node) { orderGather(u, node, null); gatherers[type]++; break; }
     }
   }
