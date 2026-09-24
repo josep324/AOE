@@ -55,14 +55,41 @@ function hideDecorIn(x, z, hw, hd) {
     if (changed) mesh.instanceMatrix.needsUpdate = true;
   }
 }
+/* Textura d'una mata de gespa (fulles blanquinoses: el color el dona cada instància) */
+function grassTuftTexture() {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  const rng = mulberry32(0x6a55);
+  for (let i = 0; i < 46; i++) {
+    const x0 = 20 + rng() * 88, lean = (rng() - 0.5) * 50, h = 50 + rng() * 74, w = 2.5 + rng() * 3.5;
+    const v = Math.floor(170 + rng() * 85);
+    g.fillStyle = `rgb(${Math.floor(v * 0.82)},${v},${Math.floor(v * 0.6)})`;
+    g.beginPath();
+    g.moveTo(x0 - w, 128);
+    g.quadraticCurveTo(x0 + lean * 0.3, 128 - h * 0.6, x0 + lean, 128 - h);
+    g.quadraticCurveTo(x0 + lean * 0.3 + w * 0.4, 128 - h * 0.55, x0 + w, 128);
+    g.closePath();
+    g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
 function createDecorations() {
   const dummy = new THREE.Object3D();
   const area = CONFIG.MAP_LIMIT + 60;
 
-  const grassCount = 5200;
+  // Mates de gespa: dos plans creuats amb transparència, normals cap amunt (il·luminació suau)
+  // Quatre cares (dos plans creuats, cada un per davant i per darrere) per no dependre de DoubleSide
+  const plane = (ry) => new THREE.PlaneGeometry(1.0, 0.7).translate(0, 0.35, 0).rotateY(ry);
+  const tuftGeo = mergeGeometries([plane(0), plane(Math.PI), plane(Math.PI / 2), plane(-Math.PI / 2)]);
+  const nrm = tuftGeo.attributes.normal;
+  for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
+  const grassCount = 9000;
   const grass = new THREE.InstancedMesh(
-    new THREE.ConeGeometry(0.16, 0.7, 4).translate(0, 0.35, 0),
-    fogify(new THREE.MeshStandardMaterial({ color: 0x4f8f2f, roughness: 1 })),
+    tuftGeo,
+    fogify(new THREE.MeshStandardMaterial({ map: grassTuftTexture(), alphaTest: 0.45, roughness: 1 })),
     grassCount
   );
   const tint = new THREE.Color();
@@ -70,15 +97,16 @@ function createDecorations() {
   while (gi < grassCount) {
     const cx = randRange(-area, area), cz = randRange(-area, area);
     if (isNearObstacle(cx, cz, 1.5)) continue;
-    const clump = 3 + Math.floor(rand() * 4);
+    const clump = 2 + Math.floor(rand() * 4);
     for (let k = 0; k < clump && gi < grassCount; k++) {
-      dummy.position.set(cx + randRange(-0.5, 0.5), 0, cz + randRange(-0.5, 0.5));
-      dummy.rotation.set(randRange(-0.25, 0.25), rand() * Math.PI, randRange(-0.25, 0.25));
-      dummy.scale.setScalar(randRange(0.6, 1.3));
+      dummy.position.set(cx + randRange(-0.7, 0.7), 0, cz + randRange(-0.7, 0.7));
+      dummy.rotation.set(0, rand() * Math.PI, 0);
+      const sc = randRange(0.45, 1.0);
+      dummy.scale.set(sc, sc * randRange(0.7, 1.2), sc);
       dummy.updateMatrix();
       grass.setMatrixAt(gi, dummy.matrix);
       decor.grassPos.push(dummy.position.x, dummy.position.z);
-      tint.setHSL(0.26 + randRange(-0.03, 0.03), 0.55, 0.3 + randRange(-0.06, 0.08));
+      tint.setHSL(0.22 + randRange(-0.03, 0.03), 0.36 + randRange(-0.08, 0.08), 0.31 + randRange(-0.05, 0.05));
       grass.setColorAt(gi, tint);
       gi++;
     }
@@ -86,20 +114,24 @@ function createDecorations() {
   grass.receiveShadow = true;
   scene.add(grass);
 
-  const rockCount = 130;
-  const rocks = new THREE.InstancedMesh(
-    new THREE.DodecahedronGeometry(0.5, 0),
-    fogify(new THREE.MeshStandardMaterial({ color: 0x8a867d, roughness: 0.95, flatShading: true })),
-    rockCount
-  );
+  const rockCount = 150;
+  const rockGeo = new THREE.DodecahedronGeometry(0.5, 1);
+  const rp = rockGeo.attributes.position;
+  for (let i = 0; i < rp.count; i++) {
+    const x = rp.getX(i), y = rp.getY(i), z = rp.getZ(i);
+    const k = 1 + (hash2(x * 7.1 + z * 3.3, y * 5.7) - 0.5) * 0.35;
+    rp.setXYZ(i, x * k, y * k, z * k);
+  }
+  rockGeo.computeVertexNormals();
+  const rocks = new THREE.InstancedMesh(rockGeo, kitMat('granite', { flatShading: true }), rockCount);
   let ri = 0;
   while (ri < rockCount) {
     const x = randRange(-area, area), z = randRange(-area, area);
     if (isNearObstacle(x, z, 2.5)) continue;
-    dummy.position.set(x, 0.1, z);
+    dummy.position.set(x, 0.05, z);
     dummy.rotation.set(rand() * 3, rand() * 3, rand() * 3);
     const s = randRange(0.4, 1.4);
-    dummy.scale.set(s, s * randRange(0.5, 0.9), s * randRange(0.8, 1.2));
+    dummy.scale.set(s, s * randRange(0.45, 0.8), s * randRange(0.8, 1.2));
     dummy.updateMatrix();
     rocks.setMatrixAt(ri++, dummy.matrix);
     decor.rockPos.push(x, z);

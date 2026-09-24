@@ -87,6 +87,7 @@ function animate() {
   for (const s of state.selected) s.selection.scale.setScalar(pulse);
 
   updateSun();
+  flushGroundPaint();
   sky.position.copy(camera.position);
   updateHoverCursor();
 

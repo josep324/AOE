@@ -109,6 +109,8 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
     state.obstacles.push(e.obstacle);
   }
   hideDecorIn(x, z, sw / 2 + 0.3, sd / 2 + 0.3);
+  if (def.wall || def.gate) groundPaintRect(x, z, sw + 0.6, sd + 0.6, 'dirt', 0.35);
+  else groundPaintRect(x, z, sw + 1.2, sd + 1.2, 'dirt', type === 'farm' ? 0.4 : 0.65);
   applyConstructionVisual(e);
   if (!createBuilding.batch) rebuildNav();
   if (complete) completeBuilding(e, true);

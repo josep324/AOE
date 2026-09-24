@@ -1,30 +1,16 @@
 /* ---------- Arbre ---------- */
-const treeGeo = {
-  trunk: new THREE.CylinderGeometry(0.32, 0.52, 3.2, 10),
-  crown: new THREE.SphereGeometry(2.1, 20, 16),
-  crownSmall: new THREE.SphereGeometry(1.35, 16, 12),
-};
 function createTree(x, z, scale = 1) {
   const e = new Entity({ kind: 'resource', subtype: 'tree', name: 'Arbre', icon: '🌳', radius: 0.8 * scale, selRadius: 1.7 });
   e.resourceType = 'wood';
   e.amount = 100; e.maxAmount = 100;
 
-  const trunk = new THREE.Mesh(treeGeo.trunk, mat(0x7a4a24, { roughness: 0.95 }));
-  trunk.position.y = 1.6;
-  const crown = new THREE.Mesh(treeGeo.crown, mat(0x2f8a3a, { roughness: 0.85 }));
-  crown.position.y = 4.5; crown.scale.set(1, 1.12, 1);
-  const crown2 = new THREE.Mesh(treeGeo.crownSmall, mat(0x3da34a, { roughness: 0.85 }));
-  crown2.position.set(0.85, 5.7, 0.35);
-  const crown3 = new THREE.Mesh(treeGeo.crownSmall, mat(0x267532, { roughness: 0.85 }));
-  crown3.position.set(-0.8, 5.25, -0.55); crown3.scale.setScalar(0.85);
-
   // Subgrup del model: permet sacsejar-lo o fer-lo caure sense moure l'anell de selecció
-  e.model = new THREE.Group();
-  e.model.add(trunk, crown, crown2, crown3);
+  e.model = makeTreeModel(x, z);
   e.group.add(e.model);
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
   e.group.scale.setScalar(scale);
+  groundPaint(x, z, 2.8 * scale, 'forest', 0.5);
   e.shakeT = 0;
   e.depleted = false;
   e.particleColor = 0x9a6a3a;
@@ -50,25 +36,12 @@ function createGoldMine(x, z) {
   e.model.add(e.nuggets);
   e.group.add(e.model);
 
-  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1, 0), mat(0x7d7468, { roughness: 0.95, flatShading: true }));
-  rock.scale.set(1.15, 0.42, 1.0);
-  rock.position.y = 0.35;
-  e.model.add(rock);
-
-  const goldMat = mat(0xffc53a, { metalness: 0.75, roughness: 0.28, emissive: 0x3d2a00, emissiveIntensity: 0.6 });
-  const goldDark = mat(0xe0a018, { metalness: 0.7, roughness: 0.35, emissive: 0x2a1c00, emissiveIntensity: 0.5 });
-  const count = 11;
-  for (let i = 0; i < count; i++) {
-    const s = randRange(0.45, 1.05);
-    const box = new THREE.Mesh(new THREE.BoxGeometry(s, s * randRange(0.8, 1.3), s), i % 3 === 0 ? goldDark : goldMat);
-    const a = rand() * Math.PI * 2;
-    const r = randRange(0.1, 1.55);
-    box.position.set(Math.cos(a) * r, 0.55 + s * 0.4 + (1.55 - r) * 0.35, Math.sin(a) * r);
-    box.rotation.set(rand() * Math.PI, rand() * Math.PI, rand() * Math.PI);
-    e.nuggets.add(box);
-  }
+  const gm = makeMineModel('gold', x, z);
+  e.model.add(gm.base);
+  e.nuggets.add(gm.chunks);
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  groundPaint(x, z, 4.4, 'rock', 0.85);
   swapModel(e, 'resources/gold', { w: 4.6 });
   e.finalize();
 
@@ -90,27 +63,12 @@ function createStoneMine(x, z) {
   e.model.add(e.nuggets);
   e.group.add(e.model);
 
-  const base = new THREE.Mesh(new THREE.DodecahedronGeometry(2.0, 0), mat(0x6f6a62, { roughness: 0.95, flatShading: true }));
-  base.scale.set(1.1, 0.4, 1.0);
-  base.position.y = 0.3;
-  e.model.add(base);
-  const stoneMats = [
-    mat(0xc9c6bf, { roughness: 0.85, flatShading: true }),
-    mat(0xa9a59d, { roughness: 0.9, flatShading: true }),
-    mat(0x8e8a83, { roughness: 0.9, flatShading: true }),
-  ];
-  for (let i = 0; i < 10; i++) {
-    const s = randRange(0.55, 1.15);
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(s * 0.6, 0), stoneMats[i % 3]);
-    const a = rand() * Math.PI * 2;
-    const r = randRange(0.1, 1.5);
-    rock.position.set(Math.cos(a) * r, 0.5 + s * 0.35 + (1.5 - r) * 0.3, Math.sin(a) * r);
-    rock.rotation.set(rand() * 3, rand() * 3, rand() * 3);
-    rock.scale.set(1, randRange(0.7, 1.2), 1);
-    e.nuggets.add(rock);
-  }
+  const sm = makeMineModel('stone', x, z);
+  e.model.add(sm.base);
+  e.nuggets.add(sm.chunks);
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  groundPaint(x, z, 4.2, 'rock', 0.85);
   swapModel(e, 'resources/stone', { w: 4.4 });
   e.finalize();
   state.resourceNodes.push(e);
@@ -120,10 +78,6 @@ function createStoneMine(x, z) {
 }
 
 /* ---------- Arbust de baies ---------- */
-const berryGeo = {
-  bush: new THREE.SphereGeometry(0.8, 14, 10),
-  berry: new THREE.SphereGeometry(0.1, 8, 6),
-};
 function createBerryBush(x, z) {
   const e = new Entity({ kind: 'resource', subtype: 'berries', name: 'Arbust de baies', icon: '🫐', radius: 1.0, selRadius: 1.6 });
   e.resourceType = 'food';
@@ -133,27 +87,17 @@ function createBerryBush(x, z) {
   e.particleColor = 0xc2185b;
   e.model = new THREE.Group();
   e.group.add(e.model);
-  const leafMats = [mat(0x2e6b2a, { roughness: 0.9 }), mat(0x3b7d33, { roughness: 0.9 })];
-  const blobs = [[0, 0.6, 0, 1.0], [0.55, 0.5, 0.25, 0.75], [-0.5, 0.5, -0.2, 0.8], [0.1, 0.55, -0.55, 0.7]];
-  const berryMat = mat(0xd81b60, { roughness: 0.4, emissive: 0x3a0018, emissiveIntensity: 0.6 });
-  e.berries = [];
-  blobs.forEach(([bx, by, bz, bs], i) => {
-    const b = new THREE.Mesh(berryGeo.bush, leafMats[i % 2]);
-    b.position.set(bx, by, bz);
-    b.scale.set(bs, bs * 0.8, bs);
-    e.model.add(b);
-    // Baies distribuïdes per la superfície de cada mata
-    for (let k = 0; k < 6; k++) {
-      const th = rand() * Math.PI * 2, ph = randRange(0.2, 1.3);
-      const r = 0.8 * bs;
-      const berry = new THREE.Mesh(berryGeo.berry, berryMat);
-      berry.position.set(bx + Math.cos(th) * Math.sin(ph) * r, by + Math.cos(ph) * r * 0.8, bz + Math.sin(th) * Math.sin(ph) * r);
-      e.model.add(berry);
-      e.berries.push(berry);
-    }
+  const bt = bushTemplate(Math.floor(hash2(x * 1.7, z * 0.7) * 3));
+  e.model.add(new THREE.Mesh(bt.geo, NM.bush));
+  e.berries = bt.berries.map(p => {
+    const berry = new THREE.Mesh(berryGeoShared, NM.berry);
+    berry.position.copy(p);
+    e.model.add(berry);
+    return berry;
   });
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
+  groundPaint(x, z, 1.9, 'forest', 0.35);
   swapModel(e, 'resources/berries', { w: 2.4 });
   e.finalize();
   state.resourceNodes.push(e);
@@ -189,21 +133,16 @@ function createSheep(x, z) {
   e.body = new THREE.Group();        // subgrup que s'ajeu quan l'ovella és sacrificada
   e.model.add(e.body);
   e.group.add(e.model);
-  const wool = mat(0xf2eee4, { roughness: 1 });
-  const dark = mat(0x2b2522, { roughness: 0.8 });
-  const body = new THREE.Mesh(sheepGeo.body, wool);
-  body.scale.set(1.0, 0.85, 1.35);
-  body.position.y = 0.72;
+  const SP = sheepParts.get();
+  const dark = NM.sheepSkin;
+  const body = new THREE.Mesh(SP.body, NM.wool);
+  body.position.y = 0.74;
   e.body.add(body);
-  for (let i = 0; i < 6; i++) {
-    const puff = new THREE.Mesh(sheepGeo.puff, wool);
-    puff.position.set(randRange(-0.3, 0.3), 0.95 + randRange(-0.05, 0.1), randRange(-0.45, 0.45));
-    e.body.add(puff);
-  }
-  const head = new THREE.Mesh(sheepGeo.head, dark);
-  head.position.set(0, 0.95, 0.72);
-  const earL = new THREE.Mesh(sheepGeo.ear, dark); earL.position.set(-0.19, 1.05, 0.66);
-  const earR = new THREE.Mesh(sheepGeo.ear, dark); earR.position.set(0.19, 1.05, 0.66);
+  const head = new THREE.Mesh(SP.head, dark);
+  head.position.set(0, 0.95, 0.74);
+  head.rotation.x = 0.35;
+  const earL = new THREE.Mesh(sheepGeo.ear, dark); earL.position.set(-0.17, 1.02, 0.66); earL.rotation.z = -0.4;
+  const earR = new THREE.Mesh(sheepGeo.ear, dark); earR.position.set(0.17, 1.02, 0.66); earR.rotation.z = 0.4;
   e.body.add(head, earL, earR);
   e.legs = [];
   for (const [lx, lz] of [[-0.22, 0.35], [0.22, 0.35], [-0.22, -0.35], [0.22, -0.35]]) {
@@ -288,6 +227,8 @@ function createTownCenter(x, z, team = PLAYER.id) {
   e.height = height;
   e.group.add(model);
   e.group.position.set(x, 0, z);
+  groundPaint(x, z, 11, 'dirt', 0.8);
+  groundPaint(x, z, 16, 'trampled', 0.45);
   e.finalize();
   state.buildings.push(e);
   e.obstacle = { x, z, r: 6.9, entity: e };

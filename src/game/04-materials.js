@@ -9,7 +9,10 @@ const FOG_UNIFORMS = {
   uFogSize: { value: CONFIG.MAP_LIMIT * 2 },
 };
 function fogify(material) {
-  material.onBeforeCompile = (shader) => {
+  const prev = material.onBeforeCompile;   // encadena amb altres modificacions del shader (terreny…)
+  const prevKey = material.customProgramCacheKey();
+  material.onBeforeCompile = (shader, r) => {
+    prev.call(material, shader, r);
     shader.uniforms.uFogTex = FOG_UNIFORMS.uFogTex;
     shader.uniforms.uFogOrigin = FOG_UNIFORMS.uFogOrigin;
     shader.uniforms.uFogSize = FOG_UNIFORMS.uFogSize;
@@ -25,7 +28,7 @@ function fogify(material) {
       shader.fragmentShader.replace('#include <fog_fragment>', `gl_FragColor.rgb *= texture2D(uFogTex, vFogUv).r;
         #include <fog_fragment>`);
   };
-  material.customProgramCacheKey = () => 'fog-of-war';
+  material.customProgramCacheKey = () => 'fog-of-war' + prevKey;
   return material;
 }
 

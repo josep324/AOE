@@ -1,9 +1,9 @@
 /* =====================================================================
    IL·LUMINACIÓ (Sol direccional + ambient + hemisfèrica)
    ===================================================================== */
-const ambient = new THREE.AmbientLight(0xffffff, 0.35);
-const hemi = new THREE.HemisphereLight(0xd6ecff, 0x4b6a2c, 0.85);
-const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+const ambient = new THREE.AmbientLight(0xfff6e8, 0.28);
+const hemi = new THREE.HemisphereLight(0xcfe2f4, 0x5a5236, 0.8);
+const sun = new THREE.DirectionalLight(0xffeccc, 2.7);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0004;

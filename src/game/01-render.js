@@ -8,14 +8,14 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.08;
 renderer.domElement.id = 'game';
 renderer.domElement.tabIndex = 0;
 document.body.prepend(renderer.domElement);
 const canvas = renderer.domElement;
 
 const scene = new THREE.Scene();
-const FOG_COLOR = new THREE.Color(0xcde2ee);
+const FOG_COLOR = new THREE.Color(0xd3dfe2);
 scene.background = FOG_COLOR.clone();
 scene.fog = new THREE.Fog(FOG_COLOR, 150, 420);
 
@@ -27,9 +27,9 @@ const sky = new THREE.Mesh(
     depthWrite: false,
     fog: false,
     uniforms: {
-      topColor: { value: new THREE.Color(0x3f82d4) },
+      topColor: { value: new THREE.Color(0x4a84c4) },
       horizonColor: { value: FOG_COLOR.clone() },
-      bottomColor: { value: new THREE.Color(0x9fbf95) },
+      bottomColor: { value: new THREE.Color(0x9aa888) },
     },
     vertexShader: /* glsl */`
       varying vec3 vDir;
