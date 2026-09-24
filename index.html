@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imperis 3D — Fase 1 · Core Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --hud-h: 172px;
+    --gold: #d8b25a;
+    --gold-soft: rgba(216, 178, 90, 0.35);
+    --panel-bg: rgba(255, 255, 255, 0.035);
+    --text: #ece8dc;
+    --muted: #a9a394;
+    --blue: #2f6fe0;
+    --cyan: #6ef2ff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #0b0f14;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: var(--text); user-select: none; -webkit-user-select: none;
+  }
+  canvas#game { display: block; position: fixed; inset: 0; outline: none; }
+
+  /* ---------- Selecció per arrossegament ---------- */
+  #selection-box {
+    position: fixed; display: none; pointer-events: none; z-index: 20;
+    border: 1px solid rgba(140, 225, 255, 0.95);
+    background: rgba(90, 180, 255, 0.16);
+    box-shadow: inset 0 0 14px rgba(90, 180, 255, 0.35), 0 0 8px rgba(90, 180, 255, 0.25);
+  }
+
+  /* ---------- Panells flotants ---------- */
+  .glass {
+    background: linear-gradient(180deg, rgba(24, 28, 38, 0.82), rgba(12, 14, 20, 0.86));
+    border: 1px solid var(--gold-soft);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+  }
+  #topbar {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 25;
+    display: flex; gap: 18px; align-items: center; padding: 8px 18px; font-size: 13px;
+  }
+  #topbar .age { font-family: 'Cinzel', serif; color: var(--gold); letter-spacing: 0.12em; font-weight: 700; }
+  #topbar .sep { width: 1px; height: 16px; background: var(--gold-soft); }
+  #topbar .stat { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #topbar .stat b { color: var(--text); font-weight: 600; }
+
+  #help {
+    position: fixed; top: 12px; left: 12px; z-index: 25; padding: 10px 14px; font-size: 12px;
+    line-height: 1.65; max-width: 330px; transition: opacity 0.25s;
+  }
+  #help .title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 0.14em; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  #help .title span { cursor: pointer; color: var(--muted); font-family: 'Inter', sans-serif; letter-spacing: 0; }
+  #help ul { margin: 0; padding: 0; list-style: none; color: var(--muted); }
+  #help li b { color: var(--text); font-weight: 600; }
+  #help.collapsed ul { display: none; }
+  kbd {
+    display: inline-block; min-width: 18px; padding: 0 5px; border-radius: 4px; font-size: 11px; text-align: center;
+    background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); color: var(--text);
+    font-family: 'Inter', sans-serif; line-height: 17px;
+  }
+
+  #toast {
+    position: fixed; top: 64px; left: 50%; transform: translate(-50%, -10px); z-index: 40;
+    padding: 9px 18px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- HUD inferior ---------- */
+  #hud {
+    position: fixed; left: 0; right: 0; bottom: 0; height: var(--hud-h); z-index: 30;
+    display: grid; grid-template-columns: minmax(250px, 310px) 1fr minmax(230px, 330px); gap: 10px;
+    padding: 12px 14px 12px;
+    background:
+      linear-gradient(180deg, rgba(38, 42, 54, 0.95), rgba(14, 16, 22, 0.98)),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0 2px, transparent 2px 6px);
+    border-top: 2px solid var(--gold);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 230, 170, 0.25);
+  }
+  #hud::before {
+    content: ''; position: absolute; left: 50%; top: -2px; transform: translateX(-50%);
+    width: 220px; height: 4px; background: linear-gradient(90deg, transparent, #ffe6a3, transparent); border-radius: 2px;
+  }
+  .panel {
+    position: relative; overflow: hidden; border-radius: 10px; padding: 9px 11px;
+    background: var(--panel-bg); border: 1px solid var(--gold-soft);
+    box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.35);
+  }
+  .panel h3 {
+    margin: 0 0 8px; font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    color: var(--gold); text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;
+  }
+  .panel h3 small { font-family: 'Inter', sans-serif; letter-spacing: 0; text-transform: none; color: var(--muted); font-weight: 500; }
+
+  .res-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .res {
+    display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px;
+    background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .res .ico {
+    width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; flex: none;
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.12);
+  }
+  .ico.food  { background: radial-gradient(circle at 35% 30%, #ff9a7a, #b8412a); }
+  .ico.wood  { background: radial-gradient(circle at 35% 30%, #c79a64, #6b4424); }
+  .ico.gold  { background: radial-gradient(circle at 35% 30%, #ffe58a, #b8860b); }
+  .ico.stone { background: radial-gradient(circle at 35% 30%, #d4d4d4, #6f6f73); }
+  .res .lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .res .val { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .res .val.bump { animation: bump 0.35s ease; }
+  @keyframes bump { 50% { transform: scale(1.18); color: #fff3c4; } }
+  .pop { margin-top: 7px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+  .pop b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  /* Selecció */
+  #sel-content { height: calc(100% - 22px); display: flex; gap: 12px; align-items: stretch; }
+  .empty-hint { color: var(--muted); font-size: 13px; margin: auto; text-align: center; line-height: 1.6; }
+  .portrait {
+    width: 92px; flex: none; border-radius: 10px; display: grid; place-items: center; font-size: 46px;
+    background: radial-gradient(circle at 50% 35%, rgba(110, 170, 255, 0.35), rgba(10, 20, 40, 0.8));
+    border: 1px solid rgba(110, 200, 255, 0.45); box-shadow: inset 0 0 18px rgba(0,0,0,0.6);
+  }
+  .portrait.neutral { background: radial-gradient(circle at 50% 35%, rgba(255, 220, 120, 0.3), rgba(40, 30, 10, 0.8)); border-color: rgba(255, 220, 120, 0.45); }
+  .sel-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; justify-content: center; }
+  .sel-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 17px; color: #fff; }
+  .sel-owner { font-size: 12px; color: var(--muted); }
+  .sel-owner .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--blue); margin-right: 5px; vertical-align: -1px; box-shadow: 0 0 6px var(--blue); }
+  .bar { position: relative; height: 12px; border-radius: 6px; background: rgba(0,0,0,0.55); overflow: hidden; border: 1px solid rgba(255,255,255,0.1); max-width: 320px; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #7fe07a, #2f9a3a); border-radius: 6px; }
+  .bar.res > i { background: linear-gradient(180deg, #ffe07a, #c08a1a); }
+  .bar > span { position: absolute; inset: 0; font-size: 10px; line-height: 11px; text-align: center; font-weight: 600; text-shadow: 0 1px 2px #000; }
+  .stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+  .stats b { color: var(--text); font-weight: 600; }
+  .multi-grid { display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start; overflow: hidden; flex: 1; }
+  .mini {
+    width: 38px; height: 44px; border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 3px 3px 4px; font-size: 20px; cursor: pointer;
+    background: radial-gradient(circle at 50% 30%, rgba(110,170,255,0.32), rgba(10,20,40,0.85));
+    border: 1px solid rgba(110, 200, 255, 0.35);
+  }
+  .mini:hover { border-color: var(--cyan); box-shadow: 0 0 10px rgba(110, 242, 255, 0.35); }
+  .mini .hp { width: 100%; height: 4px; border-radius: 2px; background: #2f9a3a; box-shadow: 0 0 0 1px rgba(0,0,0,0.5); }
+  .more { font-size: 12px; color: var(--muted); align-self: center; padding: 0 6px; }
+
+  /* Accions */
+  #actions { display: flex; flex-wrap: wrap; gap: 8px; align-content: flex-start; }
+  .action-btn {
+    position: relative; width: 96px; height: 96px; border-radius: 10px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    color: #fff; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    background: linear-gradient(180deg, #34466e 0%, #1c2640 100%);
+    border: 1px solid rgba(216, 178, 90, 0.65);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 10px rgba(0,0,0,0.4);
+    transition: transform 0.08s, box-shadow 0.15s, filter 0.15s;
+  }
+  .action-btn .big { font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
+  .action-btn .cost { font-size: 10px; color: var(--muted); font-weight: 500; }
+  .action-btn .hk {
+    position: absolute; top: 4px; right: 5px; font-size: 10px; padding: 0 4px; border-radius: 3px;
+    background: rgba(0,0,0,0.45); color: var(--gold); border: 1px solid var(--gold-soft);
+  }
+  .action-btn:hover { filter: brightness(1.18); box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 0 14px rgba(216,178,90,0.45); }
+  .action-btn:active { transform: translateY(1px) scale(0.98); }
+  .action-btn:disabled { filter: grayscale(0.9) brightness(0.6); cursor: not-allowed; }
+  .action-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; text-align: center;
+    background: radial-gradient(circle at 50% 40%, #1c2a3e, #07090d); font-family: 'Cinzel', serif; color: var(--gold);
+    letter-spacing: 0.2em; font-size: 20px; transition: opacity 0.5s;
+  }
+  #loading small { display: block; margin-top: 10px; font-family: 'Inter', sans-serif; font-size: 12px; letter-spacing: 0; color: var(--muted); }
+
+  @media (max-width: 980px) {
+    :root { --hud-h: 190px; }
+    #hud { grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; }
+    #panel-selection { grid-column: 1 / -1; grid-row: 2; }
+    #help { display: none; }
+    .res-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">IMPERIS 3D<small>Carregant el motor (Three.js)…</small></div>
+
+<div id="selection-box"></div>
+
+<div id="help" class="glass">
+  <div class="title">CONTROLS <span id="help-toggle">amagar ▲</span></div>
+  <ul>
+    <li><kbd>Clic esq.</kbd> <b>Seleccionar</b> · <kbd>Arrossegar</kbd> selecció múltiple</li>
+    <li><kbd>Shift</kbd>+clic afegir/treure · <kbd>Doble clic</kbd> tots els del tipus</li>
+    <li><kbd>Clic dret</kbd> <b>Moure</b> els aldeans seleccionats</li>
+    <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / fletxes / vores: <b>desplaçar càmera</b></li>
+    <li><kbd>Roda</kbd> zoom · <kbd>Q</kbd><kbd>E</kbd> girar · <kbd>Espai</kbd> centrar selecció</li>
+    <li><kbd>H</kbd> Centre de Ciutat · <kbd>C</kbd> crear aldeà · <kbd>X</kbd> aturar · <kbd>Esc</kbd> desseleccionar</li>
+  </ul>
+</div>
+
+<div id="topbar" class="glass">
+  <span class="age">EDAT FOSCA</span>
+  <span class="sep"></span>
+  <span class="stat">⏱ <b id="clock">00:00</b></span>
+  <span class="sep"></span>
+  <span class="stat">FPS <b id="fps">--</b></span>
+</div>
+
+<div id="toast" class="glass"></div>
+
+<div id="hud">
+  <section class="panel" id="panel-resources">
+    <h3>Recursos <small>Civilització Blava</small></h3>
+    <div class="res-grid">
+      <div class="res"><span class="ico food">🍖</span><div><div class="lbl">Aliment</div><div class="val" id="res-food">0</div></div></div>
+      <div class="res"><span class="ico wood">🪵</span><div><div class="lbl">Fusta</div><div class="val" id="res-wood">0</div></div></div>
+      <div class="res"><span class="ico gold">🪙</span><div><div class="lbl">Or</div><div class="val" id="res-gold">0</div></div></div>
+      <div class="res"><span class="ico stone">🪨</span><div><div class="lbl">Pedra</div><div class="val" id="res-stone">0</div></div></div>
+    </div>
+    <div class="pop"><span>👥 Població</span><span><b id="pop-val">0</b> / <b id="pop-cap">200</b></span></div>
+  </section>
+
+  <section class="panel" id="panel-selection">
+    <h3>Selecció <small id="sel-count"></small></h3>
+    <div id="sel-content"></div>
+  </section>
+
+  <section class="panel" id="panel-actions">
+    <h3>Accions</h3>
+    <div id="actions"></div>
+  </section>
+</div>
+
+<!-- Si el CDN no respon, avisem l'usuari -->
+<script>
+  setTimeout(function () {
+    if (!window.__RTS_READY) {
+      var l = document.getElementById('loading');
+      if (l) l.innerHTML = 'ERROR DE CÀRREGA<small>No s\'ha pogut carregar Three.js des del CDN. Comprova la connexió a Internet i recarrega la pàgina.</small>';
+    }
+  }, 12000);
+</script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =====================================================================
+   CONFIGURACIÓ GLOBAL
+   ===================================================================== */
+const CONFIG = {
+  GROUND_SIZE: 900,          // mida visual del terreny (les vores queden dins la boira)
+  MAP_LIMIT: 120,            // límit jugable (±) per a càmera i unitats
+  CAM: {
+    yaw: Math.PI / 4,        // angle isomètric
+    pitch: 0.95,             // ~54° d'inclinació
+    dist: 58, minDist: 16, maxDist: 130,
+    zoomStep: 0.14,
+    panSpeed: 1.05,          // multiplicat per la distància (pan proporcional al zoom)
+    edge: 14,                // píxels de vora per al pan amb el ratolí
+    rotSpeed: 1.9,
+  },
+  VILLAGER: { speed: 5.5, radius: 0.45, hp: 25, attack: 3 },
+  POP_CAP: 200,
+  DOUBLE_CLICK_MS: 350,
+  DRAG_THRESHOLD: 6,
+};
+
+const PLAYER = { id: 1, name: 'Civilització Blava', color: 0x2f6fe0, colorLight: 0x5b93ff, colorDark: 0x1c3d8f };
+const SEL_COLOR_OWN = 0x6ef2ff;
+const SEL_COLOR_NEUTRAL = 0xffe07a;
+
+const state = {
+  resources: { food: 0, wood: 0, gold: 0, stone: 0 },
+  units: [],
+  buildings: [],
+  resourceNodes: [],
+  obstacles: [],      // { x, z, r, entity }
+  pickables: [],      // meshes que responen al raycaster
+  selected: [],
+  markers: [],
+  animated: [],       // objectes amb update(t, dt) propi (bandera, etc.)
+  elapsed: 0,
+};
+
+/* Generador pseudoaleatori amb llavor (layout reproduïble) */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(1337);
+const randRange = (a, b) => a + (b - a) * rand();
+
+/* =====================================================================
+   RENDERITZADOR, ESCENA, CEL I BOIRA
+   ===================================================================== */
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.domElement.id = 'game';
+renderer.domElement.tabIndex = 0;
+document.body.prepend(renderer.domElement);
+const canvas = renderer.domElement;
+
+const scene = new THREE.Scene();
+const FOG_COLOR = new THREE.Color(0xcde2ee);
+scene.background = FOG_COLOR.clone();
+scene.fog = new THREE.Fog(FOG_COLOR, 150, 420);
+
+// Cúpula de cel amb degradat (no afectada per la boira)
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(1400, 32, 16),
+  new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    fog: false,
+    uniforms: {
+      topColor: { value: new THREE.Color(0x3f82d4) },
+      horizonColor: { value: FOG_COLOR.clone() },
+      bottomColor: { value: new THREE.Color(0x9fbf95) },
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vDir;
+      void main() {
+        vDir = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */`
+      uniform vec3 topColor;
+      uniform vec3 horizonColor;
+      uniform vec3 bottomColor;
+      varying vec3 vDir;
+      void main() {
+        float h = vDir.y;
+        vec3 col = h > 0.0
+          ? mix(horizonColor, topColor, pow(smoothstep(0.0, 0.65, h), 0.75))
+          : mix(horizonColor, bottomColor, smoothstep(0.0, -0.25, h));
+        gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  })
+);
+sky.renderOrder = -1;
+scene.add(sky);
+
+/* =====================================================================
+   CÀMERA RTS
+   ===================================================================== */
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.5, 4000);
+const camState = {
+  target: new THREE.Vector3(0, 0, 10),
+  yaw: CONFIG.CAM.yaw,
+  pitch: CONFIG.CAM.pitch,
+  dist: CONFIG.CAM.dist,
+  targetDist: CONFIG.CAM.dist,
+};
+
+function updateCamera() {
+  const { target, yaw, pitch, dist } = camState;
+  const horizontal = Math.cos(pitch) * dist;
+  camera.position.set(
+    target.x + Math.sin(yaw) * horizontal,
+    target.y + Math.sin(pitch) * dist,
+    target.z + Math.cos(yaw) * horizontal
+  );
+  camera.lookAt(target);
+}
+
+/* =====================================================================
+   IL·LUMINACIÓ (Sol direccional + ambient + hemisfèrica)
+   ===================================================================== */
+const ambient = new THREE.AmbientLight(0xffffff, 0.35);
+const hemi = new THREE.HemisphereLight(0xd6ecff, 0x4b6a2c, 0.85);
+const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.035;
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 320;
+const SUN_OFFSET = new THREE.Vector3(-55, 95, 40);
+scene.add(ambient, hemi, sun, sun.target);
+
+let shadowExtent = 0;
+function updateSun() {
+  // El sol segueix el punt que mira la càmera perquè les ombres sempre cobreixin la vista
+  sun.position.copy(camState.target).add(SUN_OFFSET);
+  sun.target.position.copy(camState.target);
+  const ext = Math.round(THREE.MathUtils.clamp(camState.dist * 1.3, 45, 170));
+  if (ext !== shadowExtent) {
+    shadowExtent = ext;
+    const c = sun.shadow.camera;
+    c.left = -ext; c.right = ext; c.top = ext; c.bottom = -ext;
+    c.updateProjectionMatrix();
+  }
+}
+
+/* =====================================================================
+   UTILITATS DE MATERIALS I SOROLL
+   ===================================================================== */
+const matCache = new Map();
+function mat(color, opts = {}) {
+  const key = color + JSON.stringify(opts);
+  if (!matCache.has(key)) {
+    matCache.set(key, new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0.0, ...opts }));
+  }
+  return matCache.get(key);
+}
+
+function hash2(x, z) {
+  const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+function valueNoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z);
+  const xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+  const a = hash2(xi, zi), b = hash2(xi + 1, zi), c = hash2(xi, zi + 1), d = hash2(xi + 1, zi + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function fbm(x, z) {
+  let total = 0, amp = 0.5, freq = 1;
+  for (let i = 0; i < 4; i++) { total += valueNoise(x * freq, z * freq) * amp; freq *= 2; amp *= 0.5; }
+  return total / 0.9375;
+}
+
+function makeRadialTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0.0, 'rgba(255,255,255,0.0)');
+  grd.addColorStop(0.55, 'rgba(255,255,255,0.10)');
+  grd.addColorStop(0.82, 'rgba(255,255,255,0.55)');
+  grd.addColorStop(1.0, 'rgba(255,255,255,0.0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const radialTex = makeRadialTexture();
+
+/* =====================================================================
+   TERRENY
+   ===================================================================== */
+let ground;
+function createGround() {
+  const size = CONFIG.GROUND_SIZE;
+  const geo = new THREE.PlaneGeometry(size, size, 220, 220);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+  const dark = new THREE.Color(0x3e7a2a);
+  const light = new THREE.Color(0x7fb84b);
+  const dry = new THREE.Color(0x9aa653);
+  const c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const n = fbm(x * 0.028, z * 0.028);
+    const n2 = fbm(x * 0.009 + 50, z * 0.009 - 20);
+    c.copy(dark).lerp(light, THREE.MathUtils.smoothstep(n, 0.25, 0.8));
+    c.lerp(dry, THREE.MathUtils.smoothstep(n2, 0.6, 0.85) * 0.45);
+    const jitter = (hash2(x * 3.1, z * 1.7) - 0.5) * 0.04;
+    colors[i * 3] = c.r + jitter;
+    colors[i * 3 + 1] = c.g + jitter;
+    colors[i * 3 + 2] = c.b + jitter * 0.5;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }));
+  ground.receiveShadow = true;
+  ground.name = 'ground';
+  scene.add(ground);
+}
+
+/* =====================================================================
+   INDICADOR DE SELECCIÓ (anell Torus + halo)
+   ===================================================================== */
+const selMaterials = new Map();
+function getSelMaterials(color) {
+  if (!selMaterials.has(color)) {
+    selMaterials.set(color, {
+      ring: new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false, fog: false, toneMapped: false }),
+      disc: new THREE.MeshBasicMaterial({
+        color, map: radialTex, transparent: true, opacity: 0.85, depthWrite: false,
+        blending: THREE.AdditiveBlending, fog: false, toneMapped: false,
+      }),
+    });
+  }
+  return selMaterials.get(color);
+}
+function makeSelectionIndicator(radius, color) {
+  const m = getSelMaterials(color);
+  const group = new THREE.Group();
+  const tube = THREE.MathUtils.clamp(radius * 0.045, 0.05, 0.22);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 8, 72), m.ring);
+  ring.rotation.x = -Math.PI / 2;
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(radius * 1.22, 56), m.disc);
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = -0.03;
+  group.add(disc, ring);
+  group.position.y = 0.1;
+  group.visible = false;
+  group.traverse(o => {
+    o.userData.noPick = true;
+    o.userData.noShadow = true;
+    o.renderOrder = 5;
+    if (o.isMesh) o.raycast = () => {};
+  });
+  return group;
+}
+
+/* =====================================================================
+   ENTITATS
+   ===================================================================== */
+let nextEntityId = 1;
+class Entity {
+  constructor({ kind, subtype, name, icon, team = 0, radius = 1, selRadius, hp = 0, maxHp = 0 }) {
+    this.id = nextEntityId++;
+    this.kind = kind;           // 'unit' | 'building' | 'resource'
+    this.subtype = subtype;
+    this.name = name;
+    this.icon = icon;
+    this.team = team;
+    this.radius = radius;
+    this.hp = hp;
+    this.maxHp = maxHp;
+    this.selected = false;
+    this.group = new THREE.Group();
+    this.group.userData.entity = this;
+    this.selection = makeSelectionIndicator(selRadius ?? radius * 1.3, team === PLAYER.id ? SEL_COLOR_OWN : SEL_COLOR_NEUTRAL);
+    this.group.add(this.selection);
+  }
+  get position() { return this.group.position; }
+  get isOwn() { return this.team === PLAYER.id; }
+  finalize() {
+    this.group.traverse(o => {
+      if (!o.isMesh) return;
+      if (!o.userData.noShadow) { o.castShadow = true; o.receiveShadow = true; }
+      if (!o.userData.noPick) { o.userData.entity = this; state.pickables.push(o); }
+    });
+    scene.add(this.group);
+  }
+  setSelected(v) {
+    this.selected = v;
+    this.selection.visible = v;
+  }
+}
+
+/* ---------- Arbre ---------- */
+const treeGeo = {
+  trunk: new THREE.CylinderGeometry(0.32, 0.52, 3.2, 10),
+  crown: new THREE.SphereGeometry(2.1, 20, 16),
+  crownSmall: new THREE.SphereGeometry(1.35, 16, 12),
+};
+function createTree(x, z, scale = 1) {
+  const e = new Entity({ kind: 'resource', subtype: 'tree', name: 'Arbre', icon: '🌳', radius: 0.8 * scale, selRadius: 1.7 });
+  e.resourceType = 'wood';
+  e.amount = 100; e.maxAmount = 100;
+
+  const trunk = new THREE.Mesh(treeGeo.trunk, mat(0x7a4a24, { roughness: 0.95 }));
+  trunk.position.y = 1.6;
+  const crown = new THREE.Mesh(treeGeo.crown, mat(0x2f8a3a, { roughness: 0.85 }));
+  crown.position.y = 4.5; crown.scale.set(1, 1.12, 1);
+  const crown2 = new THREE.Mesh(treeGeo.crownSmall, mat(0x3da34a, { roughness: 0.85 }));
+  crown2.position.set(0.85, 5.7, 0.35);
+  const crown3 = new THREE.Mesh(treeGeo.crownSmall, mat(0x267532, { roughness: 0.85 }));
+  crown3.position.set(-0.8, 5.25, -0.55); crown3.scale.setScalar(0.85);
+
+  e.group.add(trunk, crown, crown2, crown3);
+  e.group.position.set(x, 0, z);
+  e.group.rotation.y = rand() * Math.PI * 2;
+  e.group.scale.setScalar(scale);
+  e.finalize();
+
+  state.resourceNodes.push(e);
+  state.obstacles.push({ x, z, r: 0.8 * scale, entity: e });
+  return e;
+}
+
+/* ---------- Veta d'Or ---------- */
+function createGoldMine(x, z) {
+  const e = new Entity({ kind: 'resource', subtype: 'gold', name: "Veta d'Or", icon: '⛏️', radius: 2.3, selRadius: 3.1 });
+  e.resourceType = 'gold';
+  e.amount = 800; e.maxAmount = 800;
+
+  const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1, 0), mat(0x7d7468, { roughness: 0.95, flatShading: true }));
+  rock.scale.set(1.15, 0.42, 1.0);
+  rock.position.y = 0.35;
+  e.group.add(rock);
+
+  const goldMat = mat(0xffc53a, { metalness: 0.75, roughness: 0.28, emissive: 0x3d2a00, emissiveIntensity: 0.6 });
+  const goldDark = mat(0xe0a018, { metalness: 0.7, roughness: 0.35, emissive: 0x2a1c00, emissiveIntensity: 0.5 });
+  const count = 11;
+  for (let i = 0; i < count; i++) {
+    const s = randRange(0.45, 1.05);
+    const box = new THREE.Mesh(new THREE.BoxGeometry(s, s * randRange(0.8, 1.3), s), i % 3 === 0 ? goldDark : goldMat);
+    const a = rand() * Math.PI * 2;
+    const r = randRange(0.1, 1.55);
+    box.position.set(Math.cos(a) * r, 0.55 + s * 0.4 + (1.55 - r) * 0.35, Math.sin(a) * r);
+    box.rotation.set(rand() * Math.PI, rand() * Math.PI, rand() * Math.PI);
+    e.group.add(box);
+  }
+  e.group.position.set(x, 0, z);
+  e.group.rotation.y = rand() * Math.PI * 2;
+  e.finalize();
+
+  state.resourceNodes.push(e);
+  state.obstacles.push({ x, z, r: 2.3, entity: e });
+  return e;
+}
+
+/* ---------- Centre de Ciutat ---------- */
+function createTownCenter(x, z) {
+  const e = new Entity({
+    kind: 'building', subtype: 'towncenter', name: 'Centre de Ciutat', icon: '🏰',
+    team: PLAYER.id, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
+  });
+  const stone = mat(0x9b958a, { roughness: 0.92, flatShading: true });
+  const blue = mat(PLAYER.color, { roughness: 0.6 });
+  const blueLight = mat(PLAYER.colorLight, { roughness: 0.55 });
+  const blueDark = mat(PLAYER.colorDark, { roughness: 0.65 });
+  const wood = mat(0x4a2f1a, { roughness: 0.9 });
+  const goldTrim = mat(0xf2c14e, { metalness: 0.8, roughness: 0.3 });
+  const windowMat = mat(0x2a1a08, { emissive: 0xffb347, emissiveIntensity: 0.55, roughness: 0.4 });
+
+  const baseH = 0.6;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(6.6, 6.9, baseH, 8), stone);
+  base.rotation.y = Math.PI / 8;
+  base.position.y = baseH / 2;
+  e.group.add(base);
+
+  const bodyH = 3.6;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(7, bodyH, 7), blue);
+  body.position.y = baseH + bodyH / 2;
+  e.group.add(body);
+
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.35, 7.4), blueDark);
+  trim.position.y = baseH + bodyH + 0.175;
+  e.group.add(trim);
+
+  const roofH = 3.4;
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(5.5, roofH, 4), blueDark);
+  roof.rotation.y = Math.PI / 4;
+  roof.position.y = baseH + bodyH + 0.35 + roofH / 2;
+  e.group.add(roof);
+
+  const roofTopY = baseH + bodyH + 0.35 + roofH;
+  const finial = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), goldTrim);
+  finial.position.y = roofTopY + 0.1;
+  e.group.add(finial);
+
+  // Torres a les cantonades
+  const towerGeo = new THREE.CylinderGeometry(0.85, 0.95, 5.3, 12);
+  const capGeo = new THREE.ConeGeometry(1.2, 1.5, 12);
+  const battlementGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      const tower = new THREE.Mesh(towerGeo, blueLight);
+      tower.position.set(sx * 3.6, baseH + 2.65, sz * 3.6);
+      const cap = new THREE.Mesh(capGeo, blueDark);
+      cap.position.set(sx * 3.6, baseH + 5.3 + 0.75, sz * 3.6);
+      e.group.add(tower, cap);
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        const b = new THREE.Mesh(battlementGeo, stone);
+        b.position.set(sx * 3.6 + Math.cos(a) * 0.9, baseH + 5.35, sz * 3.6 + Math.sin(a) * 0.9);
+        e.group.add(b);
+      }
+    }
+  }
+
+  // Porta i finestres
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.3, 0.25), wood);
+  door.position.set(0, baseH + 1.15, 3.52);
+  const doorArch = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.25, 16, 1, false, 0, Math.PI), wood);
+  // Eix del semicilindre → Z (cap a fora), meitat → amunt
+  doorArch.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+    new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
+  doorArch.position.set(0, baseH + 2.3, 3.52);
+  e.group.add(door, doorArch);
+  const winGeo = new THREE.BoxGeometry(0.7, 0.9, 0.12);
+  const winPositions = [
+    [-2.2, 3.52, 0], [2.2, 3.52, 0],
+    [-2.2, -3.52, 0], [2.2, -3.52, 0], [0, -3.52, 0],
+  ];
+  for (const [wx, wz] of winPositions) {
+    const w = new THREE.Mesh(winGeo, windowMat);
+    w.position.set(wx, baseH + 2.4, wz);
+    e.group.add(w);
+  }
+  for (const side of [-1, 1]) {
+    for (const off of [-1.8, 0, 1.8]) {
+      const w = new THREE.Mesh(winGeo, windowMat);
+      w.rotation.y = Math.PI / 2;
+      w.position.set(side * 3.52, baseH + 2.4, off);
+      e.group.add(w);
+    }
+  }
+
+  // Escales davant la porta
+  const steps = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 1.2), stone);
+  steps.position.set(0, 0.15, 6.4);
+  e.group.add(steps);
+
+  // Bandera onejant
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.2, 8), wood);
+  pole.position.set(0, roofTopY + 1.6, 0);
+  e.group.add(pole);
+  const flagGeo = new THREE.PlaneGeometry(1.9, 1.1, 12, 5);
+  flagGeo.translate(0.95, 0, 0);
+  const flagMat = new THREE.MeshStandardMaterial({ color: PLAYER.colorLight, side: THREE.DoubleSide, roughness: 0.7 });
+  const flag = new THREE.Mesh(flagGeo, flagMat);
+  flag.position.set(0.06, roofTopY + 2.6, 0);
+  e.group.add(flag);
+  const flagOrig = Float32Array.from(flagGeo.attributes.position.array);
+  state.animated.push({
+    update(t) {
+      const p = flagGeo.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        const fx = flagOrig[i * 3];
+        const fy = flagOrig[i * 3 + 1];
+        p.setZ(i, Math.sin(fx * 3.2 - t * 6.0 + fy * 0.8) * 0.16 * (fx / 1.9));
+      }
+      p.needsUpdate = true;
+      flagGeo.computeVertexNormals();
+    },
+  });
+
+  e.group.position.set(x, 0, z);
+  e.finalize();
+  state.buildings.push(e);
+  state.obstacles.push({ x, z, r: 6.9, entity: e });
+  return e;
+}
+
+/* ---------- Aldeà ---------- */
+const villagerGeo = {
+  leg: new THREE.CylinderGeometry(0.11, 0.1, 0.72, 8).translate(0, -0.36, 0),
+  arm: new THREE.CylinderGeometry(0.085, 0.07, 0.62, 8).translate(0, -0.31, 0),
+  torso: new THREE.CylinderGeometry(0.3, 0.4, 0.86, 12),
+  belt: new THREE.CylinderGeometry(0.41, 0.41, 0.1, 12),
+  head: new THREE.SphereGeometry(0.26, 14, 12),
+  brim: new THREE.CylinderGeometry(0.46, 0.46, 0.05, 18),
+  crown: new THREE.ConeGeometry(0.28, 0.3, 14),
+  band: new THREE.CylinderGeometry(0.27, 0.27, 0.07, 14),
+  hit: new THREE.CylinderGeometry(0.62, 0.62, 2.4, 8),
+};
+const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
+
+function createVillager(x, z) {
+  const e = new Entity({
+    kind: 'unit', subtype: 'villager', name: 'Aldeà', icon: '🧑‍🌾',
+    team: PLAYER.id, radius: CONFIG.VILLAGER.radius, selRadius: 0.78,
+    hp: CONFIG.VILLAGER.hp, maxHp: CONFIG.VILLAGER.hp,
+  });
+  e.speed = CONFIG.VILLAGER.speed;
+  e.attack = CONFIG.VILLAGER.attack;
+  e.target = null;
+  e.walkPhase = rand() * 10;
+  e.spawnT = 1;
+
+  const model = new THREE.Group();
+  const clothes = mat(PLAYER.color, { roughness: 0.7 });
+  const pants = mat(0x3b2a1c, { roughness: 0.9 });
+  const skin = mat(0xf1c27d, { roughness: 0.8 });
+  const straw = mat(0xd9b35b, { roughness: 0.9 });
+  const leather = mat(0x5a3a1e, { roughness: 0.85 });
+
+  const legL = new THREE.Mesh(villagerGeo.leg, pants); legL.position.set(-0.15, 0.72, 0);
+  const legR = new THREE.Mesh(villagerGeo.leg, pants); legR.position.set(0.15, 0.72, 0);
+  const torso = new THREE.Mesh(villagerGeo.torso, clothes); torso.position.y = 1.15;
+  const belt = new THREE.Mesh(villagerGeo.belt, leather); belt.position.y = 0.82;
+  const armL = new THREE.Mesh(villagerGeo.arm, clothes); armL.position.set(-0.4, 1.52, 0); armL.rotation.z = -0.12;
+  const armR = new THREE.Mesh(villagerGeo.arm, clothes); armR.position.set(0.4, 1.52, 0); armR.rotation.z = 0.12;
+  const head = new THREE.Mesh(villagerGeo.head, skin); head.position.y = 1.84;
+  const brim = new THREE.Mesh(villagerGeo.brim, straw); brim.position.y = 2.03;
+  const crown = new THREE.Mesh(villagerGeo.crown, straw); crown.position.y = 2.2;
+  const band = new THREE.Mesh(villagerGeo.band, clothes); band.position.y = 2.09;
+  model.add(legL, legR, torso, belt, armL, armR, head, brim, crown, band);
+
+  const hit = new THREE.Mesh(villagerGeo.hit, hitMaterial);
+  hit.position.y = 1.2;
+  hit.userData.noShadow = true;
+
+  e.group.add(model, hit);
+  e.model = model;
+  e.legs = [legL, legR];
+  e.arms = [armL, armR];
+  e.group.position.set(x, 0, z);
+  e.finalize();
+  state.units.push(e);
+  return e;
+}
+
+/* =====================================================================
+   DECORACIÓ (herba i roques – no seleccionables)
+   ===================================================================== */
+function isNearObstacle(x, z, margin) {
+  for (const o of state.obstacles) {
+    const dx = x - o.x, dz = z - o.z;
+    if (dx * dx + dz * dz < (o.r + margin) ** 2) return true;
+  }
+  return false;
+}
+function createDecorations() {
+  const dummy = new THREE.Object3D();
+  const area = CONFIG.MAP_LIMIT + 60;
+
+  const grassCount = 2600;
+  const grass = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(0.16, 0.7, 4).translate(0, 0.35, 0),
+    new THREE.MeshStandardMaterial({ color: 0x4f8f2f, roughness: 1 }),
+    grassCount
+  );
+  const tint = new THREE.Color();
+  let gi = 0;
+  while (gi < grassCount) {
+    const cx = randRange(-area, area), cz = randRange(-area, area);
+    if (isNearObstacle(cx, cz, 1.5)) continue;
+    const clump = 3 + Math.floor(rand() * 4);
+    for (let k = 0; k < clump && gi < grassCount; k++) {
+      dummy.position.set(cx + randRange(-0.5, 0.5), 0, cz + randRange(-0.5, 0.5));
+      dummy.rotation.set(randRange(-0.25, 0.25), rand() * Math.PI, randRange(-0.25, 0.25));
+      dummy.scale.setScalar(randRange(0.6, 1.3));
+      dummy.updateMatrix();
+      grass.setMatrixAt(gi, dummy.matrix);
+      tint.setHSL(0.26 + randRange(-0.03, 0.03), 0.55, 0.3 + randRange(-0.06, 0.08));
+      grass.setColorAt(gi, tint);
+      gi++;
+    }
+  }
+  grass.receiveShadow = true;
+  scene.add(grass);
+
+  const rockCount = 70;
+  const rocks = new THREE.InstancedMesh(
+    new THREE.DodecahedronGeometry(0.5, 0),
+    new THREE.MeshStandardMaterial({ color: 0x8a867d, roughness: 0.95, flatShading: true }),
+    rockCount
+  );
+  let ri = 0;
+  while (ri < rockCount) {
+    const x = randRange(-area, area), z = randRange(-area, area);
+    if (isNearObstacle(x, z, 2.5)) continue;
+    dummy.position.set(x, 0.1, z);
+    dummy.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+    const s = randRange(0.4, 1.4);
+    dummy.scale.set(s, s * randRange(0.5, 0.9), s * randRange(0.8, 1.2));
+    dummy.updateMatrix();
+    rocks.setMatrixAt(ri++, dummy.matrix);
+  }
+  rocks.castShadow = true;
+  rocks.receiveShadow = true;
+  scene.add(rocks);
+}
+
+/* =====================================================================
+   CONSTRUCCIÓ DEL MÓN
+   ===================================================================== */
+createGround();
+const townCenter = createTownCenter(0, 0);
+createTree(-17, -12, 1.1);
+createTree(-21, -4, 0.95);
+createTree(-13, -19, 1.2);
+createGoldMine(19, -15);
+createGoldMine(23, 11);
+createDecorations();
+// Tres aldeans inicials (com als RTS clàssics)
+createVillager(-2.5, 9.5);
+createVillager(0, 10.2);
+createVillager(2.5, 9.5);
+
+/* =====================================================================
+   RAYCASTING
+   ===================================================================== */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+function setRayFromScreen(x, y) {
+  ndc.set((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+function pickEntity(x, y) {
+  setRayFromScreen(x, y);
+  const hits = raycaster.intersectObjects(state.pickables, false);
+  for (const h of hits) {
+    const ent = h.object.userData.entity;
+    if (ent) return ent;
+  }
+  return null;
+}
+function pickGround(x, y) {
+  setRayFromScreen(x, y);
+  const hits = raycaster.intersectObject(ground, false);
+  return hits.length ? hits[0].point.clone() : null;
+}
+const projVec = new THREE.Vector3();
+function worldToScreen(pos, yOffset = 0) {
+  projVec.set(pos.x, pos.y + yOffset, pos.z).project(camera);
+  return {
+    x: (projVec.x + 1) / 2 * window.innerWidth,
+    y: (1 - projVec.y) / 2 * window.innerHeight,
+    visible: projVec.z > -1 && projVec.z < 1,
+  };
+}
+
+/* =====================================================================
+   SELECCIÓ
+   ===================================================================== */
+function clearSelection() {
+  for (const e of state.selected) e.setSelected(false);
+  state.selected = [];
+}
+function addToSelection(e) {
+  if (state.selected.includes(e)) return;
+  // Selecció homogènia: o unitats pròpies, o una sola entitat d'un altre tipus
+  const current = state.selected[0];
+  if (current && (e.kind !== 'unit' || current.kind !== 'unit' || !e.isOwn || !current.isOwn)) clearSelection();
+  e.setSelected(true);
+  state.selected.push(e);
+}
+function removeFromSelection(e) {
+  const idx = state.selected.indexOf(e);
+  if (idx >= 0) { state.selected.splice(idx, 1); e.setSelected(false); }
+}
+function setSelection(list) {
+  clearSelection();
+  list.forEach(addToSelection);
+  onSelectionChanged();
+}
+
+const lastClick = { time: 0, entity: null };
+function clickSelect(x, y, additive) {
+  const e = pickEntity(x, y);
+  const now = performance.now();
+  if (!e) {
+    if (!additive) { clearSelection(); onSelectionChanged(); }
+    lastClick.entity = null;
+    return;
+  }
+  if (e.kind === 'unit' && e.isOwn && lastClick.entity === e && now - lastClick.time < CONFIG.DOUBLE_CLICK_MS) {
+    selectAllOnScreen(e.subtype, additive);
+    lastClick.entity = null;
+    return;
+  }
+  lastClick.time = now;
+  lastClick.entity = e;
+
+  if (additive && e.kind === 'unit' && e.isOwn && state.selected.every(s => s.kind === 'unit' && s.isOwn)) {
+    if (e.selected) removeFromSelection(e); else addToSelection(e);
+    onSelectionChanged();
+  } else {
+    setSelection([e]);
+  }
+}
+
+function hudHeight() { return hudEl.offsetHeight; }
+
+function selectAllOnScreen(subtype, additive) {
+  const list = additive ? state.selected.filter(s => s.kind === 'unit') : [];
+  const maxY = window.innerHeight - hudHeight();
+  for (const u of state.units) {
+    if (!u.isOwn || u.subtype !== subtype) continue;
+    const s = worldToScreen(u.position, 1);
+    if (s.visible && s.x >= 0 && s.x <= window.innerWidth && s.y >= 0 && s.y <= maxY && !list.includes(u)) list.push(u);
+  }
+  setSelection(list);
+  if (list.length > 1) toast(`${list.length} aldeans seleccionats`);
+}
+
+function boxSelect(x1, y1, x2, y2, additive) {
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  const found = [];
+  // Projecció a pantalla (equivalent al test de frustum de la caixa)
+  for (const u of state.units) {
+    if (!u.isOwn) continue;
+    const pFeet = worldToScreen(u.position, 0.2);
+    const pHead = worldToScreen(u.position, 1.9);
+    if (!pFeet.visible) continue;
+    const inFeet = pFeet.x >= minX && pFeet.x <= maxX && pFeet.y >= minY && pFeet.y <= maxY;
+    const inHead = pHead.x >= minX && pHead.x <= maxX && pHead.y >= minY && pHead.y <= maxY;
+    if (inFeet || inHead) found.push(u);
+  }
+  if (additive) {
+    const base = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
+    for (const u of found) if (!base.includes(u)) base.push(u);
+    setSelection(base);
+  } else {
+    setSelection(found);
+  }
+}
+
+/* =====================================================================
+   ORDRES: MOVIMENT EN FORMACIÓ
+   ===================================================================== */
+function clampToMap(v) {
+  v.x = THREE.MathUtils.clamp(v.x, -CONFIG.MAP_LIMIT, CONFIG.MAP_LIMIT);
+  v.z = THREE.MathUtils.clamp(v.z, -CONFIG.MAP_LIMIT, CONFIG.MAP_LIMIT);
+  return v;
+}
+function pushOutOfObstacles(p, margin) {
+  for (let iter = 0; iter < 3; iter++) {
+    let moved = false;
+    for (const o of state.obstacles) {
+      const dx = p.x - o.x, dz = p.z - o.z;
+      const min = o.r + margin;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < min * min) {
+        const d = Math.sqrt(d2) || 0.0001;
+        p.x = o.x + (dx / d) * min;
+        p.z = o.z + (dz / d) * min;
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return p;
+}
+
+function commandMove(units, point) {
+  const n = units.length;
+  const spacing = 1.55;
+  const cols = Math.ceil(Math.sqrt(n));
+  const rows = Math.ceil(n / cols);
+
+  // Orientem la formació segons la direcció de marxa del grup
+  const centroid = new THREE.Vector3();
+  units.forEach(u => centroid.add(u.position));
+  centroid.divideScalar(n);
+  const heading = Math.atan2(point.x - centroid.x, point.z - centroid.z);
+  const cos = Math.cos(heading), sin = Math.sin(heading);
+
+  const slots = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const rowCount = r === rows - 1 ? n - r * cols : cols;
+    const lx = (c - (rowCount - 1) / 2) * spacing;   // lateral
+    const lz = -(r - (rows - 1) / 2) * spacing;       // cap endavant
+    const slot = new THREE.Vector3(point.x + lx * cos + lz * sin, 0, point.z - lx * sin + lz * cos);
+    clampToMap(pushOutOfObstacles(slot, CONFIG.VILLAGER.radius + 0.25));
+    slots.push(slot);
+  }
+
+  // Assignació voraç: cada slot per a la unitat lliure més propera
+  const free = units.slice();
+  for (const slot of slots) {
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < free.length; i++) {
+      const d = free[i].position.distanceToSquared(slot);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    const u = free.splice(best, 1)[0];
+    u.target = slot;
+  }
+}
+
+function commandStop(units) {
+  for (const u of units) u.target = null;
+}
+
+function issueRightClick(x, y) {
+  const units = state.selected.filter(e => e.kind === 'unit' && e.isOwn);
+  if (!units.length) return;
+  const p = pickGround(x, y);
+  if (!p) return;
+  clampToMap(p);
+  const targetEnt = pickEntity(x, y);
+  if (targetEnt && targetEnt.kind === 'resource') {
+    toast(`Recol·lecció de ${targetEnt.resourceType === 'wood' ? 'fusta' : 'or'}: disponible a la Fase 2`);
+  }
+  commandMove(units, p);
+  spawnMoveMarker(p);
+}
+
+/* ---------- Marcador de destí ---------- */
+const markerGeo = new THREE.TorusGeometry(0.9, 0.08, 8, 48);
+const markerGeoInner = new THREE.TorusGeometry(0.4, 0.07, 8, 32);
+function spawnMoveMarker(p) {
+  const g = new THREE.Group();
+  const m1 = new THREE.MeshBasicMaterial({ color: 0x8dff6a, transparent: true, depthWrite: false, fog: false, toneMapped: false });
+  const m2 = m1.clone();
+  const r1 = new THREE.Mesh(markerGeo, m1);
+  const r2 = new THREE.Mesh(markerGeoInner, m2);
+  r1.rotation.x = r2.rotation.x = -Math.PI / 2;
+  g.add(r1, r2);
+  g.position.set(p.x, 0.14, p.z);
+  g.renderOrder = 6;
+  scene.add(g);
+  state.markers.push({ g, r1, r2, mats: [m1, m2], t: 0 });
+}
+function updateMarkers(dt) {
+  for (let i = state.markers.length - 1; i >= 0; i--) {
+    const m = state.markers[i];
+    m.t += dt;
+    const k = m.t / 0.75;
+    if (k >= 1) {
+      scene.remove(m.g);
+      m.mats.forEach(x => x.dispose());
+      state.markers.splice(i, 1);
+      continue;
+    }
+    m.r1.scale.setScalar(1.3 - 0.7 * k);
+    m.r2.scale.setScalar(0.6 + 0.8 * k);
+    m.mats[0].opacity = 1 - k;
+    m.mats[1].opacity = (1 - k) * 0.8;
+  }
+}
+
+/* =====================================================================
+   CREACIÓ D'ALDEANS DES DEL CENTRE DE CIUTAT
+   ===================================================================== */
+function findSpawnSpot(building) {
+  const base = building.radius + 1.3;
+  for (let ring = 0; ring < 8; ring++) {
+    const r = base + ring * 1.4;
+    const n = Math.max(8, Math.floor((2 * Math.PI * r) / 1.4));
+    for (let i = 0; i < n; i++) {
+      // Comencem davant la porta (+Z) i alternem esquerra/dreta
+      const step = Math.ceil(i / 2) * (i % 2 ? 1 : -1);
+      const a = step * (2 * Math.PI / n);
+      const x = building.position.x + Math.sin(a) * r;
+      const z = building.position.z + Math.cos(a) * r;
+      if (Math.abs(x) > CONFIG.MAP_LIMIT || Math.abs(z) > CONFIG.MAP_LIMIT) continue;
+      if (isNearObstacle(x, z, CONFIG.VILLAGER.radius + 0.2)) continue;
+      let blocked = false;
+      for (const u of state.units) {
+        const tx = u.target ? u.target.x : u.position.x;
+        const tz = u.target ? u.target.z : u.position.z;
+        if ((u.position.x - x) ** 2 + (u.position.z - z) ** 2 < 1.3 ** 2 || (tx - x) ** 2 + (tz - z) ** 2 < 1.3 ** 2) { blocked = true; break; }
+      }
+      if (!blocked) return { x, z, angle: a };
+    }
+  }
+  return { x: building.position.x, z: building.position.z + base, angle: 0 };
+}
+
+function trainVillager(building) {
+  if (state.units.length >= CONFIG.POP_CAP) {
+    toast('Límit de població assolit');
+    return;
+  }
+  const spot = findSpawnSpot(building);
+  const v = createVillager(spot.x, spot.z);
+  v.group.rotation.y = spot.angle;
+  v.spawnT = 0;
+  v.group.scale.setScalar(0.01);
+  toast('🧑‍🌾 Nou aldeà creat');
+  updatePopulationUI();
+  if (state.selected.includes(building)) updateSelectionUI();
+}
+
+/* =====================================================================
+   ACTUALITZACIÓ D'UNITATS
+   ===================================================================== */
+function lerpAngle(a, b, t) {
+  const d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  return a + d * t;
+}
+const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+
+function resolveObstacleCollision(u, dt) {
+  for (const o of state.obstacles) {
+    const dx = u.position.x - o.x, dz = u.position.z - o.z;
+    const min = o.r + u.radius;
+    const d2 = dx * dx + dz * dz;
+    if (d2 >= min * min) continue;
+    const d = Math.sqrt(d2) || 0.0001;
+    const nx = dx / d, nz = dz / d;
+    u.position.x = o.x + nx * min;
+    u.position.z = o.z + nz * min;
+    if (u.target) {
+      // Llisquem per la tangent cap al costat del destí per no quedar encallats
+      let tx = -nz, tz = nx;
+      const toX = u.target.x - u.position.x, toZ = u.target.z - u.position.z;
+      if (tx * toX + tz * toZ < 0) { tx = -tx; tz = -tz; }
+      u.position.x += tx * u.speed * dt * 0.4;
+      u.position.z += tz * u.speed * dt * 0.4;
+    }
+  }
+}
+
+function separateUnits() {
+  const units = state.units;
+  for (let i = 0; i < units.length; i++) {
+    const a = units[i];
+    for (let j = i + 1; j < units.length; j++) {
+      const b = units[j];
+      if (a.target && b.target) continue;
+      const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
+      const min = a.radius + b.radius;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= min * min) continue;
+      const d = Math.sqrt(d2) || 0.001;
+      const overlap = (min - d);
+      const nx = d2 > 0 ? dx / d : 1, nz = d2 > 0 ? dz / d : 0;
+      if (!a.target && !b.target) {
+        a.position.x -= nx * overlap * 0.5; a.position.z -= nz * overlap * 0.5;
+        b.position.x += nx * overlap * 0.5; b.position.z += nz * overlap * 0.5;
+      } else if (!a.target) {
+        a.position.x -= nx * overlap; a.position.z -= nz * overlap;
+      } else {
+        b.position.x += nx * overlap; b.position.z += nz * overlap;
+      }
+    }
+  }
+}
+
+function updateUnit(u, dt) {
+  // Animació d'aparició
+  if (u.spawnT < 1) {
+    u.spawnT = Math.min(1, u.spawnT + dt / 0.35);
+    u.group.scale.setScalar(Math.max(0.01, easeOutBack(u.spawnT)));
+  }
+
+  let moving = false;
+  if (u.target) {
+    const dx = u.target.x - u.position.x;
+    const dz = u.target.z - u.position.z;
+    const dist = Math.hypot(dx, dz);
+    const step = u.speed * dt;
+    if (dist <= step || dist < 0.05) {
+      u.position.x = u.target.x;
+      u.position.z = u.target.z;
+      u.target = null;
+    } else {
+      // Moviment en línia recta a velocitat constant
+      u.position.x += (dx / dist) * step;
+      u.position.z += (dz / dist) * step;
+      u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-14 * dt));
+      moving = true;
+    }
+  }
+  resolveObstacleCollision(u, dt);
+  clampToMap(u.position);
+
+  // Animació procedimental de caminar
+  if (moving) {
+    u.walkPhase += dt * u.speed * 2.2;
+    const s = Math.sin(u.walkPhase);
+    u.legs[0].rotation.x = s * 0.65;
+    u.legs[1].rotation.x = -s * 0.65;
+    u.arms[0].rotation.x = -s * 0.55;
+    u.arms[1].rotation.x = s * 0.55;
+    u.model.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.09;
+  } else {
+    const k = 1 - Math.exp(-12 * dt);
+    for (const l of u.legs) l.rotation.x *= (1 - k);
+    for (const a of u.arms) a.rotation.x *= (1 - k);
+    u.model.position.y *= (1 - k);
+    // Respiració subtil en repòs
+    u.model.scale.y = 1 + Math.sin(state.elapsed * 2.2 + u.id) * 0.012;
+  }
+}
+
+/* =====================================================================
+   INTERFÍCIE (HUD)
+   ===================================================================== */
+const hudEl = document.getElementById('hud');
+const selContent = document.getElementById('sel-content');
+const selCount = document.getElementById('sel-count');
+const actionsEl = document.getElementById('actions');
+const toastEl = document.getElementById('toast');
+const resEls = {
+  food: document.getElementById('res-food'),
+  wood: document.getElementById('res-wood'),
+  gold: document.getElementById('res-gold'),
+  stone: document.getElementById('res-stone'),
+};
+
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1900);
+}
+
+function updateResourcesUI() {
+  for (const k of Object.keys(resEls)) {
+    const el = resEls[k];
+    const val = String(Math.floor(state.resources[k]));
+    if (el.textContent !== val) {
+      el.textContent = val;
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    }
+  }
+}
+function updatePopulationUI() {
+  document.getElementById('pop-val').textContent = state.units.filter(u => u.isOwn).length;
+  document.getElementById('pop-cap').textContent = CONFIG.POP_CAP;
+}
+
+function hpBar(e, cls = '') {
+  const pct = e.maxHp ? (e.hp / e.maxHp) * 100 : 0;
+  return `<div class="bar ${cls}"><i style="width:${pct}%"></i><span>${e.hp} / ${e.maxHp}</span></div>`;
+}
+function ownerLine(e) {
+  return e.isOwn
+    ? `<div class="sel-owner"><span class="dot"></span>${PLAYER.name}</div>`
+    : `<div class="sel-owner">Natura · Recurs neutral</div>`;
+}
+
+function updateSelectionUI() {
+  const sel = state.selected;
+  selCount.textContent = sel.length ? `${sel.length} ${sel.length === 1 ? 'element' : 'elements'}` : '';
+  actionsEl.innerHTML = '';
+
+  if (!sel.length) {
+    selContent.innerHTML = `<div class="empty-hint">Cap element seleccionat<br><span style="font-size:12px">Fes clic o arrossega per seleccionar unitats</span></div>`;
+    actionsEl.innerHTML = `<div class="action-hint">Selecciona el <b>Centre de Ciutat</b> (<kbd>H</kbd>) per crear aldeans.</div>`;
+    return;
+  }
+
+  const first = sel[0];
+  if (sel.length === 1) {
+    let stats = '';
+    if (first.kind === 'unit') {
+      stats = `<div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>0/0</b></span><span>👟 Velocitat <b>${first.speed.toFixed(1)}</b></span><span>Estat <b>${first.target ? 'En marxa' : 'Inactiu'}</b></span></div>`;
+    } else if (first.kind === 'building') {
+      stats = `<div class="stats"><span>👥 Població <b>${state.units.filter(u => u.isOwn).length}/${CONFIG.POP_CAP}</b></span><span>🏹 Guarnició <b>0/15</b></span><span>Edat <b>Fosca</b></span></div>`;
+    }
+    const isRes = first.kind === 'resource';
+    const resLabel = isRes ? (first.resourceType === 'wood' ? 'Fusta' : 'Or') : '';
+    const bar = isRes
+      ? `<div class="bar res"><i style="width:${(first.amount / first.maxAmount) * 100}%"></i><span>${resLabel}: ${first.amount}</span></div>`
+      : hpBar(first);
+    selContent.innerHTML = `
+      <div class="portrait ${first.isOwn ? '' : 'neutral'}">${first.icon}</div>
+      <div class="sel-info">
+        <div class="sel-name">${first.name}</div>
+        ${ownerLine(first)}
+        ${bar}
+        ${stats}
+      </div>`;
+  } else {
+    const shown = sel.slice(0, 24);
+    const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name}">${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
+    const more = sel.length > shown.length ? `<div class="more">+${sel.length - shown.length}</div>` : '';
+    selContent.innerHTML = `
+      <div class="portrait">${first.icon}</div>
+      <div class="sel-info" style="justify-content:flex-start">
+        <div class="sel-name">${sel.length} Aldeans</div>
+        <div class="multi-grid">${minis}${more}</div>
+      </div>`;
+    selContent.querySelectorAll('.mini').forEach(el => {
+      el.addEventListener('click', ev => {
+        const ent = sel.find(s => s.id === Number(el.dataset.id));
+        if (!ent) return;
+        if (ev.shiftKey) { removeFromSelection(ent); onSelectionChanged(); }
+        else setSelection([ent]);
+      });
+    });
+  }
+
+  // Botons d'acció contextuals
+  if (first.kind === 'building' && first.subtype === 'towncenter' && first.isOwn) {
+    const btn = makeActionButton('🧑‍🌾', 'Crear Aldeà', 'Gratuït · Fase 1', 'C', () => trainVillager(first));
+    btn.disabled = state.units.length >= CONFIG.POP_CAP;
+    actionsEl.appendChild(btn);
+    const hint = document.createElement('div');
+    hint.className = 'action-hint';
+    hint.innerHTML = 'L\'aldeà apareixerà al costat<br>del Centre de Ciutat.';
+    actionsEl.appendChild(hint);
+  } else if (first.kind === 'unit' && first.isOwn) {
+    actionsEl.appendChild(makeActionButton('✋', 'Aturar', 'Cancel·la l\'ordre', 'X', () => { commandStop(state.selected.filter(s => s.kind === 'unit')); updateSelectionUI(); }));
+    const hint = document.createElement('div');
+    hint.className = 'action-hint';
+    hint.innerHTML = '<kbd>Clic dret</kbd> sobre el terreny<br>per moure les unitats.';
+    actionsEl.appendChild(hint);
+  } else if (first.kind === 'resource') {
+    actionsEl.innerHTML = `<div class="action-hint">Recurs natural. La recol·lecció<br>arribarà a la <b>Fase 2</b>.</div>`;
+  }
+}
+
+function makeActionButton(icon, label, cost, hotkey, onClick) {
+  const btn = document.createElement('button');
+  btn.className = 'action-btn';
+  btn.innerHTML = `<span class="hk">${hotkey}</span><span class="big">${icon}</span><span>${label}</span><span class="cost">${cost}</span>`;
+  btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); btn.blur(); });
+  return btn;
+}
+
+function onSelectionChanged() {
+  updateSelectionUI();
+}
+
+document.getElementById('help-toggle').addEventListener('click', () => {
+  const help = document.getElementById('help');
+  help.classList.toggle('collapsed');
+  document.getElementById('help-toggle').textContent = help.classList.contains('collapsed') ? 'mostrar ▼' : 'amagar ▲';
+});
+
+/* =====================================================================
+   ENTRADA: RATOLÍ I TECLAT
+   ===================================================================== */
+const selBoxEl = document.getElementById('selection-box');
+const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, inside: false, overCanvas: false, down: false, dragging: false, sx: 0, sy: 0 };
+const keys = new Set();
+
+canvas.addEventListener('mousedown', (e) => {
+  canvas.focus();
+  if (e.button === 0) {
+    mouse.down = true;
+    mouse.dragging = false;
+    mouse.sx = e.clientX;
+    mouse.sy = e.clientY;
+  } else if (e.button === 2) {
+    issueRightClick(e.clientX, e.clientY);
+  }
+});
+
+window.addEventListener('mousemove', (e) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  mouse.inside = true;
+  mouse.overCanvas = e.target === canvas;
+  if (mouse.down) {
+    if (!mouse.dragging && Math.hypot(e.clientX - mouse.sx, e.clientY - mouse.sy) > CONFIG.DRAG_THRESHOLD) {
+      mouse.dragging = true;
+      selBoxEl.style.display = 'block';
+    }
+    if (mouse.dragging) {
+      const x = Math.min(mouse.sx, e.clientX), y = Math.min(mouse.sy, e.clientY);
+      selBoxEl.style.left = x + 'px';
+      selBoxEl.style.top = y + 'px';
+      selBoxEl.style.width = Math.abs(e.clientX - mouse.sx) + 'px';
+      selBoxEl.style.height = Math.abs(e.clientY - mouse.sy) + 'px';
+    }
+  }
+});
+
+window.addEventListener('mouseup', (e) => {
+  if (e.button !== 0 || !mouse.down) return;
+  mouse.down = false;
+  if (mouse.dragging) {
+    boxSelect(mouse.sx, mouse.sy, e.clientX, e.clientY, e.shiftKey);
+  } else {
+    clickSelect(e.clientX, e.clientY, e.shiftKey);
+  }
+  mouse.dragging = false;
+  selBoxEl.style.display = 'none';
+});
+
+document.addEventListener('mouseout', (e) => { if (!e.relatedTarget) mouse.inside = false; });
+window.addEventListener('blur', () => { keys.clear(); mouse.inside = false; });
+window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const dir = Math.sign(e.deltaY);
+  camState.targetDist = THREE.MathUtils.clamp(
+    camState.targetDist * (1 + dir * CONFIG.CAM.zoomStep),
+    CONFIG.CAM.minDist, CONFIG.CAM.maxDist
+  );
+}, { passive: false });
+
+window.addEventListener('keydown', (e) => {
+  const code = e.code;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) e.preventDefault();
+  if (e.repeat) { keys.add(code); return; }
+  keys.add(code);
+
+  switch (code) {
+    case 'Escape':
+      clearSelection(); onSelectionChanged();
+      break;
+    case 'KeyH':
+      setSelection([townCenter]);
+      centerOn(townCenter.position);
+      break;
+    case 'KeyC': {
+      const tc = state.selected.find(s => s.subtype === 'towncenter');
+      if (tc) trainVillager(tc);
+      break;
+    }
+    case 'KeyX': {
+      const units = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
+      if (units.length) { commandStop(units); updateSelectionUI(); }
+      break;
+    }
+    case 'Space':
+      if (state.selected.length) {
+        const c = new THREE.Vector3();
+        state.selected.forEach(s => c.add(s.position));
+        centerOn(c.divideScalar(state.selected.length));
+      }
+      break;
+  }
+});
+window.addEventListener('keyup', (e) => keys.delete(e.code));
+
+function centerOn(p) {
+  camState.target.x = p.x;
+  camState.target.z = p.z;
+}
+
+/* ---------- Controls de càmera (WASD / fletxes / vores / Q-E) ---------- */
+const fwd = new THREE.Vector3();
+const right = new THREE.Vector3();
+function updateCameraControls(dt) {
+  let mx = 0, mz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) mz += 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) mz -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+
+  if (mouse.inside) {
+    const edge = CONFIG.CAM.edge;
+    if (mouse.x <= edge) mx -= 1;
+    if (mouse.x >= window.innerWidth - edge) mx += 1;
+    if (mouse.y <= edge) mz += 1;
+    if (mouse.y >= window.innerHeight - edge) mz -= 1;
+  }
+
+  if (keys.has('KeyQ')) camState.yaw += CONFIG.CAM.rotSpeed * dt;
+  if (keys.has('KeyE')) camState.yaw -= CONFIG.CAM.rotSpeed * dt;
+
+  if (mx || mz) {
+    const len = Math.hypot(mx, mz);
+    mx /= len; mz /= len;
+    const yaw = camState.yaw;
+    fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+    right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+    const speed = CONFIG.CAM.panSpeed * camState.dist * dt;
+    camState.target.addScaledVector(fwd, mz * speed).addScaledVector(right, mx * speed);
+  }
+  clampToMap(camState.target);
+
+  camState.dist = THREE.MathUtils.damp(camState.dist, camState.targetDist, 10, dt);
+  updateCamera();
+}
+
+/* ---------- Cursor segons el que hi ha sota el ratolí ---------- */
+let hoverFrame = 0;
+function updateHoverCursor() {
+  if (++hoverFrame % 3 !== 0) return;
+  if (!mouse.overCanvas || mouse.down) return;
+  const e = pickEntity(mouse.x, mouse.y);
+  const hasUnits = state.selected.some(s => s.kind === 'unit' && s.isOwn);
+  canvas.style.cursor = e ? 'pointer' : (hasUnits ? 'crosshair' : 'default');
+}
+
+/* =====================================================================
+   BUCLE PRINCIPAL
+   ===================================================================== */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+const clock = new THREE.Clock();
+const clockEl = document.getElementById('clock');
+const fpsEl = document.getElementById('fps');
+let fpsFrames = 0, fpsTime = 0, lastClockSec = -1;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  state.elapsed += dt;
+  const t = state.elapsed;
+
+  updateCameraControls(dt);
+
+  separateUnits();
+  for (const u of state.units) updateUnit(u, dt);
+  updateMarkers(dt);
+  for (const a of state.animated) a.update(t, dt);
+
+  // Pulsació dels indicadors de selecció
+  for (const m of selMaterials.values()) {
+    m.ring.opacity = 0.75 + 0.25 * Math.sin(t * 5);
+    m.disc.opacity = 0.6 + 0.25 * Math.sin(t * 5);
+  }
+  const pulse = 1 + Math.sin(t * 4) * 0.035;
+  for (const s of state.selected) s.selection.scale.setScalar(pulse);
+
+  updateSun();
+  sky.position.copy(camera.position);
+  updateHoverCursor();
+
+  renderer.render(scene, camera);
+
+  // Rellotge i FPS
+  fpsFrames++; fpsTime += dt;
+  if (fpsTime >= 0.5) {
+    fpsEl.textContent = Math.round(fpsFrames / fpsTime);
+    fpsFrames = 0; fpsTime = 0;
+  }
+  const sec = Math.floor(t);
+  if (sec !== lastClockSec) {
+    lastClockSec = sec;
+    clockEl.textContent = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+  }
+}
+
+/* =====================================================================
+   INICI
+   ===================================================================== */
+updateCamera();
+updateSun();
+updateResourcesUI();
+updatePopulationUI();
+updateSelectionUI();
+animate();
+
+window.__RTS_READY = true;
+const loadingEl = document.getElementById('loading');
+loadingEl.style.opacity = '0';
+setTimeout(() => loadingEl.remove(), 500);
+toast('Benvingut! Selecciona el Centre de Ciutat (H) per crear aldeans');
+
+// Exposem l'estat per depurar des de la consola
+window.RTS = { THREE, scene, camera, renderer, state, CONFIG, trainVillager, townCenter };
+</script>
+</body>
+</html>
