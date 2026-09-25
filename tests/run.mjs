@@ -55,9 +55,8 @@ for (const f of files) {
       await page.click(`#civ-choices [data-civ=${civ}]`);
       await page.click(`#enemy-civ-choices [data-civ=${enemyCiv}]`);
       await page.click(`#diff-choices [data-diff=${diff}]`);
-      await page.click('#start-btn');
-      // La simulació la fan avançar les proves (RTS.simulate), no el rellotge
-      await page.evaluate(() => { window.RTS.state.paused = true; });
+      // Començar i pausar en el mateix instant: la simulació la fan avançar les proves (RTS.simulate), no el rellotge
+      await page.evaluate(() => { document.getElementById('start-btn').click(); window.RTS.state.paused = true; });
     }
     return page;
   };

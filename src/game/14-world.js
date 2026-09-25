@@ -340,6 +340,11 @@ function buildWorld(type, seed = MAP_SEED) {
   for (const team of [PLAYER.id, ENEMY.id]) {
     const B = BASES[team];
     [[-2.5, 9.5], [0, 10.2], [2.5, 9.5]].forEach(([dx, dz]) => createVillager(B.x + dx * B.s, B.z + dz * B.s, team));
+    // I un explorador a cavall, com a l'AoE II
+    for (let k = 0; k < 12; k++) {
+      const a = Math.PI * 0.25 + k * 0.5, x = B.x - Math.cos(a) * 9.5 * B.s, z = B.z + Math.sin(a) * 9.5 * B.s;
+      if (!isNearObstacle(x, z, 1.2)) { createSoldier('scout', x, z, team).aiRole = 'scout'; break; }
+    }
   }
   createBuilding.batch = false;
   rebuildNav();

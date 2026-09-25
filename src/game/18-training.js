@@ -67,7 +67,7 @@ function unitCount(team = PLAYER.id) {
 }
 function popUsed(team = PLAYER.id) {
   let queued = 0;
-  for (const b of state.buildings) if (b.team === team && b.trainQueue) queued += b.trainQueue.length;
+  for (const b of state.buildings) if (b.team === team && b.trainQueue) for (const it of b.trainQueue) if (!isTech(it.kind)) queued++;
   return unitCount(team) + queued;
 }
 

@@ -305,15 +305,17 @@ function enterGarrison(u, b) {
   refreshContainer(b);
   if (b.selected) updateSelectionUI();
 }
-function ungarrison(b) {
+/* Fa sortir les unitats d'un edifici o transport (totes, o només les que compleixen «which») */
+function ungarrison(b, which = null) {
   if (!b.garrison) return;
   // Un transport només pot desembarcar tocant a la riba
   if (b.naval && b.garrison.length && !nearestCellWhere(b.position, isDryLand, 5)) {
     if (b.isOwn) toast('⛵ Acosta el transport a la riba per desembarcar (o fes clic dret a terra)');
     return;
   }
+  const stay = which ? b.garrison.filter(u => !u.dead && !which(u)) : [];
   for (const u of b.garrison) {
-    if (u.dead) continue;
+    if (u.dead || stay.includes(u)) continue;
     const spot = findSpawnSpot(b);
     u.position.set(spot.x, 0, spot.z);
     u.garrisoned = null;
@@ -325,13 +327,13 @@ function ungarrison(b) {
     else if (prev && prev.node && !prev.node.depleted) orderGather(u, prev.node, null);
     else if (prev && prev.type) { u.lastResourceType = prev.type; u.lastNodePos.copy(u.position); findNextResource(u); }
   }
-  b.garrison = [];
+  b.garrison = stay;
   refreshContainer(b);
   if (b.selected) updateSelectionUI();
 }
 function ringTownBell(tc) {
   if (!tc) return;
-  if (tc.garrison && tc.garrison.length) { ungarrison(tc); toast('🔔 Tornem a la feina!'); return; }
+  if (tc.garrison && tc.garrison.length) { ungarrison(tc); if (tc.isOwn) toast('🔔 Tornem a la feina!'); return; }
   const vills = state.units.filter(u => u.team === tc.team && u.subtype === 'villager' && !u.garrisoned && hDist(u.position, tc.position) < 45);
   vills.forEach(u => orderGarrison(u, tc));
   if (tc.isOwn) toast(`🔔 Campana! ${vills.length} aldeans es refugien al Centre de Ciutat`);

@@ -15,7 +15,7 @@ function serializeGame() {
   for (const b of state.buildings.concat(farms)) {
     add(b, {
       k: 'bld', sub: b.subtype, team: b.team, x: r2(b.position.x), z: r2(b.position.z), rot: b.rot || 0,
-      progress: b.subtype === 'towncenter' ? 1 : b.progress, hp: Math.round(b.hp), amount: b.subtype === 'farm' ? b.amount : undefined,
+      progress: b.subtype === 'towncenter' && !b.underConstruction ? 1 : b.progress, hp: Math.round(b.hp), amount: b.subtype === 'farm' ? b.amount : undefined,
       queue: b.trainQueue ? b.trainQueue.map(q => ({ kind: q.kind, t: r2(q.t) })) : null,
       rally: b.rally ? { x: r2(b.rally.point.x), z: r2(b.rally.point.z) } : null, seen: !!b.seen,
       arch: b.visArch, wonderEnd: b.wonderEnd ? r2(b.wonderEnd - state.elapsed) : undefined,
@@ -23,7 +23,7 @@ function serializeGame() {
   }
   for (const u of state.units) {
     add(u, { k: 'unit', sub: u.subtype, team: u.team, x: r2(u.position.x), z: r2(u.position.z), ry: r2(u.group.rotation.y),
-             hp: r2(u.hp), carry: u.carry.amount ? { ...u.carry } : null, inWave: !!u.inWave, faith: u.category === 'monk' ? r2(u.faith) : undefined,
+             hp: r2(u.hp), carry: u.carry.amount ? { ...u.carry } : null, aiRole: u.aiRole || undefined, faith: u.category === 'monk' ? r2(u.faith) : undefined,
              arch: u.visArch, formation: u.formation });
   }
   for (const r of state.relics) {
@@ -44,7 +44,7 @@ function serializeGame() {
     v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE, rng: RNG.s,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: { 1: team(PLAYER), 2: team(ENEMY) },
-    ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), waveCount: AI.waveCount, nextWaveAt: AI.nextWaveAt, armyCycle: AI.armyCycle },
+    ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
     fog: { enabled: FOG.enabled, explored },
     cam: { x: camState.target.x, z: camState.target.z, yaw: camState.yaw, dist: camState.targetDist },
     ents,
@@ -125,7 +125,7 @@ function loadGame(data) {
       }
       if (e) { e.amount = d.amount; onNodeHarvested(e); }
     } else if (d.k === 'bld') {
-      if (d.sub === 'towncenter') e = createTownCenter(d.x, d.z, d.team);
+      if (d.sub === 'towncenter' && d.progress >= 1) e = createTownCenter(d.x, d.z, d.team);
       else {
         e = createBuilding(d.sub, d.x, d.z, false, d.team, d.rot);
         if (d.progress >= 1) completeBuilding(e, true);
@@ -145,7 +145,7 @@ function loadGame(data) {
       if (d.arch && d.arch !== archOf(d.team)) { e.visArch = d.arch; rebuildUnitModel(e); }
       e.hp = d.hp;
       e.group.rotation.y = d.ry || 0;
-      e.inWave = d.inWave;
+      e.aiRole = d.aiRole || null;
       if (d.faith !== undefined) e.faith = d.faith;
       if (d.formation) e.formation = d.formation;
       if (d.carry) { e.carry = { ...d.carry }; updateCarryVisual(e); }
@@ -176,9 +176,10 @@ function loadGame(data) {
     else if (d.trade !== undefined && made[d.trade]) orderTrade(u, made[d.trade]);
   });
   // IA, boira, temps i càmera
-  AI.diff = DIFFICULTY[data.ai.diff] || DIFFICULTY.normal;
-  AI.resigned = false; AI.enabled = true;
-  AI.waveCount = data.ai.waveCount; AI.nextWaveAt = data.ai.nextWaveAt; AI.armyCycle = data.ai.armyCycle || 0;
+  aiReset(AI, DIFFICULTY[data.ai.diff] || DIFFICULTY.normal);
+  AI.strategy = data.ai.strategy || null;
+  AI.attackCount = data.ai.attackCount || 0;
+  AI.nextAttackAt = data.ai.nextAttackAt ?? AI.nextAttackAt;
   FOG.enabled = data.fog.enabled;
   for (let k = 0; k < FOG.explored.length; k++) FOG.explored[k] = data.fog.explored.charCodeAt(k) === 49 ? 1 : 0;
   state.elapsed = data.elapsed;

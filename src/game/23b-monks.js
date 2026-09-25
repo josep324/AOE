@@ -161,7 +161,7 @@ function convertEntity(e, team) {
     e.orderQueue.length = 0;
     if (e.garrison && e.garrison.length) ungarrison(e);
     Object.assign(e, { attackTarget: null, attackMove: null, gatherNode: null, buildTarget: null, dropTarget: null, garrisonTarget: null,
-      convTarget: null, healTarget: null, relicTarget: null, relicDrop: null, inWave: false, speedCap: null, forcedTarget: false, anchor: null });
+      convTarget: null, healTarget: null, relicTarget: null, relicDrop: null, aiRole: null, speedCap: null, forcedTarget: false, anchor: null });
     if (e.subtype === 'tradecart') { e.tradeDest = null; e.tradeHome = null; e.tradeLoaded = 0; }
     setMoveTarget(e, null);
     setUnitStats(e, e.unitKind);

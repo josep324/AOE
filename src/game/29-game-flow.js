@@ -137,8 +137,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   state.victory = chosenVictory;
   if (state.victory === 'regicide') createKings();
   updateVictoryUI();
-  AI.diff = DIFFICULTY[chosenDiff];
-  AI.nextWaveAt = AI.diff.firstWave;
+  aiReset(AI, DIFFICULTY[chosenDiff]);
   for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;
   FOG.enabled = document.getElementById('fog-toggle').checked;
   startScreen.classList.add('hidden');

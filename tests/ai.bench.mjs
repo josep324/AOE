@@ -18,10 +18,14 @@ export default async ({ open, log }) => {
         const res = R.ENEMY.res; floatMax = Math.max(floatMax, res.food + res.wood + res.gold + res.stone);
         if (R.ENEMY.age > 0 && !out.ages[R.ENEMY.age]) out.ages[R.ENEMY.age] = s;
         if (s % 300 === 0) out.t.push({ min: s / 60, vills: vs.length, army: S.units.filter(u => u.team === E && u.isMilitary).length,
-          blds: S.buildings.filter(b => b.team === E).length, res: Object.values(res).map(Math.round), waves: R.AI.waveCount });
+          blds: S.buildings.filter(b => b.team === E).length, res: Object.values(res).map(Math.round), attacks: R.AI.attackCount });
       }
       return { ...out, idleVillMin: Math.round(idleVillSec / 60), tcIdleMin: +(tcIdleSec / 60).toFixed(1), floatMax: Math.round(floatMax),
-        milBlds: S.buildings.filter(b => b.team === E && ['barracks', 'archeryrange', 'stable', 'siegeworkshop', 'castle'].includes(b.subtype)).length };
+        milBlds: S.buildings.filter(b => b.team === E && ['barracks', 'archeryrange', 'stable', 'siegeworkshop', 'castle'].includes(b.subtype)).length,
+        strategy: R.AI.strategy, attacks: R.AI.attackCount,
+        blds: S.buildings.filter(b => b.team === E).reduce((m, b) => (m[b.subtype] = (m[b.subtype] || 0) + 1, m), {}),
+        army: S.units.filter(u => u.team === E && u.isMilitary).reduce((m, u) => (m[u.unitKind] = (m[u.unitKind] || 0) + 1, m), {}),
+        techs: R.ENEMY.techs.size };
     });
     log(diff, JSON.stringify(r));
     await page.close();

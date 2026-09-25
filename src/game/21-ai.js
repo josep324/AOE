@@ -1,15 +1,31 @@
 /* =====================================================================
-   IA: economia, construcció, exèrcit i onades d'atac
-   Cada IA és un «cervell» lligat a un equip (team) que juga contra un altre (foe). La partida
-   normal en té un (l'enemic, AI); per a les proves se'n pot afegir un per al jugador i veure
-   dues IA jugant l'una contra l'altra.
+   IA: NUCLI
+   Cada IA és un «cervell» lligat a un equip (team) que juga contra un altre (foe). Pensa cada
+   D.think segons i, com la IA de l'AoE II, fa:
+     - economia (21a): aldeans sense parar, cases, campaments, granges, més Centres, mercat
+     - estratègia i exèrcit (21b): obertura segons la civilització, exploració, el que ha vist
+       del rival, producció que el contraresta, tecnologies i edats
+     - combat (21c): incursions contra els aldeans, atacs amb reforços i retirada, defensa amb
+       campana i aldeans, micro (retirar ferits, kiting, foc concentrat)
+   La IA només sap del rival el que ha vist (a part d'on comença, com en un 1 contra 1).
    ===================================================================== */
 function makeAI(team, foe, diff = DIFFICULTY.normal) {
-  return { team, foe, enabled: true, diff, timer: 0, nextWaveAt: diff.firstWave, waveCount: 0, alert: null, alertTime: -99, armyCycle: 0 };
+  return {
+    team, foe, enabled: true, diff, think: 0, strategy: null,
+    seen: new Map(), seenBld: new Map(), foeComp: null,
+    army: null, raid: null, nextAttackAt: diff.attackAt, nextRaidAt: 0, attackCount: 0,
+    alert: null, alertTime: -99, bellAt: -99, calmSince: 0,
+    lastRebalance: 0, lastTrade: 0, lastIntel: -99, resigned: false, resignTimer: 0, dockSearchAt: 0,
+  };
 }
 const AI = makeAI(ENEMY.id, PLAYER.id);
 const AIS = [AI];
 const aiOf = (team) => AIS.find(A => A.team === team) || null;
+/* Torna a començar una IA (nova partida o dificultat canviada) */
+function aiReset(A, diff = A.diff) {
+  Object.assign(A, makeAI(A.team, A.foe, diff));
+  return A;
+}
 /* Posa una IA a jugar per un equip (p. ex. el del jugador, per provar la IA contra ella mateixa) */
 function enableAIFor(team, diff = DIFFICULTY.normal) {
   let A = aiOf(team);
@@ -24,6 +40,8 @@ function aiAlert(attacker, victimTeam = ENEMY.id) {
   A.alert = attacker;
   A.alertTime = state.elapsed;
 }
+
+/* ---------- Construcció ---------- */
 function canPlaceRect(x, z, w, d) {
   const L = CONFIG.MAP_LIMIT, N = NAV.N;
   if (Math.abs(x) + w / 2 > L - 1 || Math.abs(z) + d / 2 > L - 1) return false;
@@ -46,326 +64,154 @@ function findBuildSpot(type, near, minR, maxR) {
   }
   return null;
 }
-function aiPickBuilders(A, n, near) {
+function aiPickBuilders(A, n, near, prefer = null) {
   const vills = state.units.filter(u => u.team === A.team && u.subtype === 'villager' && !u.garrisoned
-    && u.state !== STATE.BUILDING && !u.buildTarget && u.carry.amount < 5);
+    && u.state !== STATE.BUILDING && !u.buildTarget && u.carry.amount < 5 && u.aiRole !== 'fight');
   vills.sort((a, b) => hDist(a.position, near) - hDist(b.position, near));
-  return vills.slice(0, n);
+  const out = prefer ? prefer.slice(0, n) : [];
+  for (const v of vills) { if (out.length >= n) break; if (!out.includes(v)) out.push(v); }
+  return out;
 }
-function aiBuild(A, type, near, minR, maxR, builders = 1) {
-  if (buildBlockReason(type, A.team)) return false;
+/* Col·loca i paga un edifici i hi envia constructors. Retorna l'edifici (o null) */
+function aiBuild(A, type, near, minR, maxR, builders = 1, prefer = null) {
+  if (buildBlockReason(type, A.team)) return null;
   const spot = findBuildSpot(type, near, minR, maxR);
-  if (!spot) return false;
-  const who = aiPickBuilders(A, builders, near);
-  if (!who.length) return false;
+  if (!spot) return null;
+  const who = aiPickBuilders(A, builders, spot, prefer);
+  if (!who.length) return null;
   applyCost(costFor(type, A.team), -1, A.team);
   const b = createBuilding(type, spot.x, spot.z, false, A.team);
   commandBuild(who, b);
-  return true;
+  return b;
 }
-/* L'objectiu rival més proper (amb prioritat per a la Meravella i el Monestir de les relíquies) */
+
+/* ---------- Coneixement del rival ---------- */
+/* On és la base rival: el Centre que ha vist, o on sap que comença */
+function aiFoeHome(A) {
+  for (const { b } of A.seenBld.values()) if (!b.dead && b.subtype === 'towncenter') return b.position;
+  const B = BASES[A.foe];
+  return B ? new THREE.Vector3(B.x, 0, B.z) : new THREE.Vector3();
+}
+/* L'objectiu rival més proper (amb prioritat per a la Meravella i el Monestir de les relíquies).
+   Compta sobretot el que la IA ha vist; si no ha vist res, va cap a la base rival. */
 function nearestFoeTarget(A, pos) {
   const F = A.foe;
-  const wonder = state.buildings.find(b => b.team === F && b.subtype === 'wonder' && !b.underConstruction && b.seen !== false);
+  const wonder = state.buildings.find(b => b.team === F && b.subtype === 'wonder' && !b.underConstruction);
   if (wonder && state.victory === 'standard') return wonder;
   if (state.relicWin && state.relicWin.team === F) {
     const m = state.buildings.find(b => b.team === F && b.subtype === 'monastery' && b.relics && b.relics.length);
     if (m) return m;
   }
   let best = null, bestD = Infinity;
-  for (const u of state.units) if (u.team === F && !u.garrisoned && !u.naval) { const d = hDist(u.position, pos); if (d < bestD) { bestD = d; best = u; } }
-  for (const b of state.buildings) if (b.team === F) { const d = hDist(b.position, pos) * 0.8; if (d < bestD) { bestD = d; best = b; } }
+  for (const s of A.seen.values()) {
+    const u = s.u;
+    if (u.dead || u.garrisoned || u.naval || u.team !== F) continue;
+    const d = hDist(u.position, pos);
+    if (d < bestD) { bestD = d; best = u; }
+  }
+  for (const { b } of A.seenBld.values()) {
+    if (b.dead || b.team !== F) continue;
+    const d = hDist(b.position, pos) * 0.8;
+    if (d < bestD) { bestD = d; best = b; }
+  }
+  if (best) return best;
+  // Encara no ha vist res: l'edifici rival més proper a on sap que comença (hi anirà a buscar-lo)
+  const home = aiFoeHome(A);
+  for (const b of state.buildings) if (b.team === F) { const d = hDist(b.position, home); if (d < bestD) { bestD = d; best = b; } }
+  if (!best) for (const u of state.units) if (u.team === F && !u.garrisoned && !u.naval) { const d = hDist(u.position, pos); if (d < bestD) { bestD = d; best = u; } }
   return best;
 }
+/* «Força» d'una unitat per comparar exèrcits: cost i vida que li queda */
+function unitStrength(u) {
+  if (!u || u.dead) return 0;
+  if (u.subtype === 'villager') return 0.25 * u.hp / u.maxHp;
+  if (!u.isMilitary) return 0.1;
+  const c = CONFIG.UNITS[u.unitKind] ? CONFIG.UNITS[u.unitKind].cost : {};
+  const v = ((c.food || 0) + (c.wood || 0) + (c.gold || 0) * 1.3) / 100;
+  return Math.max(0.4, v) * (0.3 + 0.7 * u.hp / u.maxHp);
+}
+/* Força d'un edifici defensiu (fletxes) */
+function buildingStrength(b) {
+  if (!b || b.dead || b.underConstruction) return 0;
+  const g = b.garrison ? b.garrison.length : 0;
+  if (b.subtype === 'towncenter') return 3 + g * 0.5;
+  if (b.subtype === 'castle') return 14 + g * 0.5;
+  if (b.subtype === 'watchtower') return 2.5 + g * 0.5;
+  return 0;
+}
 
-/* Rendició: quan la IA ja no té cap possibilitat clara de guanyar, abandona (com a l'AoE II) */
-function aiCheckResign(A, tc, villagers, army) {
+/* ---------- Rendició: sense cap possibilitat clara de guanyar, abandona (com a l'AoE II) ---------- */
+function aiCheckResign(A, C) {
   if (A.resigned || state.elapsed < 300) return false;
   const strength = (team, hasTC, vills, arm) => vills + arm * 2 + (hasTC ? 15 : 0)
     + state.buildings.filter(b => b.team === team && !b.underConstruction && !b.isWall && b.def && b.def.trains).length * 4;
   const pUnits = state.units.filter(u => u.team === A.foe);
   const pTC = state.buildings.some(b => b.team === A.foe && b.subtype === 'towncenter');
-  const me = strength(A.team, !!tc, villagers.length, army.length);
+  const me = strength(A.team, C.tcs.length > 0, C.villagers.length, C.army.length);
   const them = strength(A.foe, pTC, pUnits.filter(u => u.subtype === 'villager').length, pUnits.filter(u => u.isMilitary).length);
-  const broke = !tc && (villagers.length < 3 || !canAfford({ wood: 275, stone: 100 }, A.team)) && army.length < 4;
-  const crushed = state.elapsed > 600 && them > me * 6 && army.length < 3;
+  const broke = !C.tcs.length && (C.villagers.length < 3 || !canAfford({ wood: 275, stone: 100 }, A.team)) && C.army.length < 4;
+  const crushed = state.elapsed > 600 && them > me * 6 && C.army.length < 3;
   if (!broke && !crushed) return false;
   A.resigned = true;
   A.enabled = false;
   toast(`🏳️ Els ${civOf(A.team).name} es rendeixen!`);
   return true;
 }
+
+/* ---------- Cicle de decisions ---------- */
 function aiTick() {
-  for (const A of AIS) if (A.enabled) aiThink(A);
+  for (const A of AIS) {
+    if (!A.enabled) continue;
+    A.think -= 0.5;
+    if (A.think > 0) continue;
+    A.think = A.diff.think;
+    aiThink(A);
+  }
+}
+/* Fotografia de l'estat de l'equip de la IA (es calcula un cop per decisió) */
+function aiContext(A) {
+  const T = A.team;
+  const blds = state.buildings.filter(b => b.team === T);
+  const tcs = blds.filter(b => b.subtype === 'towncenter' && !b.underConstruction);
+  const units = state.units.filter(u => u.team === T && !u.dead);
+  const C = {
+    T, D: A.diff, E: teamOf(T), res: teamOf(T).res, now: state.elapsed, blds, tcs, units,
+    villagers: units.filter(u => u.subtype === 'villager'),
+    army: units.filter(u => u.isMilitary && !u.naval && u.category !== 'monk' && u.category !== 'king'),
+    monks: units.filter(u => u.category === 'monk' && !u.garrisoned),
+    ships: units.filter(u => u.naval),
+    has: (type, done = false) => blds.some(b => b.subtype === type && (!done || !b.underConstruction)),
+    count: (type) => blds.filter(b => b.subtype === type).length,
+  };
+  const B = BASES[T];
+  C.home = (tcs[0] || blds[0] || { position: new THREE.Vector3(B ? B.x : 0, 0, B ? B.z : 0) }).position;
+  C.foeHome = aiFoeHome(A);
+  C.age = C.E.age;
+  return C;
 }
 function aiThink(A) {
-  const T = A.team, D = A.diff, E = teamOf(T), res = E.res;
-  const blds = state.buildings.filter(b => b.team === T);
-  const tc = blds.find(b => b.subtype === 'towncenter');
-  const villagers = state.units.filter(u => u.team === T && u.subtype === 'villager');
-  const army = state.units.filter(u => u.team === T && u.isMilitary && !u.naval);
-  const monks = state.units.filter(u => u.team === T && u.category === 'monk' && !u.garrisoned);
-  const has = (type, includeFoundations = true) => blds.some(b => b.subtype === type && (includeFoundations || !b.underConstruction));
-  const count = (type) => blds.filter(b => b.subtype === type).length;
-  const now = state.elapsed;
-  A.resignTimer = (A.resignTimer || 0) + 1;
-  if (A.resignTimer % 10 === 0 && aiCheckResign(A, tc, villagers, army)) return;
-
-  if (!tc) {
-    // Sense Centre de Ciutat: tot l'exèrcit a l'atac
-    for (const u of army) if (u.state === STATE.IDLE) { const t = nearestFoeTarget(A, u.position); if (t) orderAttackMove(u, t.position.clone()); }
+  const C = aiContext(A);
+  if (++A.resignTimer % 10 === 0 && aiCheckResign(A, C)) return;
+  if (!A.strategy) A.strategy = aiPickStrategy(A);
+  aiIntel(A, C);
+  if (!C.tcs.length) {
+    // Sense Centre de Ciutat: en torna a fer un si pot; si no, tot l'exèrcit a l'atac
+    if (C.villagers.length && canAfford(costFor('towncenter', A.team), A.team) && !C.has('towncenter')) {
+      const B = BASES[A.team];
+      aiBuild(A, 'towncenter', B ? new THREE.Vector3(B.x, 0, B.z) : C.villagers[0].position, 0, 30, Math.min(6, C.villagers.length));
+    }
+    for (const u of C.army) if (u.state === STATE.IDLE) { const t = nearestFoeTarget(A, u.position); if (t) orderAttackMove(u, t.position.clone()); }
+    aiVillagerWork(A, C);
     return;
   }
-
-  // 1) Aldeans
-  if (villagers.length + tc.trainQueue.length < D.villagers && tc.trainQueue.length < 2
-      && !tc.trainQueue.some(it => isTech(it.kind))) queueUnit(tc, 'villager');
-
-  // 2) Cases (amb marge perquè la producció no s'aturi)
-  const cap = popCap(T);
-  if (popUsed(T) >= cap - 3 && cap < CONFIG.POP_CAP && !blds.some(b => b.subtype === 'house' && b.underConstruction)) {
-    aiBuild(A, 'house', tc.position, 10, 28);
-  }
-
-  // 3) Edificis econòmics i militars
-  // Serradora al costat del bosc que s'explota (se'n fa una de nova quan el bosc queda lluny)
-  const tree = nearestResource('wood', tc.position, 160);
-  if (villagers.length >= 6 && tree && !blds.some(b => b.subtype === 'lumbercamp' && (b.underConstruction || hDist(b.position, tree.position) < 16))) {
-    aiBuild(A, 'lumbercamp', tree.position, 4, 10);
-  }
-  if (villagers.length >= 8 && !has('barracks')) aiBuild(A, 'barracks', tc.position, 13, 26, 2);
-  if (villagers.length >= 9 && !has('mill')) {
-    const food = nearestResource('food', tc.position, 45);
-    aiBuild(A, 'mill', food ? food.position : tc.position, food ? 4 : 10, food ? 10 : 22);
-  }
-  if (villagers.length >= 11 && !has('miningcamp')) {
-    const gold = nearestResource('gold', tc.position, 60);
-    if (gold) aiBuild(A, 'miningcamp', gold.position, 4, 10);
-  }
-  if (villagers.length >= 14 && count('barracks') < D.maxBarracks && res.wood > 250) aiBuild(A, 'barracks', tc.position, 13, 30, 2);
-  // Granges quan s'acaba l'aliment salvatge
-  // Menjar fàcil a prop (baies, ovelles, carn ja caçada); la caça viva i la pesca no compten per retardar les granges
-  const wildFood = state.resourceNodes.some(n => n.resourceType === 'food' && n.subtype !== 'farm' && n.subtype !== 'fish' && n.subtype !== 'deepfish'
-    && !(n.animal && n.alive) && hDist(n.position, tc.position) < 45);
-  const farms = state.resourceNodes.filter(n => n.subtype === 'farm' && n.team === T).length + blds.filter(b => b.subtype === 'farm').length;
-  // Amb prou granges, en deixa unes quantes pagades a la cua del Molí perquè es resembrin soles
-  if (farms >= 6 && hasCompleted('mill', T) && (E.farmQueue || 0) < 3 && res.wood > 300) queueFarm(T, 1);
-  if (!wildFood && hasCompleted('mill', T) && farms < Math.ceil(villagers.length * 0.4)) {
-    const mill = blds.find(b => b.subtype === 'mill' && !b.underConstruction);
-    aiBuild(A, 'farm', mill.position, 5, 16);
-  }
-
-  // 3b) Edats i tecnologies
-  const tryTech = (kind, minVills = 0) => {
-    if (villagers.length < minVills || itemBlockReason(kind, T)) return false;
-    const at = blds.find(b => b.subtype === CONFIG.TECHS[kind].at && !b.underConstruction && b.trainQueue && b.trainQueue.length < 2);
-    return at ? queueUnit(at, kind) : false;
-  };
-  // Estalvi per avançar d'edat: amb un exèrcit mínim, deixa de gastar en tropes i millores
-  const nextAge = E.age === 0 ? 'age1' : E.age === 1 && D !== DIFFICULTY.easy ? 'age2' : E.age === 2 && D !== DIFFICULTY.easy ? 'age3' : null;
-  const ageReady = nextAge && !techQueued(T, nextAge) && distinctBuilt(T, CONFIG.AGES[E.age + 1].req) >= 2
-    && villagers.length >= (E.age === 0 ? Math.min(D.villagers, 14) : D.villagers - 2);
-  A.saving = !!ageReady && army.length >= 4;
-  if (ageReady) tryTech(nextAge);
-  if (!A.saving) tryTech('loom', 12);
-  if (!A.saving && hasCompleted('mill', T) && res.wood > 250) tryTech('reseed');
-  if (E.age >= 1) {
-    if (!has('blacksmith')) aiBuild(A, 'blacksmith', tc.position, 12, 28);
-    if (!has('stable') && villagers.length >= 15) aiBuild(A, 'stable', tc.position, 13, 30, 2);
-    if (count('watchtower') < (D === DIFFICULTY.easy ? 0 : D === DIFFICULTY.hard ? 3 : 1) && res.stone >= 150) {
-      const toward = nearestFoeTarget(A, tc.position);
-      const dir = toward ? new THREE.Vector3(toward.position.x - tc.position.x, 0, toward.position.z - tc.position.z).normalize() : new THREE.Vector3(-1, 0, -1).normalize();
-      aiBuild(A, 'watchtower', tc.position.clone().addScaledVector(dir, 16), 0, 10);
-    }
-    if (!has('archeryrange') && villagers.length >= 13) aiBuild(A, 'archeryrange', tc.position, 13, 30, 2);
-    if (!A.saving) for (const k of ['wheelbarrow', 'doublebit', 'horsecollar', 'forging', 'goldmining', 'fletching', 'scalearmor', 'paddedarcher', 'up_manatarms', 'bloodlines']) if (res.food > 350) tryTech(k);
-  }
-  if (E.age >= 2) {
-    if (!has('university') && villagers.length >= 14 && res.wood >= 250) aiBuild(A, 'university', tc.position, 12, 30, 2);
-    if (!A.saving && res.food > 500 && res.gold > 300) {
-      for (const k of ['up_longsword', 'up_pikeman', 'up_crossbow', 'up_eliteskirm', 'up_lightcav', 'ironcasting', 'bodkin', 'chainmail',
-        'leatherarcher', 'bowsaw', 'goldshaft', 'heavyplow', 'handcart', 'masonry', 'guardtower', 'treadmill',
-        'thumbring', 'ballistics', 'husbandry', 'squires']) tryTech(k);
-    }
-  }
-  if (E.age >= 3 && !A.saving && res.food > 800 && res.gold > 600) {
-    for (const k of ['blastfurnace', 'bracer', 'platemail', 'ringarcher', 'up_twohanded', 'up_champion', 'up_halberdier', 'up_arbalester',
-      'up_cavalier', 'up_paladin', 'up_hussar', 'up_cappedram', 'up_onager', 'chemistry', 'keep', 'twomansaw', 'croprotation', 'architecture', 'chainbarding']) tryTech(k);
-  }
-  if (E.age >= 2 && !A.saving) {
-    tryTech('barding');
-    // Edat dels Castells: taller de setge, castell i millores úniques
-    if (!has('siegeworkshop') && villagers.length >= 16 && res.wood >= 250) aiBuild(A, 'siegeworkshop', tc.position, 14, 32, 2);
-    if (!has('castle') && D !== DIFFICULTY.easy && canAfford(costFor('castle', T), T) && villagers.length >= 16) {
-      const toward = nearestFoeTarget(A, tc.position);
-      const dir = toward ? new THREE.Vector3(toward.position.x - tc.position.x, 0, toward.position.z - tc.position.z).normalize() : new THREE.Vector3(-1, 0, -1).normalize();
-      aiBuild(A, 'castle', tc.position.clone().addScaledVector(dir, 20), 0, 16, 4);
-    }
-    // Monestir, monjos i les seves tecnologies
-    if (!has('monastery') && villagers.length >= 17 && res.wood >= 200) aiBuild(A, 'monastery', tc.position, 12, 30, 2);
-    if (hasCompleted('monastery', T) && res.gold > 400) for (const k of ['fervor', 'sanctity', 'redemption', 'atonement']) tryTech(k);
-    if (E.age >= 3 && hasCompleted('monastery', T) && res.gold > 900) for (const k of ['illumination', 'blockprinting']) tryTech(k);
-    if (hasCompleted('castle', T) && res.food > 900 && res.gold > 600) {
-      const u = uniqueUnitOf(T);
-      tryTech('elite_' + u);
-      for (const k of Object.keys(CONFIG.TECHS)) if (CONFIG.TECHS[k].civ === E.civ && !CONFIG.TECHS[k].elite) tryTech(k);
-    }
-  }
-
-  // 4) Exèrcit (segons l'edat)
-  for (const b of blds) {
-    if (A.saving) break;
-    if (!b.def || !b.def.trains || b.underConstruction || b.trainQueue.length >= 2) continue;
-    const siegeCount = army.filter(u => u.category === 'siege').length;
-    if (b.subtype === 'monastery' && monks.length >= (D === DIFFICULTY.hard ? 4 : D === DIFFICULTY.easy ? 1 : 3)) continue;
-    if (b.subtype === 'siegeworkshop' && siegeCount >= (D === DIFFICULTY.hard ? 4 : 3)) continue;
-    const order = b.subtype === 'stable' ? (E.civ === 'saracens' ? ['camel', 'knight', 'scout'] : ['knight', 'scout', 'knight'])
-      : b.subtype === 'siegeworkshop' ? (E.age >= 3 && T && E.techs.has('chemistry') ? ['ram', 'bombard', 'mangonel'] : ['ram', 'mangonel', 'ram'])
-      : b.subtype === 'castle' ? (E.age >= 3 && army.filter(u => u.subtype === 'trebuchet').length < 2 ? [uniqueUnitOf(T), uniqueUnitOf(T), 'trebuchet'] : [uniqueUnitOf(T)])
-      : b.subtype === 'archeryrange' ? ['archer', 'skirmisher', 'archer', 'cavarcher']
-      : b.subtype === 'monastery' ? ['monk']
-      : ['militia', 'spearman', 'militia'];
-    for (let k = 0; k < order.length; k++) {
-      const kind = order[(A.armyCycle + k) % order.length];
-      if (!itemBlockReason(kind, T) && queueUnit(b, kind)) { A.armyCycle++; break; }
-    }
-  }
-
-  // 5) Aldeans inactius → a treballar segons les necessitats
-  const gatherers = { food: 0, wood: 0, gold: 0, stone: 0 };
-  for (const u of villagers) { const t = u.gatherNode ? u.gatherNode.resourceType : null; if (t) gatherers[t]++; }
-  const wantCastle = E.age >= 2 && !has('castle') && D !== DIFFICULTY.easy;
-  const want = wantCastle ? { food: 0.35, wood: 0.25, gold: 0.2, stone: 0.2 }
-    : E.age >= 1 ? { food: 0.4, wood: 0.3, gold: 0.2, stone: 0.1 }
-    : has('barracks') ? { food: 0.45, wood: 0.33, gold: 0.22 } : { food: 0.5, wood: 0.5, gold: 0 };
-  for (const u of villagers) {
-    if (u.state !== STATE.IDLE || u.garrisoned || u.orderQueue.length) continue;
-    const types = Object.keys(want).sort((a, b) => (gatherers[a] - want[a] * villagers.length) - (gatherers[b] - want[b] * villagers.length));
-    for (const type of types) {
-      if (!want[type]) continue;
-      const node = nearestResource(type, tc.position, 65, u) || nearestResource(type, tc.position, 160, u);
-      if (node) { orderGather(u, node, null); gatherers[type]++; break; }
-    }
-  }
-
-  // 5b) Monjos: recullen relíquies lliures i les guarden; si no, acompanyen l'onada per curar i convertir
-  const claimed = new Set(monks.map(m => m.relicTarget).filter(Boolean));
-  for (const m of monks) {
-    if (m.state !== STATE.IDLE) continue;
-    if (m.relic) { orderDepositRelic(m); continue; }
-    const free = hasCompleted('monastery', T) ? state.relics.filter(r => !r.carrier && !r.holder && !claimed.has(r))
-      .sort((a, b) => hDist(a.position, m.position) - hDist(b.position, m.position))[0] : null;
-    if (free) { orderPickRelic(m, free); claimed.add(free); continue; }
-    const W0 = A.wave;
-    if (W0 && W0.phase === 'attack' && W0.units.length) {
-      const c = new THREE.Vector3();
-      W0.units.forEach(u => c.add(u.position));
-      c.divideScalar(W0.units.length);
-      if (hDist(c, m.position) > 8) { orderMove(m, clampToMap(c)); m.attackMove = c.clone(); }
-    }
-  }
-  // 5c) Regicidi: el rei es queda refugiat al Castell o al Centre
-  if (state.victory === 'regicide') {
-    const king = state.units.find(u => u.team === T && u.category === 'king');
-    if (king && !king.garrisoned && !king.garrisonTarget) {
-      const safe = blds.find(b => b.subtype === 'castle' && !b.underConstruction) || tc;
-      if (safe && (!safe.garrison || safe.garrison.length < garrisonCap(safe))) orderGarrison(king, safe);
-    }
-  }
-  // 5d) Meravella: a l'Edat Imperial, amb recursos de sobres
-  if (state.victory === 'standard' && E.age >= 3 && D !== DIFFICULTY.easy && !has('wonder') && villagers.length >= 20
-      && canAfford({ wood: 1300, gold: 1300, stone: 1100 }, T)) aiBuild(A, 'wonder', tc.position, 16, 45, 8);
-  // Contra una Meravella o totes les relíquies del jugador: atac immediat
-  if ((state.relicWin && state.relicWin.team === A.foe) || state.buildings.some(b => b.team === A.foe && b.subtype === 'wonder' && b.wonderEnd)) {
-    A.nextWaveAt = Math.min(A.nextWaveAt, now);
-    A.urgent = true;
-  } else A.urgent = false;
-
-  // 5e) Naval: moll, pesca i flota de guerra (només si el mapa té aigua)
-  if (WATER.any) {
-    const docks = blds.filter(b => b.subtype === 'dock');
-    if (!docks.length && villagers.length >= 10 && res.wood >= 170 && !A.saving && now > (A.dockSearchAt || 0)) {
-      A.dockSearchAt = now + 30;
-      const spot = findDockSpot(tc.position, 120);
-      if (spot) {
-        const who = aiPickBuilders(A, 2, spot);
-        if (who.length) { applyCost(costFor('dock', T), -1, T); commandBuild(who, createBuilding('dock', spot.x, spot.z, false, T)); }
-      }
-    }
-    const dock = docks.find(b => !b.underConstruction);
-    const ships = state.units.filter(u => u.team === T && u.naval);
-    const fishers = ships.filter(u => u.subtype === 'fishingship'), fleet = ships.filter(u => u.isMilitary);
-    if (dock && !A.saving && dock.trainQueue.length < 2) {
-      const fishLeft = state.resourceNodes.some(n => n.subtype === 'fish' || n.subtype === 'deepfish');
-      if (fishLeft && fishers.length < (D === DIFFICULTY.hard ? 5 : 3)) queueUnit(dock, 'fishingship');
-      else if (E.age >= 1 && fleet.length < (D === DIFFICULTY.easy ? 2 : D === DIFFICULTY.hard ? 7 : 4)) {
-        queueUnit(dock, E.age >= 2 && fleet.length % 3 === 2 && !itemBlockReason('fireship', T) ? 'fireship' : 'galley');
-      }
-    }
-    if (dock && E.age >= 2 && res.gold > 300 && !A.saving) for (const k of ['up_wargalley', 'gillnets', 'careening']) tryTech(k);
-    if (dock && E.age >= 3 && res.gold > 700 && !A.saving) for (const k of ['up_galleon', 'drydock']) tryTech(k);
-    for (const f of fishers) if (f.state === STATE.IDLE) { const n = nearestResource('food', f.position, 220, f); if (n) orderGather(f, n, null); }
-    // Flota: quan n'hi ha prou, ataca els vaixells del jugador o el seu moll
-    if (fleet.length >= 3) for (const w of fleet) {
-      if (w.state !== STATE.IDLE) continue;
-      let tgt = null, bd = Infinity;
-      for (const u of state.units) if (u.team === A.foe && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd) { bd = d; tgt = u; } }
-      if (!tgt) for (const b of state.buildings) if (b.team === A.foe && (b.subtype === 'dock' || b.subtype === 'fishingship')) { const d = hDist(b.position, w.position); if (d < bd) { bd = d; tgt = b; } }
-      if (tgt) { orderAttack(w, tgt, false); w.forcedTarget = true; }
-    }
-  }
-
-  // 6) Defensa: només contra intrusos a prop de la base (no contra torres o tropes llunyanes que disparen a l'onada)
-  const home = tc.position;
-  let intruder = null;
-  if (A.alert && !A.alert.dead && now - A.alertTime < 10 && hDist(A.alert.position, home) < 40) intruder = A.alert;
-  if (!intruder) {
-    for (const u of state.units) if (u.team === A.foe && !u.garrisoned && !u.naval && hDist(u.position, home) < 32) { intruder = u; break; }
-  }
-  if (intruder) {
-    const defenders = army.filter(u => !u.inWave && u.category !== 'siege' && (u.state === STATE.IDLE || u.state === STATE.MOVING));
-    if (defenders.length) commandAttack(defenders, intruder);
-  }
-
-  // 7) Onades d'atac: primer es reuneixen davant la base i després avancen juntes al pas de la més lenta
-  if ((!A.wave || A.wave.phase === 'attack') && now >= A.nextWaveAt) {
-    const avail = army.filter(u => !u.inWave && !u.garrisoned);
-    const need = A.urgent ? Math.min(4, D.waveBase) : D.waveBase + A.waveCount * 2;
-    const target = avail.length >= need ? nearestFoeTarget(A, home) : null;
-    if (target) {
-      const dir = new THREE.Vector3(target.position.x - home.x, 0, target.position.z - home.z).normalize();
-      const rally = clampToMap(home.clone().addScaledVector(dir, 22));
-      avail.forEach(u => { u.inWave = true; u.speedCap = null; });
-      commandMove(avail, rally);
-      A.wave = { units: avail, rally, phase: 'gather', t0: now };
-    }
-  }
-  const W = A.wave;
-  if (W) {
-    W.units = W.units.filter(u => !u.dead && u.team === T);
-    if (!W.units.length) A.wave = null;
-    else if (W.phase === 'gather') {
-      const ready = W.units.filter(u => hDist(u.position, W.rally) < 10).length;
-      if (ready >= W.units.length * 0.85 || now - W.t0 > 45) {
-        const target = nearestFoeTarget(A, W.rally);
-        if (target) {
-          const slow = Math.min(...W.units.map(u => u.speed));
-          W.units.forEach(u => { u.speedCap = slow; });
-          commandAttackMove(W.units, target.kind === 'unit' ? target.position.clone() : approachPoint(target, W.rally));
-          W.phase = 'attack';
-          A.waveCount++;
-          A.nextWaveAt = now + D.interval;
-          if (A.foe === PLAYER.id) toast(`⚠️ L'enemic (${civOf(T).name}) ataca! (onada ${A.waveCount}: ${W.units.length} unitats)`);
-        } else A.wave = null;
-      }
-    } else if (W.units.every(u => u.state === STATE.IDLE) && !nearestFoeTarget(A, W.units[0].position)) {
-      A.wave = null;
-    }
-  }
-  // Les unitats de l'onada que queden inactives busquen el següent objectiu (totes cap al mateix)
-  const idleWave = army.filter(u => u.inWave && u.state === STATE.IDLE && !(W && W.phase === 'gather' && W.units.includes(u)));
-  if (idleWave.length) {
-    const t = nearestFoeTarget(A, idleWave[0].position);
-    if (t) commandAttackMove(idleWave, t.kind === 'unit' ? t.position.clone() : approachPoint(t, idleWave[0].position));
-  }
+  aiEconomy(A, C);
+  aiAgesAndTechs(A, C);
+  aiProduction(A, C);
+  aiScout(A, C);
+  aiDefense(A, C);
+  aiAttacks(A, C);
+  aiMicro(A, C);
+  aiMonks(A, C);
+  aiNaval(A, C);
+  aiSpecial(A, C);
 }
