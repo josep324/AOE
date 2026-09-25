@@ -100,7 +100,7 @@ function updateSelectionUI(panelOnly = false) {
       if (first.category === 'monk') {
         stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.relic ? '<span>🏺 <b>Porta una relíquia</b></span>' : ''}</div>
         <div class="bar faith"><i style="width:${first.faith}%"></i><span>🙏 Fe: ${Math.floor(first.faith)}%</span></div>
-        <div class="stats"><span>✨ Conversió <b>${first.convRange}</b></span><span>💚 Cura <b>${first.healRange}</b></span><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>👁 Visió <b>${first.los}</b></span></div>`;
+        <div class="stats"><span title="Abast de conversió">✨ <b>${first.convRange}</b></span><span title="Abast de curació">💚 <b>${first.healRange}</b></span><span title="Armadura">🛡 <b>${first.armor[0]}/${first.armor[1]}</b></span><span title="Visió">👁 <b>${first.los}</b></span></div>`;
       } else if (first.category === 'king') {
         stats = `<div class="stats"><span>${unitTaskLine(first)}</span><span>👑 <b>${state.victory === 'regicide' ? 'Si mor, perds la partida' : 'Rei'}</b></span></div>`;
       } else
@@ -128,7 +128,7 @@ function updateSelectionUI(panelOnly = false) {
       if (first.trainQueue && first.isOwn && !first.underConstruction) {
         const items = first.trainQueue.map((it, i) =>
           `<div class="q-item" data-idx="${i}" title="${itemDef(it.kind).name} · clic: cancel·lar (retorna ${costText(it.paid || costFor(it.kind))})">${itemDef(it.kind).icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
-        stats += `<div class="queue-row"><div class="queue" id="train-queue">${items || '<span class="q-empty">Cua buida</span>'}</div><div class="train-status" id="train-status"></div></div>`;
+        if (items) stats += `<div class="queue-row"><div class="queue" id="train-queue">${items}</div><div class="train-status" id="train-status"></div></div>`;
       }
     }
     if (first.kind === 'relic') {
@@ -206,9 +206,10 @@ function updateSelectionUI(panelOnly = false) {
       if (tech && d.requires && !T.techs.has(d.requires)) continue;     // només es mostra el pas següent de cada cadena
       const locked = (d.age || 0) > T.age;
       const cost = costFor(kind);
-      const b = makeActionButton(locked ? '🔒' : d.icon, d.name.length > 11 ? d.name.split(' ')[0] : d.name, costText(cost),
+      const b = makeActionButton(locked ? '🔒' : d.icon, shortLabel(kind), costHTML(cost),
         kind === 'villager' ? 'C' : '', () => queueUnit(first, kind), true);
       b.dataset.item = kind;
+      if (tech && (d.upgradeTo || d.elite || d.ageUp)) b.insertAdjacentHTML('beforeend', '<span class="upg">⬆</span>');
       b.title = tech
         ? `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
         : `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`;
@@ -217,12 +218,12 @@ function updateSelectionUI(panelOnly = false) {
     if (first.subtype === 'market') {
       const P = PLAYER.prices;
       for (const r of ['food', 'wood', 'stone']) {
-        const buy = makeActionButton(RES_ICON[r], 'Compra', `🪙 ${P[r]}`, '', () => marketTrade(PLAYER.id, r, true), true);
+        const buy = makeActionButton(RES_ICON[r], 'Compra', costHTML({ gold: P[r] }), '', () => marketTrade(PLAYER.id, r, true), true);
         buy.title = `Compra 100 de ${RES_LABEL[r].toLowerCase()} per ${P[r]} d'or (el preu puja)`;
         actionsEl.appendChild(buy);
       }
       for (const r of ['food', 'wood', 'stone']) {
-        const sell = makeActionButton(RES_ICON[r], 'Ven', `+🪙 ${Math.floor(P[r] * sellRate(PLAYER.id))}`, '', () => marketTrade(PLAYER.id, r, false), true);
+        const sell = makeActionButton(RES_ICON[r], 'Ven', '+' + costHTML({ gold: Math.floor(P[r] * sellRate(PLAYER.id)) }), '', () => marketTrade(PLAYER.id, r, false), true);
         sell.title = `Ven 100 de ${RES_LABEL[r].toLowerCase()} per ${Math.floor(P[r] * sellRate(PLAYER.id))} d'or (el preu baixa)`;
         actionsEl.appendChild(sell);
       }
@@ -312,17 +313,18 @@ function updateSelectionUI(panelOnly = false) {
       if ((def.page || 0) !== buildPage) continue;
       const locked = (def.age || 0) > PLAYER.age;
       const hk = Object.entries(CONFIG.BUILD_KEYS).find(([, t]) => t === type);
-      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costText(costFor(type)), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
+      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costHTML(costFor(type)), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
       btn.dataset.build = type;
       btn.title = `${def.name} — ${costText(costFor(type))} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
       actionsEl.appendChild(btn);
     }
   } else if (first.kind === 'building' && first.isOwn) {
-    const btn = makeActionButton('🗑️', 'Enderrocar', first.underConstruction && first.progress < 0.02 ? 'Retorna el cost' : 'Supr', '', () => demolishBuilding(first));
+    actionsEl.classList.add('compact');
+    const btn = makeActionButton('🗑️', 'Enderrocar', first.underConstruction && first.progress < 0.02 ? 'retorna cost' : 'Supr', '', () => demolishBuilding(first), true);
     actionsEl.appendChild(btn);
     if (garrisonCap(first) > 0 && !first.underConstruction) {
       const n = first.garrison ? first.garrison.length : 0;
-      const g = makeActionButton('🚪', n ? 'Fer sortir' : 'Refugi', `${n}/${garrisonCap(first)} dins`, 'U', () => ungarrison(first));
+      const g = makeActionButton('🚪', n ? 'Fer sortir' : 'Refugi', `${n}/${garrisonCap(first)} dins`, 'U', () => ungarrison(first), true);
       g.title = 'Unitats refugiades (cada una afegeix una fletxa). Clic dret amb tropes seleccionades per fer-les entrar. U: fer-les sortir';
       g.disabled = !n;
       actionsEl.appendChild(g);
@@ -372,10 +374,37 @@ function buildingItems(b) {
   return out;
 }
 
+/* Cost compacte per als botons petits: punt de color del recurs + quantitat */
+function costHTML(cost) {
+  const e = Object.entries(cost).filter(([, v]) => v > 0);
+  if (!e.length) return 'gratis';
+  const fmt = (v) => v >= 1000 ? (v % 1000 ? (v / 1000).toFixed(1) : v / 1000) + 'k' : v;
+  return e.map(([k, v]) => `<span class="cc"><i class="rd ${k}"></i>${fmt(v)}</span>`).join('');
+}
+/* Etiquetes curtes i inequívoques per als botons (el nom sencer surt al consell) */
+const SHORT = {
+  manatarms: 'Home armes', twohanded: 'Dues mans', skirmisher: 'Escaramus.', eliteskirm: 'Escar. elit', cavarcher: 'Arq. cavall',
+  heavycavarcher: 'Arq. cav. P.', lightcav: 'Genet lleu.', cavalier: 'Cav. pesant', camel: 'Camell', heavycamel: 'Camell P.',
+  cappedram: 'Ariet ref.', siegeram: 'Ariet setge', heavyscorpion: 'Escorpí P.', bombard: 'Canó', tradecart: 'Carro',
+  throwingaxe: 'Destraler', trebuchet: 'Trabuc', knight: 'Cavaller',
+  age1: 'Feudal', age2: 'Castells', age3: 'Imperial', handcart: 'Carro mà', doublebit: 'Doble fil', goldmining: 'Mineria',
+  reseed: 'Resembra', horsecollar: 'Collar', bowsaw: 'Serra', twomansaw: 'Serra 2', goldshaft: "Pou d'or", stoneshaft: 'Pedrera',
+  heavyplow: 'Arada', croprotation: 'Rotació', scalearmor: 'Escates', paddedarcher: 'Encoixin.', ironcasting: 'Fosa ferro',
+  blastfurnace: 'Alt forn', bodkin: 'Punta perf.', chainmail: 'Cota malla', platemail: 'Plaques', chainbarding: 'Bardissa M.',
+  leatherarcher: 'Cuir', ringarcher: 'Anelles', architecture: 'Arquitect.', treadmill: 'Grua', guardtower: 'Torre guàrd.',
+  keep: 'Torrassa', siegeengineers: 'Enginyers', beardedaxe: 'Destral B.', illumination: 'Il·lumin.', blockprinting: 'Impremta',
+  elite_throwingaxe: 'Elit', elite_mameluke: 'Elit', elite_samurai: 'Elit',
+};
+function shortLabel(kind) {
+  const d = itemDef(kind);
+  if (SHORT[kind]) return SHORT[kind];
+  if (d && d.upgradeTo) return SHORT[d.upgradeTo] || CONFIG.UNITS[d.upgradeTo].name;
+  return d.name.length > 11 ? d.name.split(' ')[0] : d.name;
+}
 function makeActionButton(icon, label, cost, hotkey, onClick, small = false) {
   const btn = document.createElement('button');
   btn.className = 'action-btn' + (small ? ' small' : '');
-  btn.innerHTML = `${hotkey ? `<span class="hk">${hotkey}</span>` : ''}<span class="big">${icon}</span><span>${label}</span><span class="cost">${cost}</span>`;
+  btn.innerHTML = `${hotkey ? `<span class="hk">${hotkey}</span>` : ''}<span class="big">${icon}</span><span class="lbl">${label}</span><span class="cost">${cost}</span>`;
   btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); btn.blur(); });
   return btn;
 }

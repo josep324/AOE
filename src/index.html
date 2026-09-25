@@ -22,12 +22,12 @@
     <div class="civ-grid" id="civ-choices"></div>
     <div class="row enemy-civ" id="enemy-civ-choices"><span>Rival:</span></div>
     <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i derrota l'enemic.</p>
-    <div class="row" id="victory-choices">
+    <div class="row opt-row" id="victory-choices"><span class="opt-lbl">Victòria:</span>
       <button class="choice on" data-victory="standard" title="Guanya qui destrueixi l'enemic, qui mantingui una Meravella 5 minuts o qui tingui totes les relíquies 200 segons">🏆 Estàndard</button>
       <button class="choice" data-victory="conquest" title="Només es guanya destruint tots els edificis i unitats de l'enemic">⚔️ Conquesta</button>
       <button class="choice" data-victory="regicide" title="Cada bàndol té un rei: si mor, perd la partida">👑 Regicidi</button>
     </div>
-    <div class="row" id="diff-choices">
+    <div class="row opt-row" id="diff-choices"><span class="opt-lbl">Dificultat:</span>
       <button class="choice" data-diff="easy">Fàcil</button>
       <button class="choice on" data-diff="normal">Normal</button>
       <button class="choice" data-diff="hard">Difícil</button>
@@ -37,7 +37,8 @@
     <div><button class="choice" id="start-load" style="margin-top:10px;display:none">📂 Continuar la partida desada</button>
       <button class="choice" id="start-file" style="margin-top:10px">📁 Obrir fitxer de partida</button>
       <button class="choice" id="start-code" style="margin-top:10px">🔑 Carregar amb codi</button></div>
-    <div class="legend">
+    <details class="legend">
+      <summary>📖 Com es juga ▾</summary>
       ⚔️ <b>Caserna</b>: espases i llances · 🎯 <b>Galeria de tir</b>: arquers, escaramussadors i arquers a cavall · 🐎 <b>Estable</b>: exploradors, cavallers i camells. <kbd>Tab</kbd>: pàgina del menú de construcció.<br>
       🔔 <b>Campana</b> (<kbd>B</kbd>): els aldeans es refugien al Centre i aquest dispara més fletxes.<br>
       🏯 <b>Edats</b>: Fosca → Feudal → Castells → Imperial. Cada edat desbloqueja edificis, unitats, millores de línia i tecnologies.<br>
@@ -45,7 +46,7 @@
       ⛪ <b>Monestir</b>: monjos que curen i converteixen enemics; les <b>relíquies</b> guardades donen or. 🏛️ <b>Meravella</b> (Imperial): si resisteix 5 minuts, guanyes.<br>
       ▣ <b>Formacions</b> (<kbd>F</kbd>): línia, quadrat (arquers a dins), esglaonada i flancs. Selecció sense límit d'unitats.<br>
       ⏸️ <kbd>P</kbd> pausa · <kbd>Clic dret</kbd> sobre un enemic: atacar.
-    </div>
+    </details>
   </div>
 </div>
 <div id="pause-screen" class="overlay hidden">

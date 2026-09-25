@@ -1,5 +1,5 @@
   :root {
-    --hud-h: 172px;
+    --hud-h: 190px;
     --gold: #d8b25a;
     --gold-soft: rgba(216, 178, 90, 0.35);
     --panel-bg: rgba(255, 255, 255, 0.035);
@@ -44,8 +44,9 @@
   #help {
     position: fixed; top: 12px; left: 12px; z-index: 25; padding: 10px 14px; font-size: 12px;
     line-height: 1.65; max-width: 330px; transition: opacity 0.25s;
+    max-height: calc(100vh - var(--hud-h) - 24px); overflow-y: auto;
   }
-  #help .title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 0.14em; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  #help .title { font-family: 'Cinzel', serif; color: var(--gold); font-size: 12px; letter-spacing: 0.14em; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 12px; }
   #help .title span { cursor: pointer; color: var(--muted); font-family: 'Inter', sans-serif; letter-spacing: 0; }
   #help ul { margin: 0; padding: 0; list-style: none; color: var(--muted); }
   #help li b { color: var(--text); font-weight: 600; }
@@ -66,7 +67,7 @@
   /* ---------- HUD inferior ---------- */
   #hud {
     position: fixed; left: 0; right: 0; bottom: 0; height: var(--hud-h); z-index: 30;
-    display: grid; grid-template-columns: minmax(250px, 300px) 1fr minmax(220px, 320px) 172px; gap: 10px;
+    display: grid; grid-template-columns: minmax(220px, 290px) minmax(200px, 1fr) minmax(250px, 1.1fr) 172px; gap: 10px;
     padding: 12px 14px 12px;
     background:
       linear-gradient(180deg, rgba(38, 42, 54, 0.95), rgba(14, 16, 22, 0.98)),
@@ -235,8 +236,9 @@
   .overlay textarea { resize: vertical; word-break: break-all; }
   .overlay .legend { text-align: left; font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-top: 14px; }
   .bar.build > i { background: linear-gradient(180deg, #9fd6ff, #2f7fe0); }
-  .action-btn.small { width: 54px; height: 54px; gap: 0; font-size: 9.5px; padding: 2px; border-radius: 8px; }
-  .action-btn.small > span:nth-child(2), .action-btn.small > span:nth-child(3) { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .action-btn.small { width: 62px; height: 58px; gap: 1px; font-size: 9.5px; padding: 2px; border-radius: 8px; }
+  .action-btn.small .lbl { max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.1; }
+  .action-btn.small .cost { max-width: 60px; line-height: 1.05; display: flex; flex-wrap: wrap; justify-content: center; gap: 0 3px; }
   .action-btn.small .big { font-size: 19px; }
   .action-btn.small .cost { font-size: 9px; }
   #actions.compact { gap: 5px; }
@@ -276,17 +278,76 @@
   }
   #loading small { display: block; margin-top: 10px; font-family: 'Inter', sans-serif; font-size: 12px; letter-spacing: 0; color: var(--muted); }
 
-  @media (max-width: 980px) {
-    :root { --hud-h: 190px; }
-    #hud { grid-template-columns: 1fr 1fr 150px; grid-template-rows: auto 1fr; }
-    #panel-minimap { grid-row: 1 / span 2; grid-column: 3; }
-    #panel-selection { grid-column: 1 / -1; grid-row: 2; }
-    #help { display: none; }
-    .res-grid { grid-template-columns: repeat(4, 1fr); }
-  }
-.mini.grp .st{font-size:10px;font-weight:700;color:var(--gold);top:0;right:3px}
-.bar.faith>i{background:linear-gradient(180deg,#e8f0ff,#8aa8e8)}
+
 #vic-timers{display:none;gap:10px}
 #vic-timers.on{display:flex}
 #vic-timers .vt{color:var(--gold);font-weight:600}
 #vic-timers .vt.enemy{color:#ff8a7a}
+
+/* Cost compacte: punt de color + quantitat */
+.cc{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
+.rd{display:inline-block;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.rd.food{background:#e0604a}.rd.wood{background:#b07a44}.rd.gold{background:#ffd23a}.rd.stone{background:#b8b8bc}
+.action-btn .upg{position:absolute;top:2px;left:3px;font-size:9px;color:#8dff6a;font-weight:800}
+.mini.grp{width:46px}
+.mini.grp .st{font-size:10px;font-weight:700;color:var(--gold);top:auto;bottom:6px;right:2px;text-shadow:0 1px 2px #000}
+.bar.faith>i{background:linear-gradient(180deg,#7aa2ff,#2f55c8)}
+/* Pantalla d'inici més compacta i llegenda plegable */
+#start-screen .card{width:min(760px,calc(100vw - 32px));padding:20px 26px}
+#start-screen .row{margin:10px 0}
+#start-screen details.legend{margin-top:10px}
+#start-screen details.legend summary{cursor:pointer;color:var(--gold);font-weight:600;text-align:center;list-style:none}
+#start-screen details.legend summary::-webkit-details-marker{display:none}
+/* Panell de selecció més compacte perquè hi càpiga tot */
+.sel-info{gap:2px}
+.stats{gap:2px 12px;font-size:11.5px;line-height:1.35}
+.multi-grid{overflow-y:auto;max-height:100%}
+.mini.grp{width:42px;height:42px}
+@media (max-width: 1500px){ .portrait{width:74px;font-size:38px} #sel-content{gap:10px} }
+/* Barra superior i ajuda en pantalles estretes */
+@media (max-width: 1200px){ #help{max-width:280px;font-size:11.5px} }
+@media (max-width: 1100px){ #topbar{gap:9px;padding:7px 12px;font-size:12px} #topbar .stat:has(#fps), #topbar .stat:has(#fps) + .sep{display:none} }
+@media (min-width: 1600px){
+  .action-btn.small{width:72px;height:60px;font-size:10.5px}
+  .action-btn.small .big{font-size:23px}
+  .action-btn.small .lbl{max-width:68px}
+  .action-btn.small .cost{max-width:70px;font-size:9.5px}
+}
+
+/* Pantalles mitjanes: recursos compactes i més espai per a selecció i accions */
+@media (max-width: 1300px) {
+  .res .lbl { display: none; }
+  .res { padding: 5px 7px; gap: 7px; }
+  .res .ico { width: 26px; height: 26px; font-size: 14px; }
+  .res .val { font-size: 16px; }
+  .portrait { width: 62px; font-size: 32px; }
+}
+/* Pantalles petites: dues files a l'esquerra (recursos i selecció) i les accions a tota l'alçada */
+@media (max-width: 980px) {
+  :root { --hud-h: 282px; }
+  #hud { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 140px; grid-template-rows: 118px minmax(0, 1fr); }
+  #panel-resources { grid-column: 1; grid-row: 1; }
+  #panel-selection { grid-column: 1; grid-row: 2; }
+  #panel-actions { grid-column: 2; grid-row: 1 / span 2; }
+  #panel-minimap { grid-column: 3; grid-row: 1 / span 2; }
+  #help { display: none; }
+  .res-grid { grid-template-columns: 1fr 1fr; gap: 4px; }
+  .res { padding: 3px 7px; }
+  #panel-resources .pop { margin-top: 4px; }
+}
+/* El contingut de la selecció comença a dalt i, si no hi cap, es desplaça (mai no trepitja el títol) */
+.sel-info{justify-content:flex-start;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+@media (max-width: 980px){ #hud{grid-template-rows:134px minmax(0,1fr)} }
+/* Les accions que no hi caben es poden desplaçar (barra visible) en lloc de quedar tallades */
+#actions{max-height:calc(100% - 22px);scrollbar-width:thin;scrollbar-color:rgba(216,178,90,.6) transparent}
+.res{padding:4px 8px}
+@media (min-width: 981px) and (max-width: 1300px){
+  #hud{grid-template-columns:190px minmax(0,0.9fr) minmax(0,1.3fr) 150px}
+}
+@media (max-width: 1300px){
+  .action-btn.small{width:58px;height:56px}
+  .action-btn.small .lbl{max-width:55px}
+}
+.civ-card{display:flex;flex-direction:column;justify-content:flex-start}
+.opt-row{align-items:center}
+.opt-lbl{color:var(--muted);font-size:13px;min-width:68px;text-align:right}
