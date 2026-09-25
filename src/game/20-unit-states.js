@@ -10,7 +10,7 @@ function setUnitState(u, st) {
     const sub = u.gatherNode.subtype;
     // Destral (arbres i ovelles), pic (or, pedra; aixada a la granja), mans (baies)
     u.tool.visible = sub !== 'berries';
-    u.axeHead.visible = sub === 'tree' || sub === 'sheep';
+    u.axeHead.visible = sub === 'tree' || sub === 'sheep' || sub === 'deer' || sub === 'boar';
     u.pickHead.visible = sub === 'gold' || sub === 'stone' || sub === 'farm';
   } else if (st === STATE.BUILDING) {
     u.tool.visible = true;
@@ -27,12 +27,22 @@ function setUnitState(u, st) {
 function hDist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 function inReach(u, ent) {
   const d = entSurfaceDist(ent, u.position.x, u.position.z);
+  if (ent.animal && ent.alive) return d - u.radius <= HUNT_RANGE;     // caça: llança des de lluny
   if (ent.subtype === 'farm') return d <= 0.25;          // el granger treballa a sobre de la granja
   return d - u.radius <= CONFIG.GATHER.reach;
 }
 
 function approachPointAt(ent, angle) {
   const m = CONFIG.VILLAGER.radius + 0.3;
+  if (ent.landAngle !== undefined) {
+    // Peixos: sempre des de la riba
+    const dA = Math.atan2(Math.sin(angle - ent.landAngle), Math.cos(angle - ent.landAngle));
+    angle = ent.landAngle + THREE.MathUtils.clamp(dA, -0.9, 0.9);
+    const sx = Math.sin(angle), sz = Math.cos(angle);
+    let r = ent.radius + m;
+    while (r < ent.radius + 5 && waterCell(ent.position.x + sx * r, ent.position.z + sz * r)) r += 0.5;
+    return clampToMap(new THREE.Vector3(ent.position.x + sx * r, 0, ent.position.z + sz * r));
+  }
   const sx = Math.sin(angle), sz = Math.cos(angle);
   let p;
   if (ent.subtype === 'farm') {
@@ -75,6 +85,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
   let best = null, bestD = maxDist;
   for (const n of state.resourceNodes) {
     if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
+    if (n.subtype === 'boar' && n.alive) continue;          // els senglars només si l'ordena el jugador
     if (farmTaken(n, forUnit)) continue;
     if (n.subtype === 'farm' && forUnit && n.team !== forUnit.team) continue;
     const d = hDist(n.position, pos);
@@ -181,6 +192,7 @@ function orderGather(u, node, angle = null) {
 function goToResource(u) {
   const node = u.gatherNode;
   if (!node || node.depleted) { findNextResource(u); return; }
+  if (node.animal && node.alive) { setMoveTarget(u, node.position.clone()); setUnitState(u, STATE.MOVING); return; }
   setMoveTarget(u, u.gatherAngle !== null
     ? approachPointAt(node, u.gatherAngle)
     : approachPoint(node, u.position, ((u.id % 5) - 2) * 0.35));
@@ -204,6 +216,7 @@ function nextResourceNear(type, fromPos, u) {
   let best = null, bestS = Infinity;
   for (const n of state.resourceNodes) {
     if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
+    if (n.subtype === 'boar' && n.alive) continue;
     if (farmTaken(n, u) || (n.subtype === 'farm' && n.team !== u.team)) continue;
     const dWork = hDist(n.position, fromPos);
     if (dWork > R * 1.5) continue;
@@ -312,6 +325,14 @@ function gatherTick(u, dt) {
   const face = Math.atan2(node.position.x - u.position.x, node.position.z - u.position.z);
   u.group.rotation.y = lerpAngle(u.group.rotation.y, face, 1 - Math.exp(-10 * dt));
 
+  if (node.animal && node.alive) {
+    // Caça: llança una llança cada cert temps fins que l'animal cau
+    if (u.attackCooldown <= 0) {
+      u.attackCooldown = 1.6;
+      spawnArrow(new THREE.Vector3(u.position.x, 1.5, u.position.z), node, Math.max(1, HUNT_DAMAGE - node.armor[1]), u);
+    }
+    return;
+  }
   if (u.carry.type !== node.resourceType) { u.carry.type = node.resourceType; u.carry.amount = 0; }
 
   if (node.subtype === 'sheep' && !node.killed) {
@@ -388,6 +409,11 @@ function updateUnit(u, dt) {
       if (node) {
         if (node.depleted) { findNextResource(u); break; }
         if (inReach(u, node)) { startGathering(u); break; }
+        // Persecució d'un animal viu: es recalcula el destí sovint
+        if (node.animal && node.alive) {
+          u.chaseTimer -= dt;
+          if (u.chaseTimer <= 0) { u.chaseTimer = 0.5; setMoveTarget(u, node.position.clone()); }
+        }
       }
       const arrived = stepTowardsTarget(u, dt);
       walking = !arrived;
@@ -558,6 +584,7 @@ function updateUnit(u, dt) {
 
   resolveObstacleCollision(u, dt);
   clampToMap(u.position);
+  keepOnLand(u);
 
   // ---------- Animació procedimental ----------
   if (u.category === 'siege') { animateSiege(u, dt, walking); return; }

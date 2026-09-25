@@ -32,7 +32,8 @@ function mmToWorld(px, py) {
   const r = (px - c) / mm.scale, f = -(py - c) / mm.scale;
   return new THREE.Vector3(r * ax.rx + f * ax.fx, 0, r * ax.rz + f * ax.fz);
 }
-const MM_COLORS = { tree: '#1f5a24', gold: '#ffd23a', stone: '#c8c8c8', berries: '#e0457f', sheep: '#ffffff', farm: '#b08a4a' };
+const MM_COLORS = { tree: '#1f5a24', gold: '#ffd23a', stone: '#c8c8c8', berries: '#e0457f', sheep: '#ffffff', farm: '#b08a4a',
+  deer: '#e0a868', boar: '#9a6a44', wolf: '#a8aeb6', fish: '#9fe2ff' };
 function mmRect(ctx, e, ax, fill, stroke) {
   const { hw, hd } = e.footprint;
   const pts = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([dx, dz]) => worldToMM(e.position.x + dx, e.position.z + dz, ax));
@@ -60,13 +61,27 @@ function drawMinimap() {
   ctx.strokeStyle = 'rgba(216,178,90,0.8)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  // Aigua (mateixa transformació que la boira)
+  if (WATER.any && WATER.mmCanvas) {
+    ctx.save();
+    ctx.beginPath();
+    corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.clip();
+    const c0 = mm.size / 2;
+    ctx.transform(ax.rx * mm.scale, -ax.fx * mm.scale, ax.rz * mm.scale, -ax.fz * mm.scale, c0, c0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(WATER.mmCanvas, -L, -L, 2 * L, 2 * L);
+    ctx.restore();
+    ctx.setTransform(mm.dpr, 0, 0, mm.dpr, 0, 0);
+  }
   // Recursos
   for (const n of state.resourceNodes) {
     if (!n.group.visible) continue;
     if (n.footprint) { mmRect(ctx, n, ax, n.selected ? '#ffffff' : MM_COLORS.farm, null); continue; }
     const [x, y] = worldToMM(n.position.x, n.position.z, ax);
     ctx.fillStyle = MM_COLORS[n.subtype] || '#fff';
-    const r = n.subtype === 'tree' ? 1.8 : n.subtype === 'sheep' ? 1.6 : n.subtype === 'berries' ? 1.8 : 3;
+    const r = n.subtype === 'tree' ? 1.8 : (n.subtype === 'sheep' || n.animal) ? 1.6 : (n.subtype === 'berries' || n.subtype === 'fish') ? 1.8 : 3;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
   // Relíquies (quadrats blancs amb vora daurada)

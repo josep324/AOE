@@ -361,4 +361,3 @@ function updateSparkles(dt) {
   }
 }
 
-placeRelics();

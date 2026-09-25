@@ -42,6 +42,13 @@ function rebuildNav() {
       }
     }
   }
+  // Aigua: la fonda bloqueja el pas; els guals es travessen però no s'hi construeix
+  if (WATER.any && WATER.N === N) {
+    for (let k = 0; k < N * N; k++) {
+      const w = WATER.mask[k];
+      if (w === 1) { NAV.walk[k] = 1; NAV.build[k] = 1; } else if (w === 2) NAV.build[k] = 1;
+    }
+  }
   // Les granges es poden trepitjar però ocupen terreny
   for (const e of state.buildings.concat(state.resourceNodes)) {
     if (e.subtype !== 'farm' || e.dead || e.depleted) continue;
@@ -51,6 +58,36 @@ function rebuildNav() {
         NAV.build[j * N + i] = 1;
   }
   NAV.version++;
+  rebuildObstacleGrid();
+}
+/* Índex espacial dels obstacles (cel·les de 8 unitats): la col·lisió només mira els propers.
+   Els obstacles grans (edificis) van en una llista a part que es comprova sempre. */
+const OBS_GRID = { cell: 8, map: new Map(), big: [], count: -1 };
+function rebuildObstacleGrid() {
+  OBS_GRID.map.clear();
+  OBS_GRID.big = [];
+  const c = OBS_GRID.cell;
+  for (const o of state.obstacles) {
+    const ext = o.rect ? Math.max(o.hw, o.hd) : o.r;
+    if (ext > 2.6 || (o.entity && o.entity.mobile)) { OBS_GRID.big.push(o); continue; }
+    const k = spatialKey(Math.floor(o.x / c), Math.floor(o.z / c));
+    let arr = OBS_GRID.map.get(k);
+    if (!arr) OBS_GRID.map.set(k, arr = []);
+    arr.push(o);
+  }
+  OBS_GRID.count = state.obstacles.length;
+}
+function obstaclesNear(x, z, out) {
+  if (OBS_GRID.count !== state.obstacles.length) rebuildObstacleGrid();
+  out.length = 0;
+  for (const o of OBS_GRID.big) out.push(o);
+  const c = OBS_GRID.cell;
+  const i0 = Math.floor(x / c), j0 = Math.floor(z / c);
+  for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) {
+    const arr = OBS_GRID.map.get(spatialKey(i, j));
+    if (arr) for (const o of arr) out.push(o);
+  }
+  return out;
 }
 
 function nearestFreeCell(i, j, maxR = 8) {

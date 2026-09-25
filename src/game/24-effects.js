@@ -37,6 +37,7 @@ function depleteResource(node) {
   node.depleted = true;
   node.amount = 0;
   state.resourceNodes = state.resourceNodes.filter(n => n !== node);
+  if (node.animal) state.animals = state.animals.filter(n => n !== node);
   state.obstacles = state.obstacles.filter(o => o.entity !== node);
   state.pickables = state.pickables.filter(m => m.userData.entity !== node);
   if (node.selected) { removeFromSelection(node); onSelectionChanged(); }
@@ -64,6 +65,8 @@ function depleteResource(node) {
 function updateResourceNodes(dt) {
   for (const n of state.resourceNodes) {
     if (n.subtype === 'sheep') updateSheep(n, dt);
+    else if (n.animal) updateAnimal(n, dt);
+    else if (n.subtype === 'fish') updateFish(n, dt);
     if (n.shakeT > 0) {
       n.shakeT = Math.max(0, n.shakeT - dt);
       const a = n.shakeT * 40;

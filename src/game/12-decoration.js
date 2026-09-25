@@ -27,6 +27,7 @@ function pushOutOf(p, o, margin) {
   return s;
 }
 function isNearObstacle(x, z, margin) {
+  if (WATER.any && waterNear(x, z, Math.max(0.5, margin))) return true;
   for (const o of state.obstacles) if (obstacleSurface(o, x, z).d < margin) return true;
   return false;
 }
@@ -76,7 +77,14 @@ function grassTuftTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
+function removeDecorations() {
+  for (const m of [decor.grass, decor.rocks]) if (m) { scene.remove(m); m.dispose(); }
+  decor.grass = decor.rocks = null;
+  decor.grassPos = [];
+  decor.rockPos = [];
+}
 function createDecorations() {
+  removeDecorations();
   const dummy = new THREE.Object3D();
   const area = CONFIG.MAP_LIMIT + 60;
 

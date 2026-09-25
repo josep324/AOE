@@ -136,7 +136,7 @@ function updateSelectionUI(panelOnly = false) {
     }
     const isRes = first.kind === 'resource';
     const resLabel = isRes ? RES_LABEL[first.resourceType] : '';
-    const bar = first.kind === 'relic' ? `<div class="bar res"><i style="width:100%"></i><span>🪙 +${RELIC_GOLD} d'or/s en un Monestir</span></div>` : isRes
+    const bar = first.animal && first.alive ? hpBar({ hp: Math.ceil(first.hp), maxHp: first.maxHp }) + (first.resourceType ? `<div class="stats"><span>🍖 Carn <b>${first.amount}</b></span></div>` : '') : first.kind === 'relic' ? `<div class="bar res"><i style="width:100%"></i><span>🪙 +${RELIC_GOLD} d'or/s en un Monestir</span></div>` : isRes
       ? `<div class="bar res"><i style="width:${(first.amount / first.maxAmount) * 100}%"></i><span>${resLabel}: ${first.amount}</span></div>`
       : first.underConstruction
         ? `<div class="bar build"><i style="width:${first.progress * 100}%"></i><span>Construcció: ${Math.floor(first.progress * 100)}%</span></div>`
@@ -339,6 +339,14 @@ function updateSelectionUI(panelOnly = false) {
     actionsEl.innerHTML = `<div class="action-hint">${first.kind === 'unit' ? 'Unitat' : 'Edifici'} de l'<b style="color:#ff8a7a">${teamOf(first.team).name}</b>.<br>Selecciona unitats i fes <kbd>clic dret</kbd><br>per atacar-lo.</div>`;
   } else if (first.kind === 'relic') {
     actionsEl.innerHTML = `<div class="action-hint">Relíquia sagrada. Només els <b>monjos</b> la poden portar.<br>Guardada en un <b>Monestir</b> dona +0,5 d'or per segon.${state.victory === 'standard' ? '<br>Qui tingui <b>totes</b> les relíquies uns minuts guanya.' : ''}</div>`;
+  } else if (first.animal) {
+    actionsEl.innerHTML = `<div class="action-hint">${first.subtype === 'wolf'
+      ? '🐺 Llop salvatge: ataca les unitats que s\'hi acosten.<br>Envia-hi soldats (<kbd>clic dret</kbd>).'
+      : first.alive
+        ? `${first.icon} ${first.subtype === 'boar' ? 'Senglar: molt fort i envesteix. Caça\'l amb uns quants aldeans' : 'Cérvol: fuig quan t\'hi acostes. Els aldeans el cacen'} (<kbd>clic dret</kbd>).<br>Després en poden recollir la carn.`
+        : 'Animal caçat: selecciona aldeans i fes <kbd>clic dret</kbd><br>per recollir-ne la carn.'}</div>`;
+  } else if (first.subtype === 'fish') {
+    actionsEl.innerHTML = `<div class="action-hint">🐟 Banc de peixos: ${first.amount} d'aliment.<br>Els aldeans hi pesquen des de la riba (<kbd>clic dret</kbd>).</div>`;
   } else if (first.kind === 'resource' && first.subtype === 'farm') {
     actionsEl.innerHTML = `<div class="action-hint">Granja: ${first.amount} d'aliment.<br>Un sol granger hi pot treballar.<br>Descarrega al Molí o al Centre.</div>`;
   } else if (first.kind === 'resource') {

@@ -9,6 +9,21 @@ document.querySelectorAll('#diff-choices .choice').forEach(btn => btn.addEventLi
   chosenDiff = btn.dataset.diff;
   document.querySelectorAll('#diff-choices .choice').forEach(b => b.classList.toggle('on', b === btn));
 }));
+/* ---------- Tria del tipus de mapa ---------- */
+let chosenMap = 'random';
+const mapChoices = document.getElementById('map-choices');
+for (const [id, M] of [['random', { icon: '🎲', name: 'Aleatori', desc: 'Un dels quatre tipus a l\'atzar' }], ...Object.entries(MAP_TYPES)]) {
+  const b = document.createElement('button');
+  b.className = 'choice' + (id === chosenMap ? ' on' : '');
+  b.dataset.map = id;
+  b.textContent = `${M.icon} ${M.name}`;
+  b.title = M.desc;
+  b.addEventListener('click', () => {
+    chosenMap = id;
+    mapChoices.querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
+  });
+  mapChoices.appendChild(b);
+}
 let chosenVictory = 'standard';
 document.querySelectorAll('#victory-choices .choice').forEach(btn => btn.addEventListener('click', () => {
   chosenVictory = btn.dataset.victory;
@@ -67,6 +82,11 @@ function updateCivLabels() {
 updateCivLabels();
 
 document.getElementById('start-btn').addEventListener('click', () => {
+  // Mapa: es genera de nou si el tipus triat no és el que hi ha
+  const types = Object.keys(MAP_TYPES);
+  const mapType = chosenMap === 'random' ? types[Math.floor(Math.random() * types.length)] : chosenMap;
+  if (mapType !== WORLD.type) { resetWorld(); buildWorld(mapType, WORLD.seed); updateFog(); }
+  centerOn(townCenter.position, true);
   const others = Object.keys(CIVS).filter(k => k !== chosenCiv);
   setTeamCiv(PLAYER, chosenCiv);
   setTeamCiv(ENEMY, chosenEnemyCiv === 'random' ? others[Math.floor(Math.random() * others.length)] : chosenEnemyCiv);
@@ -81,5 +101,5 @@ document.getElementById('start-btn').addEventListener('click', () => {
   startScreen.classList.add('hidden');
   state.paused = false;
   canvas.focus();
-  toast(`${civOf(PLAYER.id).icon} ${civOf(PLAYER.id).name} contra ${civOf(ENEMY.id).icon} ${civOf(ENEMY.id).name} · Dificultat: ${AI.diff.label}`);
+  toast(`${MAP_TYPES[WORLD.type].icon} ${MAP_TYPES[WORLD.type].name} · ${civOf(PLAYER.id).icon} ${civOf(PLAYER.id).name} contra ${civOf(ENEMY.id).icon} ${civOf(ENEMY.id).name} · ${AI.diff.label}`);
 });

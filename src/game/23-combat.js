@@ -13,7 +13,7 @@ function inAttackRange(u, t) {
   return d <= (u.range > 0 ? u.range : u.reach);
 }
 function isAttackable(t) {
-  return t && !t.dead && !t.garrisoned && (t.isGround || t.kind === 'unit' || t.kind === 'building' || (t.subtype === 'farm' && t.team));
+  return t && !t.dead && !t.garrisoned && (t.isGround || t.kind === 'unit' || t.kind === 'building' || (t.subtype === 'farm' && t.team) || (t.animal && t.alive));
 }
 
 function orderAttack(u, target, keepAttackMove = true) {
@@ -78,6 +78,12 @@ function findTargetNear(u, radius) {
     if (d < radius && d < bestD) { bestD = d; best = e; }
   }
   if (best) return best;
+  // Els llops a prop també són un objectiu per a les tropes
+  if (!u.onlyBuildings) for (const w of wolvesNear(u.position.x, u.position.z, radius)) {
+    const d = hDist(w.position, u.position);
+    if (d < bestD) { bestD = d; best = w; }
+  }
+  if (best) return best;
   for (const b of state.buildings) {
     if (b.team === u.team || b.dead) continue;
     const d = entSurfaceDist(b, u.position.x, u.position.z);
@@ -101,11 +107,12 @@ function performAttack(u, t) {
 let lastAttackAlert = -99;
 function applyDamage(target, amount, attacker) {
   if (!target || target.dead) return;
+  if (target.animal) { animalHit(target, amount, attacker); return; }
   target.hp -= amount;
   target.lastHitT = state.elapsed;
   if (target.hp <= 0) { killEntity(target, attacker); return; }
   // Les unitats militars inactives responen l'atac
-  if (target.kind === 'unit' && target.isMilitary && attacker && !attacker.dead && attacker.kind === 'unit'
+  if (target.kind === 'unit' && target.isMilitary && attacker && !attacker.dead && (attacker.kind === 'unit' || (attacker.animal && attacker.alive))
       && (target.state === STATE.IDLE || (target.state === STATE.ATTACKING && target.attackTarget && target.attackTarget.kind === 'building'))
       && (target.stance !== 'stand' || inAttackRange(target, attacker))) {
     orderAttack(target, attacker);
@@ -156,7 +163,7 @@ function killEntity(e, killer) {
 const arrowGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.9, 4).rotateX(Math.PI / 2);
 const arrowTipGeo = new THREE.ConeGeometry(0.06, 0.18, 4).rotateX(Math.PI / 2).translate(0, 0, 0.5);
 function aimPoint(t) {
-  const y = t.kind === 'unit' ? 1.2 : (t.height ? t.height * 0.5 : 3);
+  const y = t.animal ? 0.8 : t.kind === 'unit' ? 1.2 : (t.height ? t.height * 0.5 : 3);
   return new THREE.Vector3(t.position.x, y, t.position.z);
 }
 function spawnArrow(from, target, dmg, shooter, delay = 0) {

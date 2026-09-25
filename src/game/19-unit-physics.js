@@ -7,8 +7,9 @@ function lerpAngle(a, b, t) {
 }
 const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
 
+const obsBuf = [];
 function resolveObstacleCollision(u, dt) {
-  for (const o of state.obstacles) {
+  for (const o of obstaclesNear(u.position.x, u.position.z, obsBuf)) {
     if (o.gateTeam === u.team) continue;
     const s = pushOutOf(u.position, o, u.radius);
     if (s && u.target) {

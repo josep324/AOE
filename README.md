@@ -32,6 +32,10 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 - ⚔️ **Conquesta**: només destruint l'enemic.
 - 👑 **Regicidi**: cada bàndol té un rei; si mor, perd.
 
+**Mapes** (es trien a l'inici; cada partida és diferent però justa, simètrica per als dos jugadors):
+🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb tres camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals).
+**Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba.
+
 **Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 
@@ -63,6 +67,8 @@ src/
     14 món           generació simètrica del mapa
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
     21 IA            economia, edats, exèrcit i atacs de l'enemic
+    05b aigua        llacs, rius i guals (graella, shader i navegació)
+    08b fauna        cérvols, senglars, llops i peixos
     22…24            boira de guerra, combat, setge (23a), monjos i relíquies (23b), efectes
     25…30            HUD, entrada, minimapa, barres de vida, flux de partida, desar/carregar
     31 bucle         simulació a pas fix (60 passos/s) i renderitzat

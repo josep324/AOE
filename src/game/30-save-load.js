@@ -8,7 +8,8 @@ function serializeGame() {
   const add = (e, data) => { idx.set(e, ents.length); ents.push(data); };
   for (const n of state.resourceNodes) {
     if (n.subtype === 'farm') continue;
-    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, scale: r2(n.group.scale.x), killed: !!n.killed });
+    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, scale: r2(n.group.scale.x), killed: !!n.killed,
+             hp: n.animal ? r2(n.hp) : undefined, alive: n.animal ? n.alive : undefined });
   }
   const farms = state.resourceNodes.filter(n => n.subtype === 'farm');
   for (const b of state.buildings.concat(farms)) {
@@ -40,7 +41,7 @@ function serializeGame() {
   let explored = '';
   for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
   return {
-    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory,
+    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: { 1: team(PLAYER), 2: team(ENEMY) },
     ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), waveCount: AI.waveCount, nextWaveAt: AI.nextWaveAt, armyCycle: AI.armyCycle },
@@ -71,13 +72,21 @@ function clearWorld() {
   for (const m of state.markers) scene.remove(m.g);
   for (const f of state.floaters) f.el.remove();
   for (const r of state.relics) scene.remove(r.group);
-  Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [], relics: [], relicWin: null,
+  Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [], relics: [], relicWin: null, animals: [],
                          projectiles: [], markers: [], floaters: [], pings: [], controlGroups: {} });
   cancelPlacement();
 }
 function loadGame(data) {
   if (!data || data.v !== 1) { toast('No hi ha cap partida desada vàlida'); return false; }
   clearWorld();
+  // Mapa: terreny, aigua i decoració del tipus i la llavor desats
+  removeDecorations();
+  clearWater();
+  paintGroundBase();
+  WORLD.type = MAP_TYPES[data.map] ? data.map : 'arabia';
+  WORLD.seed = (data.mapSeed ?? MAP_SEED) >>> 0;
+  setupWater(WORLD.type, WORLD.seed);
+  rebuildNav();
   // Equips: recursos, preus, edat i tecnologies (abans de crear les unitats)
   for (const [id, T] of [[1, PLAYER], [2, ENEMY]]) {
     const d = data.teams[id];
@@ -99,6 +108,12 @@ function loadGame(data) {
       else if (d.sub === 'gold') e = createGoldMine(d.x, d.z);
       else if (d.sub === 'stone') e = createStoneMine(d.x, d.z);
       else if (d.sub === 'berries') e = createBerryBush(d.x, d.z);
+      else if (ANIMALS[d.sub]) {
+        e = createAnimal(d.sub, d.x, d.z);
+        if (d.alive === false) { e.alive = false; e.killed = true; e.hp = 0; e.name = `${ANIMALS[d.sub].name} (carn)`; }
+        else if (d.hp !== undefined) e.hp = d.hp;
+      }
+      else if (d.sub === 'fish') e = createFish(d.x, d.z);
       else if (d.sub === 'sheep') {
         e = createSheep(d.x, d.z);
         if (d.killed) { e.killed = true; e.mobile = false; e.name = 'Ovella (carn)'; }
@@ -135,6 +150,7 @@ function loadGame(data) {
     made.push(e);
   }
   createBuilding.batch = false;
+  createDecorations();
   rebuildNav();
   // Relíquies portades o guardades
   data.ents.forEach((d, i) => {

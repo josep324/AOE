@@ -53,6 +53,8 @@ const GROUND_KINDS = {
   forest: ['rgba(58,66,30,', 'rgba(66,62,34,', 'rgba(50,58,28,'],
   rock: ['rgba(118,108,90,', 'rgba(104,98,84,', 'rgba(128,118,98,'],
   trampled: ['rgba(120,118,64,', 'rgba(112,106,60,'],
+  sand: ['rgba(196,178,128,', 'rgba(184,166,118,', 'rgba(206,190,140,'],
+  mud: ['rgba(92,84,58,', 'rgba(84,78,56,'],
 };
 /* Taca irregular sobre el terreny (diversos cercles difuminats) */
 function groundPaint(x, z, r, kind = 'dirt', strength = 0.8) {
@@ -88,7 +90,8 @@ function flushGroundPaint() {
 }
 
 let ground;
-function createGround() {
+/* Pinta la textura base del terreny (també per començar un mapa nou) */
+function paintGroundBase() {
   const P = GROUND_PAINT;
   // Textura base: variació de la gespa amb soroll (a baixa resolució, s'amplia suaument)
   const lo = 256;
@@ -113,9 +116,13 @@ function createGround() {
     img.data[k + 3] = 255;
   }
   bctx.putImageData(img, 0, 0);
-  P.canvas = document.createElement('canvas');
-  P.canvas.width = P.canvas.height = P.size;
-  P.ctx = P.canvas.getContext('2d');
+  if (!P.canvas) {
+    P.canvas = document.createElement('canvas');
+    P.canvas.width = P.canvas.height = P.size;
+    P.ctx = P.canvas.getContext('2d');
+  }
+  P.ctx.filter = 'none';
+  P.ctx.globalAlpha = 1;
   P.ctx.imageSmoothingEnabled = true;
   P.ctx.drawImage(base, 0, 0, P.size, P.size);
   // Petites clarianes i flors
@@ -124,6 +131,11 @@ function createGround() {
     P.ctx.fillStyle = terrainRng() < 0.5 ? 'rgba(140,140,76,0.12)' : 'rgba(58,80,30,0.16)';
     P.ctx.beginPath(); P.ctx.arc(x, y, 1 + terrainRng() * 3, 0, Math.PI * 2); P.ctx.fill();
   }
+  P.dirty = true;
+}
+function createGround() {
+  const P = GROUND_PAINT;
+  paintGroundBase();
   P.tex = new THREE.CanvasTexture(P.canvas);
   P.tex.colorSpace = THREE.SRGBColorSpace;
   P.tex.wrapS = P.tex.wrapT = THREE.ClampToEdgeWrapping;

@@ -62,6 +62,7 @@ function animate() {
   updateParticles(dt);
   updateFloaters(dt);
   updateSparkles(dt);
+  updateWater(state.elapsed);
   animateRelics(state.elapsed);
   updatePlacement();
   updateTrainingUI();

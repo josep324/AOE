@@ -354,6 +354,15 @@ function issueRightClick(x, y, queued = false) {
       if (targetEnt.kind === 'relic' || !(targetEnt.team && targetEnt.team !== PLAYER.id)) { commandMove(units, targetEnt.position.clone(), queued); return; }
     }
   }
+  // Animal viu: els aldeans el cacen (si dona carn); la resta de tropes l'ataquen
+  if (targetEnt && targetEnt.animal && targetEnt.alive) {
+    const hunters = targetEnt.resourceType ? units.filter(u => u.subtype === 'villager') : [];
+    const fighters = units.filter(u => !hunters.includes(u) && !isMonk(u));
+    if (hunters.length) { if (queued) hunters.forEach(u => enqueueOrder(u, { type: 'gather', node: targetEnt })); else commandGather(hunters, targetEnt); }
+    if (fighters.length) commandAttack(fighters, targetEnt, queued);
+    spawnMoveMarker(targetEnt.position, hunters.length ? 0xffd84a : 0xff4a3a, targetEnt.radius + 0.9);
+    return;
+  }
   // Enemic: atacar (tothom)
   if (targetEnt && targetEnt.team && targetEnt.team !== PLAYER.id && isAttackable(targetEnt)) {
     units = units.filter(u => !isMonk(u));

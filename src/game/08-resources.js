@@ -169,6 +169,7 @@ function createSheep(x, z) {
   return e;
 }
 
+const sheepObsBuf = [];
 function updateSheep(n, dt) {
   if (n.killed) {
     // Ajeure's de costat
@@ -199,7 +200,7 @@ function updateSheep(n, dt) {
       }
     }
     // Col·lisió amb els obstacles (excepte ella mateixa)
-    for (const o of state.obstacles) {
+    for (const o of obstaclesNear(n.position.x, n.position.z, sheepObsBuf)) {
       if (o.entity === n) continue;
       if (pushOutOf(n.position, o, n.radius)) n.wanderTarget = null;
     }

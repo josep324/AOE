@@ -30,7 +30,7 @@ const CONFIG = {
   GATHER: {
     capacity: 10,                         // càrrega màxima per viatge
     // unitats per segon segons el tipus de recurs
-    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1, farm: 0.7 },
+    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1, farm: 0.7, deer: 1.2, boar: 1.3, fish: 0.8 },
     reach: 0.75,                          // distància extra per començar a treballar
     autoSearchRadius: 32,                 // radi per buscar un recurs nou quan s'esgota
   },
@@ -115,6 +115,7 @@ const state = {
   floaters: [],
   dying: [],          // recursos esgotats fent l'animació de desaparició
   projectiles: [],
+  animals: [],        // fauna salvatge (cérvols, senglars, llops), vius o caçats
   relics: [],         // relíquies (a terra, portades per un monjo o guardades en un monestir)
   sparkles: [],       // espurnes de conversió i curació (només visuals)
   victory: 'standard',   // standard (conquesta + Meravella + relíquies) · conquest · regicide
@@ -137,5 +138,8 @@ function mulberry32(seed) {
 }
 /* Llavor del mapa: aleatòria a cada partida (o fixa amb ?seed=123 a l'adreça) */
 const MAP_SEED = (parseInt(new URLSearchParams(location.search).get('seed'), 10) || Math.floor(Math.random() * 1e9)) >>> 0;
-const rand = mulberry32(MAP_SEED);
+let randGen = mulberry32(MAP_SEED);
+const rand = () => randGen();
+/* Torna a sembrar l'aleatorietat de la simulació (cada mapa es genera igual a partir de la seva llavor) */
+function reseedRand(seed) { randGen = mulberry32(seed >>> 0); }
 const randRange = (a, b) => a + (b - a) * rand();
