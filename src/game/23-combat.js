@@ -174,7 +174,7 @@ function aimPoint(t) {
    l'objectiu. Un arquer pot fallar (accuracy) i una unitat que es mou esquiva la fletxa si el
    tirador no té Balística (que apunta on anirà l'objectiu). Una fletxa desviada pot tocar un altre
    enemic. Els edificis sempre encerten. */
-const ARROW_SPEED = 30;
+const ARROW_SPEED = 48;          // ≈ 7 caselles/s de l'AoE II a l'escala de moviment del joc
 function arrowAim(shooter, target, from) {
   const end = aimPoint(target);
   if (!shooter || shooter.kind !== 'unit' || target.kind !== 'unit') return { end, homing: true };
@@ -269,7 +269,7 @@ function updateDefensiveBuildings(dt) {
       }
     }
     if (!target) { b.arrowCooldown = 0.3; continue; }
-    b.arrowCooldown = C.reload;
+    b.arrowCooldown = C.reload / COMBAT_TEMPO;
     const M = teamOf(b.team).mods;
     const arrows = (C.count || 1) + (isTC ? 0 : M.towerArrows) + Math.min(b.subtype === 'castle' ? 20 : 10, b.garrison ? b.garrison.length : 0);
     const spread = isTC ? 3.5 : b.subtype === 'castle' ? 4 : 0.6;

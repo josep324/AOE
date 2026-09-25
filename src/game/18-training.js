@@ -177,7 +177,7 @@ function applyTechEffect(team, kind) {
     case 'ringarcher': M.armor.archer = [M.armor.archer[0] + 1, M.armor.archer[1] + 2]; break;
     case 'ironcasting': M.attack.infantry += 1; M.attack.cavalry += 1; break;
     case 'blastfurnace': M.attack.infantry += 2; M.attack.cavalry += 2; break;
-    case 'bodkin': case 'bracer': M.attack.archer += 1; M.range.archer += 1; M.buildingArrow += 1; break;
+    case 'bodkin': case 'bracer': M.attack.archer += 1; M.range.archer += TILE; M.buildingArrow += 1; break;
     case 'chainmail': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 1]; break;
     case 'platemail': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 2]; break;
     case 'chainbarding': M.armor.cavalry = [M.armor.cavalry[0] + 1, M.armor.cavalry[1] + 1]; break;
@@ -194,7 +194,7 @@ function applyTechEffect(team, kind) {
     case 'horsecollar': M.farmBonus += 75; break;
     case 'reseed': M.autoReseed = true; break;
     case 'forging': M.attack.infantry += 1; M.attack.cavalry += 1; break;
-    case 'fletching': M.attack.archer += 1; M.range.archer += 1; M.buildingArrow += 1; break;
+    case 'fletching': M.attack.archer += 1; M.range.archer += TILE; M.buildingArrow += 1; break;
     case 'scalearmor': M.armor.infantry = [M.armor.infantry[0] + 1, M.armor.infantry[1] + 1]; break;
     case 'barding': M.armor.cavalry = [M.armor.cavalry[0] + 1, M.armor.cavalry[1] + 1]; break;
     case 'beardedaxe': M.unitRange.throwingaxe = (M.unitRange.throwingaxe || 0) + 1; break;

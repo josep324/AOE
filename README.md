@@ -49,7 +49,9 @@ esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al p
 
 **Ordres**: 🔁 **Patrullar** (<kbd>K</kbd>, Shift per afegir punts) · 🛡️ **Escortar** una unitat pròpia (<kbd>Y</kbd>) ·
 ⚔️ soldats inactius (<kbd>,</kbd>) · 🌱 **cua de granges** al Molí (es paguen ara i es resembren soles).
-**Punteria** com a l'AoE II: els arquers poden fallar i les unitats que corren de costat esquiven les fletxes.
+**Arquers** com a l'AoE II: abast de 4-5 caselles (+1 per Plomes, Punta perforant i Braçal), +3 contra llancers, punteria
+(poden fallar i les unitats que corren de costat esquiven les fletxes; les que carreguen les reben).
+**Ritme de combat** com a la velocitat normal de l'AoE II DE (les recàrregues de les dades, ×1,7 en temps real).
 Tecnologies: Anell del polze (no fallen i disparen més de pressa), Balística (apunten on anirà l'objectiu), Llinatges,
 Ramaderia, Escuders, Muralla fortificada i Heretgia.
 

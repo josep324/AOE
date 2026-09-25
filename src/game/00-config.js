@@ -27,6 +27,11 @@ function storedMapSize() {
   return 'medium';
 }
 const MAP_SIZE = storedMapSize();
+const TILE = 2.15;              // una casella de l'AoE II, en metres del joc (abasts, mides)
+/* Ritme del combat: les recàrregues de les dades són les de l'AoE II (segons de joc); a la velocitat
+   normal de l'AoE II DE (×1,7) passen més de pressa en temps real. Sense aquest factor els combats
+   anaven massa lents comparats amb el moviment i l'economia (i els arquers disparaven massa poc). */
+const COMBAT_TEMPO = 1.7;
 const CONFIG = {
   GROUND_SIZE: 1000,          // mida visual del terreny (les vores queden dins la boira)
   MAP_LIMIT: MAP_SIZES[MAP_SIZE].limit,   // límit jugable (±): el mapa Mitjà fa 360×360

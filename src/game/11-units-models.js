@@ -32,7 +32,7 @@ function setUnitStats(e, kind) {
   e.range = baseRange + (baseRange ? (M.range[cat] || 0) + (M.unitRange[kind] || 0) : 0);
   e.minRange = d.minRange || 0;
   e.reach = d.reach || 0.45;
-  e.reload = d.reload * (M.reloadMul[cat] || 1);
+  e.reload = d.reload * (M.reloadMul[cat] || 1) / COMBAT_TEMPO;
   const ma = cat === 'villager' ? M.villagerArmor : (M.armor[cat] || [0, 0]);
   e.armor = [d.armor[0] + ma[0], d.armor[1] + ma[1] + (cat === 'ship' ? M.shipArmor : 0)];
   e.bonusShip = d.bonusShip || 0;
@@ -51,6 +51,8 @@ function setUnitStats(e, kind) {
   e.garrisonCap = (d.garrison || 0) + (kind === 'transport' ? M.transportCap : 0);
   e.mounted = mounted;
   e.bonusArcher = d.bonusArcher || 0;
+  e.bonusSpear = d.bonusSpear || 0;
+  e.spearLine = kind === 'spearman' || d.line === 'spearman';
   if (cat === 'siege') e.vsBuilding = Math.round(e.vsBuilding * M.siegeBldMul);
   const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : cat === 'monk' ? M.monkHp : 0) + (mounted ? M.mountedHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;

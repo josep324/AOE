@@ -2,6 +2,7 @@
    PROVES DEL JOC (navegador real amb Playwright)
    Ús:  npm test                 → compila i passa totes les proves
         node tests/run.mjs ai    → només les proves que contenen «ai» al nom
+        node tests/run.mjs --bench → bancs de proves (p. ex. la IA durant 25 minuts)
    Cada fitxer *.test.mjs exporta una funció async ({ open, assert, log }) que obre el joc
    (index.html compilat) i el comprova a través de window.RTS.
    ===================================================================== */
@@ -33,8 +34,10 @@ const browser = await chromium.launch(launchOpts);
 class AssertError extends Error {}
 function assert(cond, msg) { if (!cond) throw new AssertError(msg); }
 
-const filter = process.argv[2] || '';
-const files = (await readdir(join(ROOT, 'tests'))).filter(f => f.endsWith('.test.mjs') && f.includes(filter)).sort();
+// --bench: bancs de proves (només mesuren, triguen més): node tests/run.mjs --bench
+const bench = process.argv.includes('--bench');
+const filter = process.argv.slice(2).find(a => !a.startsWith('--')) || '';
+const files = (await readdir(join(ROOT, 'tests'))).filter(f => f.endsWith(bench ? '.bench.mjs' : '.test.mjs') && f.includes(filter)).sort();
 let failed = 0;
 for (const f of files) {
   const pages = [];

@@ -95,6 +95,7 @@ function hitDamage(u, t, type) {
   let d = computeDamage(u.attack, t, type, u.vsBuilding);
   if (t.mounted) d += u.bonusCav || 0;
   if (t.category === 'archer') d += u.bonusArcher || 0;
+  if (t.spearLine) d += u.bonusSpear || 0;
   if (t.isUnique) d += u.bonusUnique || 0;
   if (t.naval) d += u.bonusShip || 0;
   return d;
