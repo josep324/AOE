@@ -43,7 +43,7 @@ function hasModel(key) { return MODEL_LIB.has(key); }
 function libraryModel(key, team = 0, fit = null) {
   const list = MODEL_LIB.get(key);
   if (!list || !list.length) return null;
-  const obj = list[Math.floor(rand() * list.length)].clone(true);
+  const obj = list[Math.floor(vrand() * list.length)].clone(true);
   let hasTeamMat = false;
   obj.traverse(o => {
     if (!o.isMesh) return;

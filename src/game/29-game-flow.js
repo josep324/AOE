@@ -127,12 +127,12 @@ document.getElementById('start-btn').addEventListener('click', () => {
   }
   // Mapa: es genera de nou si el tipus triat no és el que hi ha
   const types = Object.keys(MAP_TYPES);
-  const mapType = chosenMap === 'random' ? types[Math.floor(Math.random() * types.length)] : chosenMap;
+  const mapType = chosenMap === 'random' ? types[Math.floor(Math.random() * types.length)] : chosenMap;   // atzar-ui
   if (mapType !== WORLD.type) { resetWorld(); buildWorld(mapType, WORLD.seed); updateFog(); }
   centerOn(townCenter.position, true);
   const others = Object.keys(CIVS).filter(k => k !== chosenCiv);
   setTeamCiv(PLAYER, chosenCiv);
-  setTeamCiv(ENEMY, chosenEnemyCiv === 'random' ? others[Math.floor(Math.random() * others.length)] : chosenEnemyCiv);
+  setTeamCiv(ENEMY, chosenEnemyCiv === 'random' ? others[Math.floor(Math.random() * others.length)] : chosenEnemyCiv);   // atzar-ui
   updateCivLabels();
   state.victory = chosenVictory;
   if (state.victory === 'regicide') createKings();

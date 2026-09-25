@@ -42,7 +42,7 @@ function depleteResource(node) {
   state.pickables = state.pickables.filter(m => m.userData.entity !== node);
   if (node.selected) { removeFromSelection(node); onSelectionChanged(); }
   node.dieT = 0;
-  node.fallDir = rand() * Math.PI * 2;
+  node.fallDir = vrand() * Math.PI * 2;
   state.dying.push(node);
   if (node.subtype === 'gold') toast("⛏️ Una Veta d'Or s'ha esgotat");
   if (node.subtype === 'stone') toast('🪨 Una Mina de Pedra s\'ha esgotat');
@@ -90,7 +90,7 @@ function updateResourceNodes(dt) {
       const f = Math.min(1, n.dieT / 2.2);
       n.group.position.y = -f * f * (n.height || 9);
       n.group.rotation.z = Math.sin(n.dieT * 30) * 0.01 * (1 - f);
-      if (Math.random() < dt * 12) spawnParticles(new THREE.Vector3(n.position.x + randRange(-3, 3), 0.5, n.position.z + randRange(-3, 3)), 0x9b958a, 2, null);
+      if (vrand() < dt * 12) spawnParticles(new THREE.Vector3(n.position.x + vrandRange(-3, 3), 0.5, n.position.z + vrandRange(-3, 3)), 0x9b958a, 2, null);
       if (n.dieT > 2.4) removeDead(n, i);
     } else if (n.resourceType === 'wood') {
       // L'arbre cau i després s'enfonsa
@@ -119,15 +119,15 @@ function spawnParticles(pos, color, count, dir) {
     const m = particlePool.pop() || new THREE.Mesh(particleGeo, mat(color));
     m.material = mat(color, color === 0xffd24a ? { emissive: 0x6a4a00, emissiveIntensity: 0.8, metalness: 0.6, roughness: 0.3 } : { roughness: 0.9 });
     m.position.copy(pos);
-    m.rotation.set(rand() * 3, rand() * 3, rand() * 3);
-    m.scale.setScalar(randRange(0.6, 1.2));
+    m.rotation.set(vrand() * 3, vrand() * 3, vrand() * 3);
+    m.scale.setScalar(vrandRange(0.6, 1.2));
     const back = dir ? -1 : 0;
     m.userData.vel = new THREE.Vector3(
-      randRange(-2, 2) + (dir ? dir.x * back * 2 : 0),
-      randRange(2.5, 5),
-      randRange(-2, 2) + (dir ? dir.z * back * 2 : 0)
+      vrandRange(-2, 2) + (dir ? dir.x * back * 2 : 0),
+      vrandRange(2.5, 5),
+      vrandRange(-2, 2) + (dir ? dir.z * back * 2 : 0)
     );
-    m.userData.life = randRange(0.5, 0.8);
+    m.userData.life = vrandRange(0.5, 0.8);
     m.castShadow = false;
     scene.add(m);
     state.particles.push(m);

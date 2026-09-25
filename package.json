@@ -6,13 +6,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/publish.js",
-    "preview": "vite preview"
+    "build": "node scripts/check.js && vite build && node scripts/publish.js",
+    "preview": "vite preview",
+    "test": "npm run build && node tests/run.mjs",
+    "check": "node scripts/check.js"
   },
   "dependencies": {
     "three": "0.160.0"
   },
   "devDependencies": {
+    "playwright": "1.56.1",
     "vite": "^5.4.0",
     "vite-plugin-singlefile": "^2.0.0"
   }

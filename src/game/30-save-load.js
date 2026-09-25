@@ -41,7 +41,7 @@ function serializeGame() {
   let explored = '';
   for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
   return {
-    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE,
+    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE, rng: RNG.s,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: { 1: team(PLAYER), 2: team(ENEMY) },
     ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), waveCount: AI.waveCount, nextWaveAt: AI.nextWaveAt, armyCycle: AI.armyCycle },
@@ -185,6 +185,7 @@ function loadGame(data) {
   camState.targetDist = camState.dist = data.cam.dist;
   camState.vel.set(0, 0, 0); camState.goal = null;
   state.over = false;
+  if (Number.isFinite(data.rng)) RNG.s = data.rng | 0;   // l'atzar continua on era
   updateFog();
   updateResourcesUI();
   updatePopulationUI();

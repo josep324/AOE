@@ -140,7 +140,7 @@ function killEntity(e, killer) {
     state.units = state.units.filter(u => u !== e);
     e.deathKind = 'unit';
     e.model.rotation.set(0, 0, 0);
-    e.fallDir = rand() < 0.5 ? -1 : 1;
+    e.fallDir = vrand() < 0.5 ? -1 : 1;
   } else {
     // Edifici (o granja): els refugiats surten, les relíquies cauen, s'allibera el terreny
     if (e.garrison && e.garrison.length) ungarrison(e);

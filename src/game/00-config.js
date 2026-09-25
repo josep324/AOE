@@ -145,11 +145,16 @@ const state = {
 };
 PLAYER.res = state.resources;
 
-/* Generador pseudoaleatori amb llavor (layout reproduïble) */
+/* Generador pseudoaleatori amb llavor (mulberry32). L'estat és accessible perquè les partides
+   desades continuïn exactament igual: amb la mateixa llavor i les mateixes ordres, la simulació
+   dona sempre el mateix resultat. Només la lògica del joc el fa servir; els efectes purament
+   visuals (partícules, espurnes…) fan servir vrand perquè no alterin la seqüència. */
+const RNG = { s: 0 };
 function mulberry32(seed) {
+  RNG.s = seed | 0;
   return function () {
-    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    RNG.s = (RNG.s + 0x6D2B79F5) | 0;
+    let t = Math.imul(RNG.s ^ (RNG.s >>> 15), 1 | RNG.s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
@@ -160,4 +165,6 @@ let randGen = mulberry32(MAP_SEED);
 const rand = () => randGen();
 /* Torna a sembrar l'aleatorietat de la simulació (cada mapa es genera igual a partir de la seva llavor) */
 function reseedRand(seed) { randGen = mulberry32(seed >>> 0); }
+const vrand = Math.random;
+const vrandRange = (a, b) => a + (b - a) * vrand();
 const randRange = (a, b) => a + (b - a) * rand();

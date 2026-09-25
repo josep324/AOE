@@ -262,7 +262,7 @@ function depositRelic(u, m) {
 function dropRelic(r, pos) {
   r.carrier = null;
   r.holder = null;
-  const a = Math.random() * Math.PI * 2;
+  const a = rand() * Math.PI * 2;
   r.position.set(pos.x + Math.cos(a) * 0.8, 0, pos.z + Math.sin(a) * 0.8);
   clampToMap(r.position);
   r.group.visible = isExploredAt(r.position.x, r.position.z);
@@ -278,7 +278,7 @@ function unitDropRelic(u) {
 function buildingDropRelics(b) {
   if (!b.relics || !b.relics.length) return;
   for (const r of b.relics) {
-    const a = Math.random() * Math.PI * 2, d = (b.footprint ? b.footprint.hw : 3) + 1.5;
+    const a = rand() * Math.PI * 2, d = (b.footprint ? b.footprint.hw : 3) + 1.5;
     dropRelic(r, { x: b.position.x + Math.cos(a) * d, z: b.position.z + Math.sin(a) * d });
   }
   b.relics = [];
@@ -359,9 +359,9 @@ function spawnSparkles(pos, color, n, spread = 0.7) {
   const m = sparkleMats.get(color);
   for (let i = 0; i < n; i++) {
     const s = new THREE.Mesh(sparkleGeo, m);
-    s.position.set(pos.x + (Math.random() - 0.5) * spread * 2, pos.y + (Math.random() - 0.5) * spread, pos.z + (Math.random() - 0.5) * spread * 2);
-    s.userData.v = 0.8 + Math.random() * 1.4;
-    s.userData.life = 0.9 + Math.random() * 0.6;
+    s.position.set(pos.x + (vrand() - 0.5) * spread * 2, pos.y + (vrand() - 0.5) * spread, pos.z + (vrand() - 0.5) * spread * 2);
+    s.userData.v = 0.8 + vrand() * 1.4;
+    s.userData.life = 0.9 + vrand() * 0.6;
     scene.add(s);
     state.sparkles.push(s);
   }

@@ -140,7 +140,7 @@ function explodeDemolition(u, t) {
 /* Brulot: raig de foc a curta distància */
 function fireSpray(u, t) {
   const dir = new THREE.Vector3(t.position.x - u.position.x, 0, t.position.z - u.position.z).normalize();
-  if (Math.random() < 0.5) spawnParticles(new THREE.Vector3(u.position.x + dir.x * 1.2, 1.3, u.position.z + dir.z * 1.2), 0xff8a2a, 2, dir.clone().negate());
+  if (vrand() < 0.5) spawnParticles(new THREE.Vector3(u.position.x + dir.x * 1.2, 1.3, u.position.z + dir.z * 1.2), 0xff8a2a, 2, dir.clone().negate());
   applyDamage(t, hitDamage(u, t, 1), u);
 }
 
