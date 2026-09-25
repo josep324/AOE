@@ -177,6 +177,7 @@ mm.el.addEventListener('mousedown', (e) => {
   } else if (e.button === 2) {
     const units = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
     if (units.length) {
+      if (!e.shiftKey) clearStandingOrders(units);
       commandMove(units, w, e.shiftKey);
       spawnMoveMarker(w, e.shiftKey ? 0xfff27a : 0x8dff6a);
     }

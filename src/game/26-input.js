@@ -5,21 +5,39 @@ const selBoxEl = document.getElementById('selection-box');
 const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2, inside: false, overCanvas: false, down: false, dragging: false, sx: 0, sy: 0 };
 const keys = new Set();
 
-/* Mode «atacar el terra» (mangonells): el pròxim clic esquerre tria el punt */
-const groundMode = { on: false };
-function setGroundMode(on) {
+/* Modes d'ordre amb clic: el pròxim clic esquerre tria el punt o la unitat
+   ground: atacar el terra (mangonells) · patrol: patrullar · follow: escortar una unitat pròpia */
+const groundMode = { on: false, kind: 'ground' };
+const GROUND_MODE_HINT = {
+  ground: '☄️ Clic esquerre al terra on vols disparar (clic dret o Esc: cancel·lar)',
+  patrol: '🔁 Clic esquerre on han de patrullar (Shift: afegir punts; clic dret o Esc: cancel·lar)',
+  follow: '🛡️ Clic esquerre sobre la unitat pròpia que han d\'escortar (clic dret o Esc: cancel·lar)',
+};
+function setGroundMode(on, kind = 'ground') {
   groundMode.on = on;
+  groundMode.kind = kind;
   canvas.style.cursor = on ? 'crosshair' : '';
-  if (on) toast('☄️ Clic esquerre al terra on vols disparar (clic dret o Esc: cancel·lar)');
+  if (on) toast(GROUND_MODE_HINT[kind]);
 }
 canvas.addEventListener('mousedown', (e) => {
   canvas.focus();
   if (groundMode.on) {
+    const units = state.selected.filter(s => s.kind === 'unit' && s.isOwn);
+    let keep = false;
     if (e.button === 0) {
-      const p = pickGround(e.clientX, e.clientY);
-      if (p) commandAttackGround(state.selected.filter(s => s.kind === 'unit' && s.isOwn), clampToMap(p));
+      if (groundMode.kind === 'follow') {
+        const t = pickEntity(e.clientX, e.clientY);
+        if (t && t.kind === 'unit' && t.isOwn && commandFollow(units, t)) toast(`🛡️ Escortant: ${t.name}`);
+        else toast('Cal triar una unitat pròpia per escortar');
+      } else {
+        const p = pickGround(e.clientX, e.clientY);
+        if (p && groundMode.kind === 'patrol') {
+          if (commandPatrol(units, clampToMap(p), e.shiftKey)) spawnMoveMarker(clampToMap(p), 0xffd27a);
+          keep = e.shiftKey;
+        } else if (p) commandAttackGround(units, clampToMap(p));
+      }
     }
-    setGroundMode(false);
+    if (!keep) setGroundMode(false);
     return;
   }
   // Mode construcció: clic esquerre col·loca, clic dret cancel·la
@@ -138,6 +156,11 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // K: patrullar · Y: escortar · (també amb els botons del panell)
+  if (milSel.length && !builders().length && (code === 'KeyK' || code === 'KeyY')) {
+    setGroundMode(true, code === 'KeyK' ? 'patrol' : 'follow');
+    return;
+  }
   // F: canviar la formació del grup seleccionat
   if (code === 'KeyF' && !builders().length) {
     const fg = state.selected.filter(s => s.kind === 'unit' && s.isOwn && (s.isMilitary || s.category === 'monk'));
@@ -202,6 +225,9 @@ window.addEventListener('keydown', (e) => {
     case 'NumpadDecimal':
       selectNextIdle();
       break;
+    case 'Comma':
+      selectNextIdleMilitary();
+      break;
     case 'Space':
       if (state.selected.length) {
         const c = new THREE.Vector3();
@@ -257,6 +283,18 @@ function selectNextIdle() {
   centerOn(u.position);
 }
 document.getElementById('idle-btn').addEventListener('click', selectNextIdle);
+/* Soldats inactius: sense ordres, fora d'edificis i sense patrullar ni escortar */
+const isIdleMilitary = (u) => u.isOwn && u.isMilitary && !u.garrisoned && u.state === STATE.IDLE && !u.patrol && !u.follow;
+let idleMilCursor = 0;
+function selectNextIdleMilitary() {
+  const idle = state.units.filter(isIdleMilitary);
+  if (!idle.length) { toast('No hi ha cap soldat inactiu'); return; }
+  idleMilCursor = (idleMilCursor + 1) % idle.length;
+  const u = idle[idleMilCursor];
+  setSelection([u]);
+  centerOn(u.position);
+}
+document.getElementById('idle-mil-btn').addEventListener('click', selectNextIdleMilitary);
 
 /* Centra la càmera lliscant suaument (o de cop, per al minimapa) */
 function centerOn(p, instant = false) {

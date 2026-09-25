@@ -32,7 +32,7 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
   createTradeCart, marketTrade, orderTrade, exportGameCode, importGameCode, setStance, orderBuild, orderGather, depleteResource, simulate, createTownCenter, setTeamCiv, createVillager, createTradeCart, snapGateToWall, costFor, commandAttackGround, orderGarrison, ungarrison, togglePack, canGarrison, commandAttack, uniqueUnitOf,
   commandMove, setFormation, formationSlots, setSelection, updateSelectionUI,
   buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, canPlaceDock, findDockSpot, orderUnload, spawnUnit, orderAttack, orderGarrison, createAnimal, createFish, waterCell,
-  MAP_SIZE, MAP_SIZES, AIS, enableAIFor, RNG,
+  MAP_SIZE, MAP_SIZES, AIS, enableAIFor, RNG, commandPatrol, commandFollow, commandStop, queueFarm, unqueueFarm, teamOf,
   orderConvert, orderHeal, orderPickRelic, orderDepositRelic, createRelic, convertEntity, checkGameOver, createKings, victoryCheck, issueRightClick, unitDropRelic, pickEntity };
 
 // Acció pendent després de canviar la mida del mapa (recàrrega): començar o carregar la partida

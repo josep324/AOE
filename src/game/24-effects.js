@@ -51,11 +51,13 @@ function depleteResource(node) {
   if (node.subtype === 'farm') {
     const T = teamOf(node.team);
     const farmers = state.units.filter(u => u.gatherNode === node && !u.dead);
-    if (T.mods.autoReseed && canAfford(costFor('farm', node.team), node.team) && canPlace('farm', node.position.x, node.position.z)) {
-      applyCost(costFor('farm', node.team), -1, node.team);
+    // Primer les granges ja pagades a la cua del Molí; després la resembra automàtica (tecnologia)
+    const fromQueue = (T.farmQueue || 0) > 0;
+    if ((fromQueue || (T.mods.autoReseed && canAfford(costFor('farm', node.team), node.team))) && canPlace('farm', node.position.x, node.position.z)) {
+      if (fromQueue) T.farmQueue--; else applyCost(costFor('farm', node.team), -1, node.team);
       const nf = createBuilding('farm', node.position.x, node.position.z, false, node.team);
       farmers.forEach(u => { u.reseedFarm = nf; });
-      if (node.team === PLAYER.id) toast('🔁 Granja resembrada automàticament');
+      if (node.team === PLAYER.id) toast(fromQueue ? `🔁 Granja resembrada de la cua del Molí (${T.farmQueue} més)` : '🔁 Granja resembrada automàticament');
     } else if (node.team === PLAYER.id) {
       toast(T.mods.autoReseed ? '🌱 Una granja s\'ha esgotat (falta fusta per resembrar-la)' : '🌱 Una granja s\'ha esgotat');
     }

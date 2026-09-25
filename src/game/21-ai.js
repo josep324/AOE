@@ -148,6 +148,8 @@ function aiThink(A) {
   const wildFood = state.resourceNodes.some(n => n.resourceType === 'food' && n.subtype !== 'farm' && n.subtype !== 'fish' && n.subtype !== 'deepfish'
     && !(n.animal && n.alive) && hDist(n.position, tc.position) < 45);
   const farms = state.resourceNodes.filter(n => n.subtype === 'farm' && n.team === T).length + blds.filter(b => b.subtype === 'farm').length;
+  // Amb prou granges, en deixa unes quantes pagades a la cua del Molí perquè es resembrin soles
+  if (farms >= 6 && hasCompleted('mill', T) && (E.farmQueue || 0) < 3 && res.wood > 300) queueFarm(T, 1);
   if (!wildFood && hasCompleted('mill', T) && farms < Math.ceil(villagers.length * 0.4)) {
     const mill = blds.find(b => b.subtype === 'mill' && !b.underConstruction);
     aiBuild(A, 'farm', mill.position, 5, 16);
@@ -176,13 +178,14 @@ function aiThink(A) {
       aiBuild(A, 'watchtower', tc.position.clone().addScaledVector(dir, 16), 0, 10);
     }
     if (!has('archeryrange') && villagers.length >= 13) aiBuild(A, 'archeryrange', tc.position, 13, 30, 2);
-    if (!A.saving) for (const k of ['wheelbarrow', 'doublebit', 'horsecollar', 'forging', 'goldmining', 'fletching', 'scalearmor', 'paddedarcher', 'up_manatarms']) if (res.food > 350) tryTech(k);
+    if (!A.saving) for (const k of ['wheelbarrow', 'doublebit', 'horsecollar', 'forging', 'goldmining', 'fletching', 'scalearmor', 'paddedarcher', 'up_manatarms', 'bloodlines']) if (res.food > 350) tryTech(k);
   }
   if (E.age >= 2) {
     if (!has('university') && villagers.length >= 14 && res.wood >= 250) aiBuild(A, 'university', tc.position, 12, 30, 2);
     if (!A.saving && res.food > 500 && res.gold > 300) {
       for (const k of ['up_longsword', 'up_pikeman', 'up_crossbow', 'up_eliteskirm', 'up_lightcav', 'ironcasting', 'bodkin', 'chainmail',
-        'leatherarcher', 'bowsaw', 'goldshaft', 'heavyplow', 'handcart', 'masonry', 'guardtower', 'treadmill']) tryTech(k);
+        'leatherarcher', 'bowsaw', 'goldshaft', 'heavyplow', 'handcart', 'masonry', 'guardtower', 'treadmill',
+        'thumbring', 'ballistics', 'husbandry', 'squires']) tryTech(k);
     }
   }
   if (E.age >= 3 && !A.saving && res.food > 800 && res.gold > 600) {

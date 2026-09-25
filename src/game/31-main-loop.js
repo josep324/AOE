@@ -13,6 +13,7 @@ const fpsEl = document.getElementById('fps');
 let fpsFrames = 0, fpsTime = 0, lastClockSec = -1;
 let uiTimer = 0, fogTimer = 0, aiTimer = 0, overTimer = 0, fogReady = false;
 const idleCountEl = document.getElementById('idle-count');
+const idleMilCountEl = document.getElementById('idle-mil-count');
 
 /* ---------- Simulació a pas fix ----------
    La lògica del joc avança sempre en passos de 1/60 s, independentment dels fotogrames per segon:
@@ -78,6 +79,7 @@ function animate() {
     if (techSig !== lastTechSig) { lastTechSig = techSig; updateSelectionUI(); }
     else if (selectionSignature() !== lastSelSignature) updateSelectionUI(true);
     idleCountEl.textContent = state.units.filter(u => u.isOwn && u.subtype === 'villager' && u.state === STATE.IDLE).length;
+    idleMilCountEl.textContent = state.units.filter(isIdleMilitary).length;
     updatePopulationUI();
   }
   for (const a of state.animated) a.update(t, dt);

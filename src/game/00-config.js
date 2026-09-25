@@ -98,6 +98,7 @@ function defaultMods() {
     lineKind: {}, buildSpeed: 1, towerLevel: 0, siegeBldMul: 1,
     monkSpeed: 1, monkHp: 0, faithRegen: 1, convRange: 0,
     shipSpeed: 1, shipArmor: 0, shipGather: 1, transportCap: 0,
+    speedMul: {}, mountedHp: 0, mountedSpeed: 1, perfectAim: {}, ballistics: false, wallHpMul: 1,
   };
 }
 for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }

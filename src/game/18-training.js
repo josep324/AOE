@@ -110,6 +110,31 @@ function itemBlockReason(kind, team = PLAYER.id) {
 }
 
 /* Afegeix una unitat o tecnologia a la cua d'un edifici (el cost es paga en encuar) */
+/* Cua de granges del Molí (com a l'AoE II): es paguen ara i es resembren soles quan una s'esgota */
+const FARM_QUEUE_MAX = 40;
+function queueFarm(team, n = 1) {
+  const T = teamOf(team), cost = costFor('farm', team);
+  let added = 0;
+  for (let i = 0; i < n && (T.farmQueue || 0) < FARM_QUEUE_MAX && canAfford(cost, team); i++) {
+    applyCost(cost, -1, team);
+    T.farmQueue = (T.farmQueue || 0) + 1;
+    added++;
+  }
+  if (team === PLAYER.id) {
+    if (!added) toast(canAfford(cost, team) ? 'La cua de granges és plena' : 'No tens prou fusta per a una granja');
+    updateResourcesUI();
+  }
+  return added;
+}
+/* Treu una granja de la cua i en retorna el cost */
+function unqueueFarm(team) {
+  const T = teamOf(team);
+  if (!T.farmQueue) return false;
+  T.farmQueue--;
+  applyCost(costFor('farm', team), 1, team);
+  if (team === PLAYER.id) updateResourcesUI();
+  return true;
+}
 function queueUnit(building, kind) {
   kind = currentKind(building.team, kind);
   const def = itemDef(kind);
@@ -184,6 +209,13 @@ function applyTechEffect(team, kind) {
     case 'blockprinting': M.convRange += 3; break;
     case 'redemption': case 'atonement': case 'faith': break;
     case 'masonry': M.buildingHpMul *= 1.1; M.buildingArmor += 1; break;
+    case 'thumbring': M.reloadMul.archer = (M.reloadMul.archer || 1) / 1.18; M.perfectAim.archer = true; break;
+    case 'ballistics': M.ballistics = true; break;
+    case 'bloodlines': M.mountedHp += 20; break;
+    case 'husbandry': M.mountedSpeed *= 1.1; break;
+    case 'squires': M.speedMul.infantry = (M.speedMul.infantry || 1) * 1.1; break;
+    case 'fortifiedwall': M.wallHpMul *= 1.6; break;
+    case 'heresy': break;
     default:
       if (d.elite) M.elite[d.elite] = true;
       if (d.upgradeTo) M.lineKind[CONFIG.UNITS[d.upgradeTo].line] = d.upgradeTo;
@@ -194,6 +226,7 @@ function completeTech(team, kind) {
   applyTechEffect(team, kind);
   for (const u of state.units) if (u.team === team) { setUnitStats(u, u.unitKind); if (u.garrison && u.garrison.length) refreshContainer(u); }
   if (kind === 'masonry' || kind === 'architecture') for (const b of state.buildings) if (b.team === team) applyBuildingMods(b, 1.1);
+  if (kind === 'fortifiedwall') for (const b of state.buildings) if (b.team === team && isStoneWall(b)) applyBuildingMods(b, 1.6);
   if (kind === 'guardtower' || kind === 'keep') for (const b of state.buildings) if (b.team === team && b.subtype === 'watchtower') upgradeTower(b);
   // Millora de línia: les unitats existents passen al nou nivell (estadístiques i aspecte)
   if (d.upgradeTo) {

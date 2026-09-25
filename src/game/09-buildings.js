@@ -48,6 +48,7 @@ function upgradeTower(b) {
   rebuildBuildingModel(b);
 }
 /* Aplica una millora de resistència (Maçoneria) a un edifici existent */
+const isStoneWall = (b) => b.subtype === 'stonewall' || b.subtype === 'gate';
 function applyBuildingMods(b, mul) {
   b.maxHp = Math.round(b.maxHp * mul);
   b.hp = Math.round(b.hp * mul);
@@ -106,9 +107,9 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
   });
   e.def = def;
   const M = teamOf(team).mods;
-  e.maxHp = Math.round(def.hp * M.buildingHpMul * (type === 'watchtower' ? TOWER_LEVELS[M.towerLevel].hp : 1));
+  e.maxHp = Math.round(def.hp * M.buildingHpMul * (type === 'watchtower' ? TOWER_LEVELS[M.towerLevel].hp : 1) * (type === 'stonewall' || type === 'gate' ? M.wallHpMul : 1));
   if (type === 'watchtower') e.name = TOWER_LEVELS[M.towerLevel].name;
-  e.armor = (def.armor || [2, 6]).map(a => a + M.buildingArmor);
+  e.armor = (def.armor || [2, 6]).map(a => a + M.buildingArmor + ((type === 'stonewall' || type === 'gate') && M.wallHpMul > 1 ? 1 : 0));
   e.los = (def.los || 8) + (def.arrows ? (civOf(team).mods.towerLos || 0) : 0);
   if (def.trains || Object.values(CONFIG.TECHS).some(t => t.at === type)) e.trainQueue = [];
   if (def.trains) e.rally = null;

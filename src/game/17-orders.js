@@ -219,7 +219,67 @@ function runOrder(u, order) {
   }
 }
 
+/* ---------- Ordres permanents: patrullar i escortar ----------
+   Patrullar: la unitat va i ve entre el punt on era i els punts marcats, atacant el que troba.
+   Escortar: segueix una unitat pròpia (un monjo, un setge, un aldeà) i ataca qui s'hi acosti. */
+function clearStandingOrders(units) { for (const u of units) { u.patrol = null; u.follow = null; } }
+function commandPatrol(units, point, add = false) {
+  units = units.filter(u => u.isMilitary || u.category === 'monk');
+  if (!units.length) return false;
+  for (const [u, slot] of formationSlots(units, point, groupFormation(units))) {
+    if (add && u.patrol) { u.patrol.pts.push(slot.clone()); continue; }
+    u.follow = null;
+    u.orderQueue.length = 0;
+    u.patrol = { pts: [u.position.clone(), slot.clone()], i: 1 };
+    orderAttackMove(u, slot);
+  }
+  return true;
+}
+function commandFollow(units, target) {
+  units = units.filter(u => u !== target && !u.naval === !target.naval);
+  if (!units.length || !target || target.dead || target.kind !== 'unit') return false;
+  for (const u of units) {
+    u.patrol = null;
+    u.orderQueue.length = 0;
+    u.follow = target;
+    u.standT = 0;
+  }
+  return true;
+}
+/* Cada mig segon: següent tram de la patrulla, o atrapar / defensar la unitat escortada */
+function standingOrderTick(u, dt) {
+  u.standT = (u.standT || 0) - dt;
+  if (u.standT > 0) return;
+  u.standT = 0.5;
+  if (u.patrol) {
+    if (u.state === STATE.IDLE) {
+      const P = u.patrol;
+      P.i = (P.i + 1) % P.pts.length;
+      orderAttackMove(u, P.pts[P.i]);
+    }
+    return;
+  }
+  const t = u.follow;
+  if (!t) return;
+  if (t.dead || t.team !== u.team) { u.follow = null; if (u.state === STATE.MOVING) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); } return; }
+  const d = hDist(u.position, t.position);
+  // Si l'escortat s'allunya massa, deixa la lluita i el segueix
+  if (u.state === STATE.ATTACKING && d > 18) { u.attackTarget = null; setUnitState(u, STATE.IDLE); }
+  if (u.state === STATE.ATTACKING || u.state === STATE.CONVERTING || u.state === STATE.HEALING) return;
+  if (u.isMilitary && !t.garrisoned) {
+    const e = findTargetNear(u, Math.max(8, Math.min(u.los, 12)));
+    if (e && hDist(e.position, t.position) < 12) { orderAttack(u, e); return; }
+  }
+  if (t.garrisoned) return;
+  if (d > 4.5 && (u.state === STATE.IDLE || u.state === STATE.MOVING)) {
+    const away = new THREE.Vector3(u.position.x - t.position.x, 0, u.position.z - t.position.z);
+    if (away.lengthSq() < 1e-4) away.set(1, 0, 0);
+    orderMove(u, clampToMap(away.normalize().multiplyScalar(2.5 + t.radius + u.radius).add(t.position)));
+  }
+}
+
 function commandStop(units) {
+  clearStandingOrders(units);
   for (const u of units) {
     u.orderQueue.length = 0;
     setMoveTarget(u, null);
@@ -305,6 +365,7 @@ function commandReturn(units, building) {
 
 function issueRightClick(x, y, queued = false) {
   let units = state.selected.filter(e => e.kind === 'unit' && e.isOwn);
+  if (!queued) clearStandingOrders(units);
   const targetEnt = pickEntity(x, y);
 
   // Centre de Ciutat seleccionat: clic dret = punt de reunió

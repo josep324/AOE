@@ -3,6 +3,9 @@
    ===================================================================== */
 function updateUnit(u, dt) {
   if (u.dead || u.garrisoned) return;
+  // Velocitat real (inclou les empentes): la fan servir els tiradors amb Balística
+  if (u.lastX !== undefined) { u.vx = (u.position.x - u.lastX) / dt; u.vz = (u.position.z - u.lastZ) / dt; }
+  u.lastX = u.position.x; u.lastZ = u.position.z;
   u.attackCooldown = Math.max(0, u.attackCooldown - dt);
   u.swingT = Math.max(0, u.swingT - dt);
   // Animació d'aparició
@@ -12,6 +15,7 @@ function updateUnit(u, dt) {
   }
 
   if (updatePacking(u, dt)) return;
+  if (u.patrol || u.follow) standingOrderTick(u, dt);
   if (u.category === 'monk') updateFaith(u, dt);
   let walking = false;
   switch (u.state) {

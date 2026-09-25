@@ -21,7 +21,10 @@ function setUnitStats(e, kind) {
   e.category = cat;
   e.name = el ? el.name : d.name;
   e.naval = cat === 'ship';
-  e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : cat === 'monk' ? M.monkSpeed : cat === 'ship' ? M.shipSpeed : 1);
+  const mounted = cat === 'cavalry' || !!d.mounted;
+  e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : cat === 'monk' ? M.monkSpeed : cat === 'ship' ? M.shipSpeed : 1)
+    * (M.speedMul[cat] || 1) * (mounted ? M.mountedSpeed : 1);
+  e.accuracy = M.perfectAim[cat] ? 1 : (d.accuracy || 1);
   e.convRange = d.convRange ? d.convRange + M.convRange : 0;
   e.healRange = d.healRange || 0;
   e.attack = (el ? el.attack : d.attack) + (M.attack[cat] || 0);
@@ -46,10 +49,10 @@ function setUnitStats(e, kind) {
   e.pierceShot = !!d.pierce;
   e.canGround = !!d.ground;
   e.garrisonCap = (d.garrison || 0) + (kind === 'transport' ? M.transportCap : 0);
-  e.mounted = cat === 'cavalry' || !!d.mounted;
+  e.mounted = mounted;
   e.bonusArcher = d.bonusArcher || 0;
   if (cat === 'siege') e.vsBuilding = Math.round(e.vsBuilding * M.siegeBldMul);
-  const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : cat === 'monk' ? M.monkHp : 0);
+  const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : cat === 'monk' ? M.monkHp : 0) + (mounted ? M.mountedHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
   e.barH = cat === 'ship' ? (kind === 'cannongalleon' || kind === 'galleon' ? 5.2 : 3.8) : e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;

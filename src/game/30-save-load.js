@@ -37,7 +37,7 @@ function serializeGame() {
     else if (u.gatherNode && idx.has(u.gatherNode)) d.gather = idx.get(u.gatherNode);
     else if (u.subtype === 'tradecart' && u.tradeDest && idx.has(u.tradeDest)) d.trade = idx.get(u.tradeDest);
   }
-  const team = (T) => ({ res: { ...T.res }, age: T.age, techs: [...T.techs], prices: { ...T.prices }, civ: T.civ });
+  const team = (T) => ({ res: { ...T.res }, age: T.age, techs: [...T.techs], prices: { ...T.prices }, civ: T.civ, farmQueue: T.farmQueue || 0 });
   let explored = '';
   for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
   return {
@@ -101,6 +101,7 @@ function loadGame(data) {
     applyCivMods(T);
     for (const k of d.techs) applyTechEffect(id, k);
     T.age = d.age;
+    T.farmQueue = d.farmQueue || 0;
   }
   updateCivLabels();
   createBuilding.batch = true;

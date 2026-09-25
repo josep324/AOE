@@ -151,6 +151,8 @@ function updateFaith(u, dt) {
 /* ---------- Canvi de bàndol ---------- */
 function convertEntity(e, team) {
   const oldTeam = e.team;
+  // Heretgia: la unitat convertida mor abans de canviar de bàndol
+  if (e.kind === 'unit' && oldTeam && teamOf(oldTeam).techs.has('heresy')) { killEntity(e, null); return; }
   if (e.selected && !(team === PLAYER.id && state.selected.every(s => s === e))) { removeFromSelection(e); onSelectionChanged(); }
   e.visArch = e.visArch || archOf(oldTeam);          // conserva l'aspecte de la seva civilització
   e.team = team;

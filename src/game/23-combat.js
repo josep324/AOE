@@ -170,14 +170,43 @@ function aimPoint(t) {
   const y = t.animal ? 0.8 : t.kind === 'unit' ? 1.2 : (t.height ? t.height * 0.5 : 3);
   return new THREE.Vector3(t.position.x, y, t.position.z);
 }
+/* Punteria (com a l'AoE II): les fletxes de les unitats van al punt on apunten, no persegueixen
+   l'objectiu. Un arquer pot fallar (accuracy) i una unitat que es mou esquiva la fletxa si el
+   tirador no té Balística (que apunta on anirà l'objectiu). Una fletxa desviada pot tocar un altre
+   enemic. Els edificis sempre encerten. */
+const ARROW_SPEED = 30;
+function arrowAim(shooter, target, from) {
+  const end = aimPoint(target);
+  if (!shooter || shooter.kind !== 'unit' || target.kind !== 'unit') return { end, homing: true };
+  const T = Math.max(0.2, from.distanceTo(end) / ARROW_SPEED);
+  if (teamOf(shooter.team).mods.ballistics && target.vx !== undefined) { end.x += target.vx * T; end.z += target.vz * T; }
+  if (rand() >= (shooter.accuracy ?? 1)) {
+    const a = rand() * Math.PI * 2, r = target.radius + randRange(0.6, 2.2);
+    end.x += Math.cos(a) * r; end.z += Math.sin(a) * r;
+  }
+  end.y = Math.min(end.y, 1.2);
+  return { end, homing: false };
+}
+const arrowHitBuf = [];
+function arrowLanded(p) {
+  const t = p.target, e = p.end;
+  if (t && !t.dead && !t.garrisoned && hDist(t.position, e) <= t.radius + 0.55) { applyDamage(t, p.dmg, p.shooter); return; }
+  // Fletxa desviada: pot tocar un altre enemic del tirador que sigui just allà
+  const team = p.shooter ? p.shooter.team : 0;
+  for (const u of unitsNear(e.x, e.z, 1.6, arrowHitBuf)) {
+    if (u.dead || u.garrisoned || !team || u.team === team || u.team === 0) continue;
+    if (hDist(u.position, e) <= u.radius + 0.35) { applyDamage(u, p.dmg, p.shooter); return; }
+  }
+}
 function spawnArrow(from, target, dmg, shooter, delay = 0) {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(arrowGeo, mat(0x6b4423)), new THREE.Mesh(arrowTipGeo, mat(0x777777)));
   g.visible = false;
   scene.add(g);
-  const end = aimPoint(target);
+  const { end, homing } = arrowAim(shooter, target, from);
   const dist = from.distanceTo(end);
-  state.projectiles.push({ g, start: from.clone(), end, target, dmg, shooter, t: -delay, T: Math.max(0.2, dist / 30), dist, homing: true });
+  state.projectiles.push({ g, start: from.clone(), end, target, dmg, shooter, t: -delay, T: Math.max(0.2, dist / ARROW_SPEED), dist, homing,
+    onHit: homing ? null : arrowLanded });
 }
 function updateProjectiles(dt) {
   const prev = new THREE.Vector3();
@@ -194,6 +223,17 @@ function updateProjectiles(dt) {
     else if (p.g.visible) p.g.lookAt(p.g.position.clone().multiplyScalar(2).sub(prev));
     // Les fletxes es veuen si el tirador o l'objectiu són visibles
     p.g.visible = (p.shooter && p.shooter.group.visible) || (p.target && p.target.group && p.target.group.visible);
+    // Fletxa apuntada: en el tram final de baixada toca l'objectiu si li passa per sobre (una unitat
+    // que carrega contra l'arquer rep la fletxa encara que no sigui exactament on apuntava)
+    if (p.onHit === arrowLanded && k > 0.55 && k < 1) {
+      const t = p.target;
+      if (t && !t.dead && !t.garrisoned && hDist(t.position, p.g.position) <= t.radius + 0.5) {
+        applyDamage(t, p.dmg, p.shooter);
+        scene.remove(p.g);
+        state.projectiles.splice(i, 1);
+        continue;
+      }
+    }
     if (k >= 1) {
       if (p.onHit) p.onHit(p);
       else if (p.target && !p.target.dead && !p.target.garrisoned) applyDamage(p.target, p.dmg, p.shooter);

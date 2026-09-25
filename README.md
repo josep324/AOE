@@ -47,6 +47,12 @@ Brulot (foc, fort contra vaixells), Vaixell de demolició (explota) i Galió art
 **Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 
+**Ordres**: 🔁 **Patrullar** (<kbd>K</kbd>, Shift per afegir punts) · 🛡️ **Escortar** una unitat pròpia (<kbd>Y</kbd>) ·
+⚔️ soldats inactius (<kbd>,</kbd>) · 🌱 **cua de granges** al Molí (es paguen ara i es resembren soles).
+**Punteria** com a l'AoE II: els arquers poden fallar i les unitats que corren de costat esquiven les fletxes.
+Tecnologies: Anell del polze (no fallen i disparen més de pressa), Balística (apunten on anirà l'objectiu), Llinatges,
+Ramaderia, Escuders, Muralla fortificada i Heretgia.
+
 ## Desenvolupar
 
 Cal [Node.js](https://nodejs.org) 18 o superior.
@@ -54,8 +60,15 @@ Cal [Node.js](https://nodejs.org) 18 o superior.
 ```bash
 npm install        # un sol cop
 npm run dev        # servidor local amb recàrrega automàtica: http://localhost:5173
-npm run build      # genera el fitxer únic i actualitza index.html de l'arrel
+npm run build      # comprova el codi, genera el fitxer únic i actualitza index.html de l'arrel
+npm run check      # només les comprovacions (noms duplicats, atzar sense llavor, fitxers massa llargs)
+npm test           # compila i passa les proves al navegador (tests/*.test.mjs, amb Playwright)
+node tests/run.mjs ai   # només les proves que contenen «ai» al nom
 ```
+
+La simulació és **reproduïble**: amb la mateixa llavor (`?seed=123` a l'adreça) i les mateixes ordres, la partida
+és idèntica (la IA inclosa). La lògica del joc fa servir `rand()` i els efectes visuals `vrand()`.
+La IA és un «cervell» per equip: `RTS.enableAIFor(1)` posa una IA a jugar pel jugador (IA contra IA).
 
 ## Estructura
 

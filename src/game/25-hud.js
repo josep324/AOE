@@ -229,6 +229,13 @@ function updateSelectionUI(panelOnly = false) {
         actionsEl.appendChild(sell);
       }
     }
+    if (first.subtype === 'mill' && !first.underConstruction) {
+      const q = PLAYER.farmQueue || 0;
+      const fb = makeActionButton(iconHTML('farm', '🌱'), `Granges: ${q}`, costHTML(costFor('farm')), '', (ev) => { queueFarm(PLAYER.id, ev && ev.shiftKey ? 5 : 1); updateSelectionUI(); }, true);
+      fb.title = `Cua de granges (${q} pagades): quan una granja s'esgota, es torna a sembrar sola sense pagar-la de nou.\nClic: +1 · Shift + clic: +5 · Clic dret: treure'n una (retorna la fusta)`;
+      fb.addEventListener('contextmenu', (ev) => { ev.preventDefault(); unqueueFarm(PLAYER.id); updateSelectionUI(); });
+      actionsEl.appendChild(fb);
+    }
     if (first.subtype === 'towncenter') {
       const inside = first.garrison && first.garrison.length;
       const bell = makeActionButton(inside ? '🚪' : '🔔', inside ? 'A la feina' : 'Campana', inside ? `${first.garrison.length} dins` : 'Refugi', 'B', () => ringTownBell(first), true);
@@ -252,6 +259,14 @@ function updateSelectionUI(panelOnly = false) {
     actionsEl.appendChild(stop);
     const cur = mil.every(u => u.stance === mil[0].stance) ? mil[0].stance : null;
     const keysSt = { aggressive: 'Z', defensive: 'V', stand: 'N' };
+    if (mil.some(u => u.isMilitary || u.category === 'monk')) {
+      const pat = makeActionButton('🔁', 'Patrullar', mil.some(u => u.patrol) ? '● activa' : '', 'K', () => setGroundMode(true, 'patrol'), true);
+      pat.title = 'Patrullar (K): van i vénen entre on són i el punt marcat, atacant el que trobin.\nShift + clic: afegir més punts a la ronda';
+      actionsEl.appendChild(pat);
+      const esc = makeActionButton('🛡️', 'Escortar', mil.some(u => u.follow) ? '● activa' : '', 'Y', () => setGroundMode(true, 'follow'), true);
+      esc.title = 'Escortar (Y): segueixen una unitat pròpia (monjo, setge, aldeà…) i ataquen qui s\'hi acosti';
+      actionsEl.appendChild(esc);
+    }
     if (mil.some(u => u.canGround)) {
       const g = makeActionButton('☄️', 'Atacar terra', '', 'T', () => setGroundMode(true), true);
       g.title = 'Atacar el terra (T): el mangonell dispara a un punt, encara que no hi hagi ningú';
@@ -415,7 +430,7 @@ function makeActionButton(icon, label, cost, hotkey, onClick, small = false) {
   const btn = document.createElement('button');
   btn.className = 'action-btn' + (small ? ' small' : '');
   btn.innerHTML = `${hotkey ? `<span class="hk">${hotkey}</span>` : ''}<span class="big">${icon}</span><span class="lbl">${label}</span><span class="cost">${cost}</span>`;
-  btn.addEventListener('click', (e) => { e.preventDefault(); onClick(); btn.blur(); });
+  btn.addEventListener('click', (e) => { e.preventDefault(); onClick(e); btn.blur(); });
   return btn;
 }
 
