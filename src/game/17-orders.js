@@ -15,50 +15,184 @@ function pushOutOfObstacles(p, margin) {
   return p;
 }
 
+/* ---------- Formacions de batalla ----------
+   line: cos a cos al davant (cavalleria a les ales), tiradors darrere, setge i monjos a la cua
+   box: quadrat amb el cos a cos al perímetre i tiradors, monjos i setge a dins
+   staggered: línia esponjada i al tresbolillo (contra pedres i fletxes)
+   flank: dos grups separats per atacar per dos costats */
+const FORMATIONS = {
+  line:      { icon: '▤', name: 'Línia', desc: 'Infanteria i cavalleria al davant (genets a les ales), tiradors darrere, setge i monjos a la cua' },
+  box:       { icon: '▣', name: 'Quadrat', desc: "El cos a cos fa de mur al perímetre; arquers, monjos i setge queden protegits a dins" },
+  staggered: { icon: '⁘', name: 'Esglaonada', desc: 'Separació ampla i files alternades: menys dany de mangonells i fletxes' },
+  flank:     { icon: '⇹', name: 'Flancs', desc: "Divideix el grup en dues meitats que avancen separades per envoltar l'enemic" },
+};
+const FORMATION_ORDER = ['line', 'box', 'staggered', 'flank'];
+function formationRole(u) {
+  const c = u.category;
+  if (c === 'siege' || c === 'monk' || c === 'villager' || c === 'trade' || c === 'king') return 'support';
+  if (u.range >= 5) return 'ranged';
+  return u.mounted ? 'cav' : 'inf';
+}
+function unitSpacing(u) {
+  if (u.category === 'siege') return 2.9;
+  if (u.mounted || u.subtype === 'tradecart') return 2.3;
+  return 1.6;
+}
+const maxSpacing = (list) => list.reduce((m, u) => Math.max(m, unitSpacing(u)), 0) || 1.6;
+/* Files d'un bloc: [lx, lz] amb la primera fila a lz = 0 i les següents cap enrere */
+function blockRows(n, cols, sp, stagger) {
+  const out = [];
+  const rows = Math.ceil(n / cols);
+  for (let r = 0; r < rows; r++) {
+    const count = Math.min(cols, n - r * cols);
+    for (let c = 0; c < count; c++) out.push([(c - (count - 1) / 2) * sp + (stagger && r % 2 ? sp / 2 : 0), -r * sp]);
+  }
+  return { slots: out, depth: rows * sp };
+}
+/* Centra un conjunt de grups sobre l'origen en profunditat */
+function centerDepth(groups) {
+  let lo = Infinity, hi = -Infinity;
+  for (const [, s] of groups) for (const p of s) { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); }
+  const sh = -(lo + hi) / 2;
+  for (const [, s] of groups) for (const p of s) p[1] += sh;
+  return groups;
+}
+/* Formació en línia (o esglaonada): retorna [[unitats, slots locals], …] per grups de rol */
+function lineLayout(roles, n, spread = 1, stagger = false) {
+  const melee = roles.cav.concat(roles.inf);
+  const blocks = [melee, roles.ranged, roles.support].filter(b => b.length);
+  const cols = Math.max(3, Math.ceil(Math.sqrt(n * 2.4)));
+  const groups = [];
+  let cursor = 0;
+  for (const b of blocks) {
+    const sp = maxSpacing(b) * spread;
+    const { slots, depth } = blockRows(b.length, cols, sp, stagger);
+    for (const s of slots) s[1] += cursor;
+    cursor -= depth + 0.3 * spread;
+    if (b === melee && roles.cav.length && roles.inf.length) {
+      // Cavalleria als extrems de cada fila, infanteria al centre
+      slots.sort((a, c) => Math.abs(c[0]) - Math.abs(a[0]));
+      groups.push([roles.cav, slots.slice(0, roles.cav.length)], [roles.inf, slots.slice(roles.cav.length)]);
+    } else groups.push([b, slots]);
+  }
+  return centerDepth(groups);
+}
+/* Quadrat: el cos a cos repartit pel perímetre; la resta, en una graella a dins (setge i monjos al centre) */
+function boxLayout(roles, n) {
+  const melee = roles.cav.concat(roles.inf), inner = roles.ranged.concat(roles.support);
+  if (melee.length < 4) return lineLayout(roles, n);
+  const sOut = maxSpacing(melee), sIn = maxSpacing(inner.length ? inner : melee);
+  let H = Math.max(sOut, melee.length * sOut / 8), cells;
+  for (;;) {
+    const k = Math.floor((H - sOut * 0.9) / sIn);
+    const side = k >= 0 ? 2 * k + 1 : 0;
+    if (side * side >= inner.length) {
+      cells = [];
+      for (let i = -k; i <= k; i++) for (let j = -k; j <= k; j++) cells.push([i * sIn, j * sIn, Math.max(Math.abs(i), Math.abs(j)), Math.atan2(i, j)]);
+      break;
+    }
+    H += sIn / 2;
+  }
+  cells.sort((a, b) => a[2] - b[2] || a[3] - b[3]);
+  const perim = [];
+  const L = 8 * H;
+  for (let i = 0; i < melee.length; i++) {
+    const t = ((i + 0.5) / melee.length * L + H) % L;       // comença pel mig del costat de davant
+    if (t < 2 * H) perim.push([H - t, H]);
+    else if (t < 4 * H) perim.push([-H, H - (t - 2 * H)]);
+    else if (t < 6 * H) perim.push([-H + (t - 4 * H), -H]);
+    else perim.push([H, -H + (t - 6 * H)]);
+  }
+  const groups = [[melee, perim]];
+  const inSlots = cells.slice(0, inner.length).map(c => [c[0], c[1]]);
+  if (roles.support.length) groups.push([roles.support, inSlots.slice(0, roles.support.length)]);
+  if (roles.ranged.length) groups.push([roles.ranged, inSlots.slice(roles.support.length)]);
+  return groups;
+}
+function flankLayout(roles, n) {
+  const halves = [{ cav: [], inf: [], ranged: [], support: [] }, { cav: [], inf: [], ranged: [], support: [] }];
+  let k = 0;
+  for (const r of ['cav', 'inf', 'ranged', 'support']) for (const u of roles[r]) halves[k++ % 2][r].push(u);
+  const out = [];
+  const gap = 5 + Math.sqrt(n) * 0.8;
+  halves.forEach((h, i) => {
+    const m = h.cav.length + h.inf.length + h.ranged.length + h.support.length;
+    if (!m) return;
+    const groups = lineLayout(h, m);
+    const hw = Math.max(0, ...groups.flatMap(([, s]) => s.map(p => Math.abs(p[0]))));
+    for (const [, slots] of groups) for (const s of slots) s[0] += (i ? -1 : 1) * (hw + gap / 2);
+    out.push(...groups);
+  });
+  return out;
+}
 /* Calcula el lloc de cada unitat en una formació al voltant d'un punt */
-function formationSlots(units, point) {
+function formationSlots(units, point, type = null) {
   const result = new Map();
   const n = units.length;
-  const spacing = 1.55;
-  const cols = Math.ceil(Math.sqrt(n));
-  const rows = Math.ceil(n / cols);
-
-  // Orientem la formació segons la direcció de marxa del grup
+  if (!n) return result;
   const centroid = new THREE.Vector3();
   units.forEach(u => centroid.add(u.position));
   centroid.divideScalar(n);
+  // Orientem la formació segons la direcció de marxa del grup
   const heading = Math.atan2(point.x - centroid.x, point.z - centroid.z);
   const cos = Math.cos(heading), sin = Math.sin(heading);
-
-  const slots = [];
-  for (let i = 0; i < n; i++) {
-    const r = Math.floor(i / cols), c = i % cols;
-    const rowCount = r === rows - 1 ? n - r * cols : cols;
-    const lx = (c - (rowCount - 1) / 2) * spacing;   // lateral
-    const lz = -(r - (rows - 1) / 2) * spacing;       // cap endavant
-    const slot = new THREE.Vector3(point.x + lx * cos + lz * sin, 0, point.z - lx * sin + lz * cos);
-    clampToMap(pushOutOfObstacles(slot, CONFIG.VILLAGER.radius + 0.25));
-    slots.push(slot);
+  const allCivil = units.every(u => !u.isMilitary && u.category !== 'monk');
+  let groups;
+  if (allCivil || n === 1) {
+    const cols = Math.ceil(Math.sqrt(n));
+    groups = centerDepth([[units, blockRows(n, cols, 1.55, false).slots]]);
+  } else {
+    const roles = { cav: [], inf: [], ranged: [], support: [] };
+    for (const u of units) roles[formationRole(u)].push(u);
+    const f = type || 'line';
+    groups = f === 'box' ? boxLayout(roles, n) : f === 'flank' ? flankLayout(roles, n)
+      : f === 'staggered' ? lineLayout(roles, n, 1.75, true) : lineLayout(roles, n);
   }
-
-  // Assignació voraç: cada slot per a la unitat lliure més propera
-  const free = units.slice();
-  for (const slot of slots) {
-    let best = 0, bestD = Infinity;
-    for (let i = 0; i < free.length; i++) {
-      const d = free[i].position.distanceToSquared(slot);
-      if (d < bestD) { bestD = d; best = i; }
+  for (const [list, local] of groups) {
+    const slots = local.map(([lx, lz]) => clampToMap(pushOutOfObstacles(
+      new THREE.Vector3(point.x + lx * cos + lz * sin, 0, point.z - lx * sin + lz * cos), CONFIG.VILLAGER.radius + 0.25)));
+    // Assignació voraç dins del grup: cada slot per a la unitat lliure més propera
+    const free = list.slice();
+    for (const slot of slots) {
+      if (!free.length) break;
+      let best = 0, bestD = Infinity;
+      for (let i = 0; i < free.length; i++) {
+        const d = free[i].position.distanceToSquared(slot);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      result.set(free.splice(best, 1)[0], slot);
     }
-    const u = free.splice(best, 1)[0];
-    result.set(u, slot);
+    for (const u of free) result.set(u, point.clone());
   }
   return result;
 }
+/* Formació d'un grup: la que tinguin les seves unitats (per defecte, línia) */
+function groupFormation(units) {
+  const m = units.find(u => u.isMilitary || u.category === 'monk');
+  return (m && m.formation) || 'line';
+}
+function setFormation(units, f) {
+  for (const u of units) u.formation = f;
+  toast(`${FORMATIONS[f].icon} Formació: ${FORMATIONS[f].name}`);
+  // El grup es recol·loca amb la nova formació al voltant d'on anava (o d'on és)
+  const movers = units.filter(u => u.state === STATE.IDLE || u.state === STATE.MOVING);
+  if (movers.length > 1) {
+    const c = new THREE.Vector3();
+    movers.forEach(u => c.add(u.target || u.position));
+    commandMove(movers, c.divideScalar(movers.length));
+  }
+  updateSelectionUI();
+}
 
 function commandMove(units, point, queued = false) {
-  for (const [u, slot] of formationSlots(units, point)) {
+  const slots = formationSlots(units, point, groupFormation(units));
+  // Marxa agrupada: un grup militar avança al pas de la unitat més lenta per no desfer la formació
+  const grouped = units.length > 1 && units.some(u => u.isMilitary);
+  const slow = grouped ? Math.min(...units.map(u => u.speed)) : null;
+  for (const [u, slot] of slots) {
     if (queued) enqueueOrder(u, { type: 'move', point: slot });
     else { u.orderQueue.length = 0; orderMove(u, slot); }
+    u.speedCap = grouped && hDist(u.position, slot) > 12 ? slow : null;
   }
 }
 

@@ -64,7 +64,7 @@ function orderAttackMove(u, point) {
 }
 /* Moviment amb atac en formació (onades de la IA) */
 function commandAttackMove(units, point) {
-  for (const [u, slot] of formationSlots(units, point)) { u.orderQueue.length = 0; orderAttackMove(u, slot); }
+  for (const [u, slot] of formationSlots(units, point, groupFormation(units))) { u.orderQueue.length = 0; orderAttackMove(u, slot); }
 }
 
 /* Busca l'enemic més proper dins d'un radi (prioritza unitats militars) */

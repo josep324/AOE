@@ -284,3 +284,4 @@
     #help { display: none; }
     .res-grid { grid-template-columns: repeat(4, 1fr); }
   }
+.mini.grp .st{font-size:10px;font-weight:700;color:var(--gold);top:0;right:3px}

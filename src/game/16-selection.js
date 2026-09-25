@@ -59,7 +59,7 @@ function selectAllOnScreen(subtype, additive) {
     if (s.visible && s.x >= 0 && s.x <= window.innerWidth && s.y >= 0 && s.y <= maxY && !list.includes(u)) list.push(u);
   }
   setSelection(list);
-  if (list.length > 1) toast(`${list.length} aldeans seleccionats`);
+  if (list.length > 1) toast(`${list.length} × ${list[0].name} seleccionats`);
 }
 
 function boxSelect(x1, y1, x2, y2, additive) {

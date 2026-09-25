@@ -134,7 +134,11 @@ function updateSelectionUI(panelOnly = false) {
         ${stats}
       </div>`;
   } else {
-    const shown = sel.slice(0, 24);
+    // Selecció sense límit: amb molts elements es mostren agrupats per tipus
+    const byType = new Map();
+    sel.forEach(u => { if (!byType.has(u.subtype)) byType.set(u.subtype, []); byType.get(u.subtype).push(u); });
+    const grouped = sel.length > 24;
+    const shown = grouped ? [] : sel;
     const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨', ATTACKING: '⚔️', GARRISONED: '🏰', TRADING: '🪙' };
     const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
     const counts = {};
@@ -142,15 +146,25 @@ function updateSelectionUI(panelOnly = false) {
     const summary = Object.entries(counts).map(([k, v]) => `<span class="state-tag ${k}">${STATE_LABEL[k]}: ${v}</span>`).join(' ');
     const carried = { food: 0, wood: 0, gold: 0, stone: 0 };
     sel.forEach(u => { if (u.carry.type) carried[u.carry.type] = (carried[u.carry.type] || 0) + u.carry.amount; });
-    const more = sel.length > shown.length ? `<div class="more">+${sel.length - shown.length}</div>` : '';
+    const more = grouped ? [...byType.entries()].map(([k, list]) => {
+      const hp = list.reduce((a, u) => a + u.hp / u.maxHp, 0) / list.length;
+      return `<div class="mini grp" data-type="${k}" title="${list[0].name} ×${list.length} · clic: només aquests · Shift+clic: treure'ls"><span class="st">×${list.length}</span>${list[0].icon}<div class="hp" style="width:${hp * 100}%"></div></div>`;
+    }).join('') : '';
     selContent.innerHTML = `
       <div class="portrait">${first.icon}</div>
       <div class="sel-info" style="justify-content:flex-start">
-        <div class="sel-name">${sel.length} ${sel.every(u => u.subtype === 'villager') ? 'Aldeans' : 'Unitats'}</div>
+        <div class="sel-name">${sel.length} ${sel.every(u => u.subtype === 'villager') ? 'Aldeans' : 'Unitats'}${sel.some(u => u.isMilitary) && sel.length > 1 ? ` <small style="opacity:.7">· ${FORMATIONS[groupFormation(sel)].icon} ${FORMATIONS[groupFormation(sel)].name}</small>` : ''}</div>
         <div class="stats">${summary}<span>🎒 ${Object.keys(carried).filter(k => carried[k]).map(k => `${RES_ICON[k]} <b>${carried[k]}</b>`).join(' · ') || '<b>buida</b>'}</span></div>
         <div class="multi-grid">${minis}${more}</div>
       </div>`;
-    selContent.querySelectorAll('.mini').forEach(el => {
+    selContent.querySelectorAll('.mini.grp').forEach(el => {
+      el.addEventListener('click', ev => {
+        const list = byType.get(el.dataset.type) || [];
+        if (ev.shiftKey) { list.forEach(removeFromSelection); onSelectionChanged(); }
+        else setSelection(list);
+      });
+    });
+    selContent.querySelectorAll('.mini:not(.grp)').forEach(el => {
       el.addEventListener('click', ev => {
         const ent = sel.find(s => s.id === Number(el.dataset.id));
         if (!ent) return;
@@ -239,6 +253,18 @@ function updateSelectionUI(panelOnly = false) {
       b.title = `Postura ${st.name} (${keysSt[k]}): ${st.desc}`;
       if (cur === k) b.style.boxShadow = '0 0 0 2px var(--gold) inset, 0 0 12px rgba(216,178,90,0.5)';
       actionsEl.appendChild(b);
+    }
+    // Formacions de batalla (grups de 2 o més)
+    const fg = mil.filter(u => u.isMilitary || u.category === 'monk');
+    if (fg.length > 1) {
+      const curF = groupFormation(fg);
+      for (const k of FORMATION_ORDER) {
+        const F = FORMATIONS[k];
+        const b = makeActionButton(F.icon, F.name, curF === k ? '● activa' : 'formació', curF === k ? '' : (FORMATION_ORDER[(FORMATION_ORDER.indexOf(curF) + 1) % 4] === k ? 'F' : ''), () => setFormation(fg, k), true);
+        b.title = `Formació ${F.name} (F: canviar)\n${F.desc}`;
+        if (curF === k) b.style.boxShadow = '0 0 0 2px var(--gold) inset, 0 0 12px rgba(216,178,90,0.5)';
+        actionsEl.appendChild(b);
+      }
     }
   } else if (first.kind === 'unit' && first.isOwn) {
     // Menú de construcció de l'aldeà

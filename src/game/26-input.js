@@ -138,6 +138,11 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // F: canviar la formació del grup seleccionat
+  if (code === 'KeyF' && !builders().length) {
+    const fg = state.selected.filter(s => s.kind === 'unit' && s.isOwn && (s.isMilitary || s.category === 'monk'));
+    if (fg.length > 1) { setFormation(fg, FORMATION_ORDER[(FORMATION_ORDER.indexOf(groupFormation(fg)) + 1) % FORMATION_ORDER.length]); return; }
+  }
   switch (code) {
     case 'Escape':
       if (groundMode.on) { setGroundMode(false); break; }
