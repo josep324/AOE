@@ -214,7 +214,7 @@ function createRelic(x, z) {
   e.halo = halo;
   e.carrier = null;
   e.holder = null;
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.finalize();
   state.relics.push(e);
   return e;

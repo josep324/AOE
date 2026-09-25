@@ -122,8 +122,8 @@ function shipUnloadTick(u) {
 /* Vaixell de demolició: esclata i fa mal a tot el que hi ha al voltant */
 function explodeDemolition(u, t) {
   const p = t.position || u.position;
-  spawnParticles(new THREE.Vector3(p.x, 1.2, p.z), 0xff7a1a, 26, null);
-  spawnParticles(new THREE.Vector3(p.x, 1.6, p.z), 0x3a3430, 18, null);
+  spawnParticles(atGround(p.x, 1.2, p.z), 0xff7a1a, 26, null);
+  spawnParticles(atGround(p.x, 1.6, p.z), 0x3a3430, 18, null);
   const R = 3.4;
   for (const e of unitsNear(p.x, p.z, R + 2, splashBuf)) {
     if (e === u || e.dead || e.garrisoned) continue;
@@ -140,7 +140,7 @@ function explodeDemolition(u, t) {
 /* Brulot: raig de foc a curta distància */
 function fireSpray(u, t) {
   const dir = new THREE.Vector3(t.position.x - u.position.x, 0, t.position.z - u.position.z).normalize();
-  if (vrand() < 0.5) spawnParticles(new THREE.Vector3(u.position.x + dir.x * 1.2, 1.3, u.position.z + dir.z * 1.2), 0xff8a2a, 2, dir.clone().negate());
+  if (vrand() < 0.5) spawnParticles(atGround(u.position.x + dir.x * 1.2, 1.3, u.position.z + dir.z * 1.2), 0xff8a2a, 2, dir.clone().negate());
   applyDamage(t, hitDamage(u, t, 1), u);
 }
 

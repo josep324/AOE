@@ -6,7 +6,7 @@ function onBuildStrike(u, b) {
   const fp = b.footprint;
   const cx = THREE.MathUtils.clamp(u.position.x, b.position.x - fp.hw, b.position.x + fp.hw);
   const cz = THREE.MathUtils.clamp(u.position.z, b.position.z - fp.hd, b.position.z + fp.hd);
-  spawnParticles(new THREE.Vector3(cx, 0.6, cz), 0xc8a26a, 3, null);
+  spawnParticles(atGround(cx, 0.6, cz), 0xc8a26a, 3, null);
 }
 
 function onToolStrike(u, node) {
@@ -16,7 +16,7 @@ function onToolStrike(u, node) {
   // Punt d'impacte entre l'aldeà i el recurs
   const dir = new THREE.Vector3(node.position.x - u.position.x, 0, node.position.z - u.position.z).normalize();
   const hitY = node.subtype === 'tree' ? 1.2 : node.subtype === 'sheep' ? 0.4 : 0.8;
-  const hit = new THREE.Vector3(u.position.x + dir.x * (u.radius + 0.5), hitY, u.position.z + dir.z * (u.radius + 0.5));
+  const hit = new THREE.Vector3(u.position.x + dir.x * (u.radius + 0.5), hitY + u.position.y, u.position.z + dir.z * (u.radius + 0.5));
   spawnParticles(hit, node.particleColor, node.subtype === 'berries' ? 2 : 4, dir);
 }
 
@@ -62,13 +62,13 @@ function depleteResource(node) {
       toast(T.mods.autoReseed ? '🌱 Una granja s\'ha esgotat (falta fusta per resembrar-la)' : '🌱 Una granja s\'ha esgotat');
     }
   }
-  spawnParticles(new THREE.Vector3(node.position.x, 1.5, node.position.z), node.particleColor, 14, null);
+  spawnParticles(atGround(node.position.x, 1.5, node.position.z), node.particleColor, 14, null);
 }
 
 function updateResourceNodes(dt) {
   for (const n of state.resourceNodes) {
-    if (n.subtype === 'sheep') updateSheep(n, dt);
-    else if (n.animal) updateAnimal(n, dt);
+    if (n.subtype === 'sheep') { updateSheep(n, dt); n.position.y = groundY(n.position.x, n.position.z); }
+    else if (n.animal) { updateAnimal(n, dt); n.position.y = groundY(n.position.x, n.position.z); }
     else if (n.subtype === 'fish' || n.subtype === 'deepfish') updateFish(n, dt);
     if (n.shakeT > 0) {
       n.shakeT = Math.max(0, n.shakeT - dt);
@@ -93,7 +93,7 @@ function updateResourceNodes(dt) {
       const f = Math.min(1, n.dieT / 2.2);
       n.group.position.y = -f * f * (n.height || 9);
       n.group.rotation.z = Math.sin(n.dieT * 30) * 0.01 * (1 - f);
-      if (vrand() < dt * 12) spawnParticles(new THREE.Vector3(n.position.x + vrandRange(-3, 3), 0.5, n.position.z + vrandRange(-3, 3)), 0x9b958a, 2, null);
+      if (vrand() < dt * 12) spawnParticles(atGround(n.position.x + vrandRange(-3, 3), 0.5, n.position.z + vrandRange(-3, 3)), 0x9b958a, 2, null);
       if (n.dieT > 2.4) removeDead(n, i);
     } else if (n.resourceType === 'wood') {
       // L'arbre cau i després s'enfonsa
@@ -114,6 +114,8 @@ function removeDead(n, idx) {
   state.dying.splice(idx, 1);
 }
 
+/* Punt a una alçada sobre el terreny */
+const atGround = (x, y, z) => new THREE.Vector3(x, y + groundY(x, z), z);
 /* ---------- Partícules (estelles de fusta / espurnes d'or) ---------- */
 const particleGeo = new THREE.BoxGeometry(0.13, 0.13, 0.13);
 const particlePool = [];
@@ -131,6 +133,7 @@ function spawnParticles(pos, color, count, dir) {
       vrandRange(-2, 2) + (dir ? dir.z * back * 2 : 0)
     );
     m.userData.life = vrandRange(0.5, 0.8);
+    m.userData.floor = groundY(pos.x, pos.z);
     m.castShadow = false;
     scene.add(m);
     state.particles.push(m);
@@ -144,7 +147,8 @@ function updateParticles(dt) {
     v.y -= 14 * dt;
     m.position.addScaledVector(v, dt);
     m.rotation.x += dt * 8; m.rotation.y += dt * 6;
-    if (m.position.y < 0.07) { m.position.y = 0.07; v.set(v.x * 0.4, 0, v.z * 0.4); }
+    const floor = (m.userData.floor ?? 0) + 0.07;
+    if (m.position.y < floor) { m.position.y = floor; v.set(v.x * 0.4, 0, v.z * 0.4); }
     if (m.userData.life <= 0) {
       scene.remove(m);
       state.particles.splice(i, 1);

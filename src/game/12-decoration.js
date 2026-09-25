@@ -110,7 +110,8 @@ function createDecorations() {
     if (isNearObstacle(cx, cz, 1.5)) continue;
     const clump = 2 + Math.floor(rand() * 4);
     for (let k = 0; k < clump && gi < grassCount; k++) {
-      dummy.position.set(cx + randRange(-0.7, 0.7), 0, cz + randRange(-0.7, 0.7));
+      const gx = cx + randRange(-0.7, 0.7), gz = cz + randRange(-0.7, 0.7);
+      dummy.position.set(gx, groundY(gx, gz), gz);
       dummy.rotation.set(0, rand() * Math.PI, 0);
       const sc = randRange(0.45, 1.0);
       dummy.scale.set(sc, sc * randRange(0.7, 1.2), sc);
@@ -139,7 +140,7 @@ function createDecorations() {
   while (ri < rockCount) {
     const x = randRange(-area, area), z = randRange(-area, area);
     if (isNearObstacle(x, z, 2.5)) continue;
-    dummy.position.set(x, 0.05, z);
+    dummy.position.set(x, 0.05 + groundY(x, z), z);
     dummy.rotation.set(rand() * 3, rand() * 3, rand() * 3);
     const s = randRange(0.4, 1.4);
     dummy.scale.set(s, s * randRange(0.45, 0.8), s * randRange(0.8, 1.2));

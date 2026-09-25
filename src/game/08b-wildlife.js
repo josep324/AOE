@@ -158,7 +158,7 @@ function createAnimal(kind, x, z) {
   hit.position.y = 0.8;
   hit.userData.noShadow = true;
   e.group.add(hit);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.group.rotation.y = rand() * Math.PI * 2;
   e.finalize();
   state.resourceNodes.push(e);
@@ -269,7 +269,7 @@ function animalHit(n, amount, attacker) {
   if (!n.alive) return;
   n.hp -= amount;
   n.shakeT = 0.2;
-  spawnParticles(new THREE.Vector3(n.position.x, 0.9, n.position.z), 0xb02020, 3, null);
+  spawnParticles(atGround(n.position.x, 0.9, n.position.z), 0xb02020, 3, null);
   if (n.hp <= 0) { animalDie(n); return; }
   if (n.subtype === 'deer') { if (attacker) { n.fleeFrom = attacker.position.clone(); n.fleeT = 1.4; } }
   else if (attacker && attacker.kind === 'unit' && !attacker.dead) n.aggro = attacker;

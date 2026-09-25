@@ -90,6 +90,7 @@ function loadGame(data) {
   WORLD.type = MAP_TYPES[data.map] ? data.map : 'arabia';
   WORLD.seed = (data.mapSeed ?? MAP_SEED) >>> 0;
   setupWater(WORLD.type, WORLD.seed);
+  setupHeights(WORLD.type, WORLD.seed);
   rebuildNav();
   // Equips: recursos, preus, edat i tecnologies (abans de crear les unitats)
   for (const [id, T] of [[1, PLAYER], [2, ENEMY]]) {

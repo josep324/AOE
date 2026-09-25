@@ -61,6 +61,20 @@ function drawMinimap() {
   ctx.strokeStyle = 'rgba(216,178,90,0.8)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
+  // Relleu (ombrejat dels turons)
+  if (TERRAIN.mmCanvas) {
+    ctx.save();
+    ctx.beginPath();
+    corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+    ctx.clip();
+    const c0 = mm.size / 2;
+    ctx.transform(ax.rx * mm.scale, -ax.fx * mm.scale, ax.rz * mm.scale, -ax.fz * mm.scale, c0, c0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(TERRAIN.mmCanvas, -L, -L, 2 * L, 2 * L);
+    ctx.restore();
+    ctx.setTransform(mm.dpr, 0, 0, mm.dpr, 0, 0);
+  }
   // Aigua (mateixa transformació que la boira)
   if (WATER.any && WATER.mmCanvas) {
     ctx.save();
@@ -198,6 +212,8 @@ const desiredVel = new THREE.Vector3();
 const edgeFactor = (d, band) => d >= band ? 0 : THREE.MathUtils.smoothstep(1 - d / band, 0, 1);
 function updateCameraControls(dt) {
   const C = CONFIG.CAM;
+  // La càmera segueix suaument l'alçada del terreny
+  camState.target.y = THREE.MathUtils.damp(camState.target.y, Math.max(0, groundY(camState.target.x, camState.target.z)), 3, dt);
   let mx = 0, mz = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) mz += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) mz -= 1;

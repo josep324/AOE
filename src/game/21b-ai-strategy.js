@@ -95,7 +95,7 @@ function aiIntel(A, C) {
   A.foeComp = { comp, mil };
   // Força militar rival vista fa poc, comparada amb la pròpia (per decidir si cal defensar-se abans de pujar d'edat)
   let fs = 0;
-  for (const { u, t } of A.seen.values()) if (u.isMilitary && C.now - t < 60 && hDist(u.position, C.home) < 70) fs += unitStrength(u);
+  for (const s of A.seen.values()) if (s.u.isMilitary && C.now - s.t < 60 && Math.hypot(s.x - C.home.x, s.z - C.home.z) < 70) fs += unitStrength(s.u);
   A.foeStr = fs;
   A.myStr = C.army.reduce((s, u) => s + unitStrength(u), 0);
 }
@@ -167,7 +167,7 @@ function aiAgesAndTechs(A, C) {
     // Les obertures agressives ataquen abans de pujar a Castells
     const rushWait = next === 2 && (A.strategy === 'scoutrush' || A.strategy === 'archers' || A.strategy === 'maa') && A.attackCount === 0 && vills < need + 6;
     // Amb un exèrcit rival clarament més fort a prop de casa, primer tropes i després l'edat
-    const danger = (A.threatened || C.age === 0) && (A.foeStr || 0) > (A.myStr || 0) * 1.2 + 2;
+    const danger = (A.foeStr || 0) > (A.myStr || 0) * 1.2 + 2;
     const ready = vills >= need && distinctBuilt(C.T, req) >= 2 && !rushWait && !danger && (next < 3 || D !== DIFFICULTY.easy || vills >= need + 5);
     if (ready) {
       if (C.age === 0 && D.micro > 0) aiTryTech(A, C, 'loom');

@@ -110,7 +110,7 @@ function createVillager(x, z, team = PLAYER.id) {
   hit.position.y = 1.2;
   hit.userData.noShadow = true;
   e.group.add(model, hit);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.finalize();
   state.units.push(e);
   return e;
@@ -142,7 +142,7 @@ function createSoldier(kind, x, z, team = PLAYER.id) {
   hit.position.y = big ? 1.6 : 1.2;
   hit.userData.noShadow = true;
   e.group.add(model, hit);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.finalize();
   state.units.push(e);
   return e;
@@ -165,7 +165,7 @@ function createTradeCart(x, z, team = PLAYER.id) {
   hit.position.y = 1.2;
   hit.userData.noShadow = true;
   e.group.add(model, hit);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.finalize();
   state.units.push(e);
   return e;

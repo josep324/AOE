@@ -328,6 +328,7 @@ function buildWorld(type, seed = MAP_SEED) {
   WORLD.seed = seed >>> 0;
   reseedRand((WORLD.seed ^ { arabia: 0x1111, blackforest: 0x2222, lakes: 0x3333, rivers: 0x4444 }[type]) >>> 0);
   setupWater(type, WORLD.seed);
+  setupHeights(type, WORLD.seed);
   rebuildNav();
   createBuilding.batch = true;
   FORESTS.length = 0;

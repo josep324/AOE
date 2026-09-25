@@ -255,6 +255,7 @@ function updateUnit(u, dt) {
   resolveObstacleCollision(u, dt);
   clampToMap(u.position);
   keepOnLand(u);
+  u.position.y = u.naval ? 0 : groundY(u.position.x, u.position.z);
 
   // ---------- Animació procedimental ----------
   if (u.category === 'siege') { animateSiege(u, dt, walking); return; }

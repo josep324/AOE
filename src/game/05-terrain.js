@@ -147,7 +147,9 @@ function createGround() {
   // UV: la textura del mapa cobreix només la zona jugable (més enllà s'estira la vora)
   const pos = geo.attributes.position, uv = geo.attributes.uv;
   for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + P.span / 2) / P.span, 1 - (pos.getZ(i) + P.span / 2) / P.span);
-  const material = new THREE.MeshStandardMaterial({ map: P.tex, roughness: 0.97, metalness: 0 });
+  // Colors de vèrtex: l'ombrejat del relleu (el pla gran de fora el té tot blanc)
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3).fill(1), 3));
+  const material = new THREE.MeshStandardMaterial({ map: P.tex, roughness: 0.97, metalness: 0, vertexColors: true });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uGrassDetail = { value: grassDetailTex };
     shader.uniforms.uDirtDetail = { value: dirtDetailTex };
@@ -178,5 +180,7 @@ function createGround() {
   ground = new THREE.Mesh(geo, fogify(material));
   ground.receiveShadow = true;
   ground.name = 'ground';
+  ground.position.y = -0.12;           // el pla gran queda sota la malla amb relleu (zona jugable)
   scene.add(ground);
+  scene.add(makeTerrainMesh(ground.material));
 }

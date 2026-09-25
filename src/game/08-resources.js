@@ -8,7 +8,7 @@ function createTree(x, z, scale = 1) {
   const batched = !hasModel('resources/tree');
   e.model = batched ? new THREE.Group() : makeTreeModel(x, z);
   e.group.add(e.model);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.group.rotation.y = rand() * Math.PI * 2;
   e.group.scale.setScalar(scale);
   groundPaint(x, z, 2.8 * scale, 'forest', 0.5);
@@ -46,7 +46,7 @@ function createGoldMine(x, z) {
   const gm = makeMineModel('gold', x, z);
   e.model.add(gm.base);
   e.nuggets.add(gm.chunks);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.group.rotation.y = rand() * Math.PI * 2;
   groundPaint(x, z, 4.4, 'rock', 0.85);
   swapModel(e, 'resources/gold', { w: 4.6 });
@@ -73,7 +73,7 @@ function createStoneMine(x, z) {
   const sm = makeMineModel('stone', x, z);
   e.model.add(sm.base);
   e.nuggets.add(sm.chunks);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.group.rotation.y = rand() * Math.PI * 2;
   groundPaint(x, z, 4.2, 'rock', 0.85);
   swapModel(e, 'resources/stone', { w: 4.4 });
@@ -102,7 +102,7 @@ function createBerryBush(x, z) {
   berries.computeBoundingSphere();
   e.model.add(berries);
   e.berries = berries;
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.group.rotation.y = rand() * Math.PI * 2;
   groundPaint(x, z, 1.9, 'forest', 0.35);
   swapModel(e, 'resources/berries', { w: 2.4 });
@@ -166,7 +166,7 @@ function createSheep(x, z) {
   hit.userData.noShadow = true;
   e.group.add(hit);
 
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, groundY(x, z), z);
   e.group.rotation.y = rand() * Math.PI * 2;
   swapModel(e, 'resources/sheep', { w: 1.1, d: 1.6 }, e.body);
   e.finalize();
@@ -240,11 +240,12 @@ function createTownCenter(x, z, team = PLAYER.id) {
   e.dropoffTypes = ['food', 'wood', 'gold', 'stone'];
   e.trainQueue = [];  // [{ kind, t }]
   e.rally = null;     // { point: Vector3, node: Entity|null }
+  const tcLevel = flattenArea(x, z, 7, 7);
   const { model, height } = makeBuildingModel('towncenter', team);
   e.model = model;
   e.height = height;
   e.group.add(model);
-  e.group.position.set(x, 0, z);
+  e.group.position.set(x, tcLevel, z);
   groundPaint(x, z, 11, 'dirt', 0.8);
   groundPaint(x, z, 16, 'trampled', 0.45);
   e.finalize();

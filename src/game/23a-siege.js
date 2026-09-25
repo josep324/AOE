@@ -30,7 +30,7 @@ function refreshContainer(b) {
 
 /* ---------- Atac al terra (mangonell) ---------- */
 function groundTarget(p) {
-  return { isGround: true, kind: 'ground', position: new THREE.Vector3(p.x, 0, p.z), radius: 0, team: 0, dead: false };
+  return { isGround: true, kind: 'ground', position: new THREE.Vector3(p.x, groundY(p.x, p.z), p.z), radius: 0, team: 0, dead: false };
 }
 function commandAttackGround(units, p) {
   const t = groundTarget(p);
@@ -105,11 +105,11 @@ function fireProjectile(u, t) {
   const kind = u.projectile || 'arrow';
   if (kind === 'fire') { fireSpray(u, t); return; }
   const heavy = kind === 'stone' || kind === 'bigstone';
-  const from = new THREE.Vector3(u.position.x, kind === 'bigstone' ? 5.5 : heavy ? 2.4 : 1.6, u.position.z);
+  const from = new THREE.Vector3(u.position.x, (kind === 'bigstone' ? 5.5 : heavy ? 2.4 : 1.6) + u.position.y, u.position.z);
   if (u.fireAnim) u.fireT = 0.6;
   if (heavy) {
     // Pedra: vol balístic cap al punt on era l'objectiu (pot fallar si es mou)
-    const end = t.isGround ? t.position.clone().setY(0.3) : aimPoint(t);
+    const end = t.isGround ? t.position.clone().setY(t.position.y + 0.3) : aimPoint(t);
     const info = { attack: u.attack, vsBuilding: u.vsBuilding, team: u.team, splash: u.splash, shooter: u, target: t, big: kind === 'bigstone' };
     spawnProjectile({ mesh: projectileMesh(kind), from, end, shooter: u, arcK: 0.32, speed: kind === 'bigstone' ? 20 : 17, spin: 4, onHit: () => stoneImpact(info, end) });
     return;
@@ -119,7 +119,7 @@ function fireProjectile(u, t) {
   if (kind === 'arrow') { spawnArrow(from, t, dmg, u); return; }
   if (kind === 'cannonball') {
     // Canó: fumarada i bala ràpida amb dany de cos a cos
-    from.set(u.position.x + Math.sin(u.group.rotation.y) * 1.6, 1.1, u.position.z + Math.cos(u.group.rotation.y) * 1.6);
+    from.set(u.position.x + Math.sin(u.group.rotation.y) * 1.6, 1.1 + u.position.y, u.position.z + Math.cos(u.group.rotation.y) * 1.6);
     spawnParticles(from.clone(), 0xd8d4cc, 8, null);
     const cdmg = hitDamage(u, t, 0);
     spawnProjectile({ mesh: projectileMesh(kind), from, end: aimPoint(t), target: t, shooter: u, arcK: 0.03, speed: 45, spin: 0,
@@ -146,7 +146,7 @@ function spawnProjectile({ mesh, from, end, target = null, shooter, arcK = 0.12,
 /* Impacte d'una pedra: dany en àrea a unitats (també pròpies) i a edificis enemics tocats */
 const splashBuf = [];
 function stoneImpact(info, p) {
-  spawnParticles(new THREE.Vector3(p.x, 0.4, p.z), 0x8a7a62, info.big ? 16 : 10, null);
+  spawnParticles(new THREE.Vector3(p.x, p.y + 0.1, p.z), 0x8a7a62, info.big ? 16 : 10, null);
   const r = info.big ? 0.9 : info.splash;
   for (const e of unitsNear(p.x, p.z, r + 1.2, splashBuf)) {
     if (e.dead || e.garrisoned || e === info.shooter) continue;

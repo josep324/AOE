@@ -335,7 +335,7 @@ function gatherTick(u, dt) {
     // Caça: llança una llança cada cert temps fins que l'animal cau
     if (u.attackCooldown <= 0) {
       u.attackCooldown = 1.6;
-      spawnArrow(new THREE.Vector3(u.position.x, 1.5, u.position.z), node, Math.max(1, HUNT_DAMAGE - node.armor[1]), u);
+      spawnArrow(new THREE.Vector3(u.position.x, 1.5 + u.position.y, u.position.z), node, Math.max(1, HUNT_DAMAGE - node.armor[1]), u);
     }
     return;
   }

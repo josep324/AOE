@@ -519,7 +519,7 @@ function spawnMoveMarker(p, color = 0x8dff6a, size = 1) {
   const r2 = new THREE.Mesh(markerGeoInner, m2);
   r1.rotation.x = r2.rotation.x = -Math.PI / 2;
   g.add(r1, r2);
-  g.position.set(p.x, 0.14, p.z);
+  g.position.set(p.x, 0.14 + groundY(p.x, p.z), p.z);
   g.scale.setScalar(size);
   g.renderOrder = 6;
   scene.add(g);

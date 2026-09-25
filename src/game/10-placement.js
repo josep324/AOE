@@ -132,7 +132,7 @@ function updateWallPlacement(p) {
     const ok = canPlace(placing.type, x, z) && n < affordable;
     if (ok) { n++; placing.cells.push([x, z]); }
     m.visible = true;
-    m.position.set(x, 0, z);
+    m.position.set(x, groundY(x, z), z);
     m.material = ok ? GHOST.ok : GHOST.bad;
   });
   placing.valid = placing.cells.length > 0;
@@ -182,6 +182,8 @@ function canPlace(type, x, z, rot = 0) {
   const [sw, sd] = sizeOf(type, rot);
   const L = CONFIG.MAP_LIMIT;
   if (Math.abs(x) + sw / 2 > L - 1 || Math.abs(z) + sd / 2 > L - 1) return false;
+  // Com a l'AoE II, no es pot construir en un pendent massa fort
+  if (slopeIn(x, z, sw / 2, sd / 2) > MAX_BUILD_SLOPE) return false;
   const N = NAV.N;
   const walls = CONFIG.BUILDINGS[type].gate ? wallsIn(x, z, sw, sd) : [];
   for (let j = navCell(z - sd / 2 + 0.01); j <= navCell(z + sd / 2 - 0.01); j++)
@@ -226,7 +228,7 @@ function updatePlacement() {
   const [sw, sd] = sizeOf(placing.type, placing.rot);
   placing.x = gateSnap ? gateSnap.x : snapToGrid(p.x, sw);
   placing.z = gateSnap ? gateSnap.z : snapToGrid(p.z, sd);
-  placing.ghost.position.set(placing.x, 0, placing.z);
+  placing.ghost.position.set(placing.x, CONFIG.BUILDINGS[placing.type].dock ? 0 : flattenArea(placing.x, placing.z, sw / 2, sd / 2, false), placing.z);
   placing.ghost.rotation.y = placing.rot ? Math.PI / 2 : 0;
   placing.overlay.position.set(Math.round(placing.x) - placing.x, 0.04, Math.round(placing.z) - placing.z);
   const valid = canPlace(placing.type, placing.x, placing.z, placing.rot) && !buildBlockReason(placing.type);

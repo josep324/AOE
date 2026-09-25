@@ -102,7 +102,7 @@ function performAttack(u, t) {
   } else if (!t.isGround) {
     applyDamage(t, hitDamage(u, t, 0), u);
     const dir = new THREE.Vector3(t.position.x - u.position.x, 0, t.position.z - u.position.z).normalize();
-    spawnParticles(new THREE.Vector3(u.position.x + dir.x * 0.8, 1.1, u.position.z + dir.z * 0.8),
+    spawnParticles(atGround(u.position.x + dir.x * 0.8, 1.1, u.position.z + dir.z * 0.8),
       t.kind === 'building' ? 0x9b958a : 0xb02020, 3, dir);
   }
   u.swingT = 0.22;
@@ -151,7 +151,7 @@ function killEntity(e, killer) {
     state.obstacles = state.obstacles.filter(o => o.entity !== e);
     rebuildNav();
     e.deathKind = 'building';
-    spawnParticles(new THREE.Vector3(e.position.x, 2, e.position.z), 0x8a8378, 20, null);
+    spawnParticles(atGround(e.position.x, 2, e.position.z), 0x8a8378, 20, null);
     if (e.isOwn) toast(`💥 Hem perdut: ${e.name}`);
     else if (e.group.visible) toast(`🔥 Edifici enemic destruït: ${e.name}`);
   }
@@ -168,7 +168,7 @@ const arrowGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.9, 4).rotateX(Math.PI 
 const arrowTipGeo = new THREE.ConeGeometry(0.06, 0.18, 4).rotateX(Math.PI / 2).translate(0, 0, 0.5);
 function aimPoint(t) {
   const y = t.animal ? 0.8 : t.kind === 'unit' ? 1.2 : (t.height ? t.height * 0.5 : 3);
-  return new THREE.Vector3(t.position.x, y, t.position.z);
+  return new THREE.Vector3(t.position.x, y + (t.position.y || 0), t.position.z);
 }
 /* Punteria (com a l'AoE II): les fletxes de les unitats van al punt on apunten, no persegueixen
    l'objectiu. Un arquer pot fallar (accuracy) i una unitat que es mou esquiva la fletxa si el
@@ -275,7 +275,7 @@ function updateDefensiveBuildings(dt) {
     const spread = isTC ? 3.5 : b.subtype === 'castle' ? 4 : 0.6;
     const dmg = C.damage + teamOf(b.team).mods.buildingArrow;
     for (let i = 0; i < arrows; i++) {
-      const from = new THREE.Vector3(b.position.x + randRange(-spread, spread), (isTC ? 5.5 : (b.height || 7) - 1) + rand(), b.position.z + randRange(-spread, spread));
+      const from = new THREE.Vector3(b.position.x + randRange(-spread, spread), (isTC ? 5.5 : (b.height || 7) - 1) + rand() + b.position.y, b.position.z + randRange(-spread, spread));
       spawnArrow(from, target, computeDamage(dmg, target, 1), b, i * 0.12);
     }
   }
@@ -317,7 +317,7 @@ function ungarrison(b, which = null) {
   for (const u of b.garrison) {
     if (u.dead || stay.includes(u)) continue;
     const spot = findSpawnSpot(b);
-    u.position.set(spot.x, 0, spot.z);
+    u.position.set(spot.x, u.naval ? 0 : groundY(spot.x, spot.z), spot.z);
     u.garrisoned = null;
     u.group.visible = true;
     setUnitState(u, STATE.IDLE);

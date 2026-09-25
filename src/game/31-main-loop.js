@@ -95,6 +95,7 @@ function animate() {
   updateSun();
   flushGroundPaint();
   flushTreeBatches();
+  flushTerrain();
   sky.position.copy(camera.position);
   updateHoverCursor();
 

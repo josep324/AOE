@@ -129,14 +129,15 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
     e.scaffold = makeScaffold(sw, sd, Math.max(1.5, height * 0.9));
     e.group.add(e.scaffold);
   }
-  e.group.position.set(x, 0, z);
+  // Com a l'AoE II, l'edifici anivella el terreny on es construeix (el moll és a l'aigua)
+  e.group.position.set(x, def.dock ? 0 : flattenArea(x, z, sw / 2, sd / 2), z);
   e.finalize();
   state.buildings.push(e);
   if (!def.walkable) {
     e.obstacle = { x, z, hw: e.footprint.hw, hd: e.footprint.hd, rect: true, entity: e, gateTeam: def.gate ? team : 0 };
     state.obstacles.push(e.obstacle);
   }
-  hideDecorIn(x, z, sw / 2 + 0.3, sd / 2 + 0.3);
+  hideDecorIn(x, z, sw / 2 + (def.wall || def.gate ? 0.3 : 2.5), sd / 2 + (def.wall || def.gate ? 0.3 : 2.5));
   if (def.dock) { /* sobre l'aigua: no es pinta el terreny */ }
   else if (def.wall || def.gate) groundPaintRect(x, z, sw + 0.6, sd + 0.6, 'dirt', 0.35);
   else groundPaintRect(x, z, sw + 1.2, sd + 1.2, 'dirt', type === 'farm' ? 0.4 : 0.65);
@@ -171,7 +172,7 @@ function completeBuilding(b, silent = false) {
   }
   if (!silent && b.isOwn && !b.isWall) {
     toast(`🏗️ ${b.name} completat${b.def.pop ? ` (+${b.def.pop} població)` : ''}`);
-    spawnParticles(new THREE.Vector3(b.position.x, 1.2, b.position.z), 0xc8b28a, 14, null);
+    spawnParticles(atGround(b.position.x, 1.2, b.position.z), 0xc8b28a, 14, null);
   }
   updatePopulationUI();
   if (b.selected) updateSelectionUI();
@@ -213,7 +214,7 @@ function demolishBuilding(b) {
   b.dieT = 0;
   b.deathKind = 'building';
   state.dying.push(b);
-  spawnParticles(new THREE.Vector3(b.position.x, 1.0, b.position.z), 0x9b958a, 16, null);
+  spawnParticles(atGround(b.position.x, 1.0, b.position.z), 0x9b958a, 16, null);
   rebuildNav();
   updatePopulationUI();
   toast(`🗑️ ${b.name} enderrocat`);

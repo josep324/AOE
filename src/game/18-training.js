@@ -332,6 +332,6 @@ function updateRallyFlag(t) {
   if (rally.node && rally.node.depleted) rally.node = null;
   const p = rally.node ? rally.node.position : rally.point;
   rallyFlag.visible = true;
-  rallyFlag.position.set(p.x, 0, p.z);
+  rallyFlag.position.set(p.x, groundY(p.x, p.z), p.z);
   rallyFlag.userData.cloth.rotation.y = Math.sin(t * 3) * 0.25;
 }

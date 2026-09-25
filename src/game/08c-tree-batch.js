@@ -44,7 +44,7 @@ function treeBatchGrow(b, cap) {
   b.cap = cap;
 }
 function treeSlotMatrix(e, shown) {
-  tbPos.set(e.position.x, 0, e.position.z);
+  tbPos.set(e.position.x, e.position.y, e.position.z);
   tbQuat.setFromAxisAngle(tbUp, e.group.rotation.y);
   tbScale.setScalar(shown ? e.group.scale.x : 0);
   return tbMatrix.compose(tbPos, tbQuat, tbScale);

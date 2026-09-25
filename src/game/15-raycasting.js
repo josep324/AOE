@@ -18,8 +18,7 @@ function pickEntity(x, y) {
 }
 function pickGround(x, y) {
   setRayFromScreen(x, y);
-  const hits = raycaster.intersectObject(ground, false);
-  return hits.length ? hits[0].point.clone() : null;
+  return rayGround(raycaster.ray);
 }
 const projVec = new THREE.Vector3();
 function worldToScreen(pos, yOffset = 0) {
