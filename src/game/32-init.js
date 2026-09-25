@@ -5,6 +5,7 @@ Object.assign(state.resources, CONFIG.STARTING_RESOURCES);
 for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;
 navInit();
 buildWorld(WORLD.type);
+camState.target.set(BASES[PLAYER.id].x + 5, 0, BASES[PLAYER.id].z + 5);
 fogInit();
 updateFog();
 updateAgeUI();

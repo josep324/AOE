@@ -56,19 +56,24 @@ function blobInside(x, z, cx, cz, r, off) {
   return d < r * (0.78 + 0.45 * fbm(dx * 0.07 + off, dz * 0.07 - off));
 }
 function genLakes(rng, set) {
-  const lakes = [{ x: 0, z: 0, r: 15 + rng() * 6, off: rng() * 100 }];
+  const MSw = CONFIG.MAP_LIMIT / 125;
+  const lakes = [{ x: 0, z: 0, r: (15 + rng() * 6) * MSw, off: rng() * 100 }];
   // Llacs petits a banda i banda, lluny de les bases (cap a les cantonades lliures)
-  const a = Math.PI * 0.75 + (rng() - 0.5) * 0.7, d = 44 + rng() * 14;
-  lakes.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, r: 7 + rng() * 4, off: rng() * 100 });
-  const a2 = Math.PI * 0.75 + (rng() - 0.5) * 0.5, d2 = 88 + rng() * 14;
-  if (rng() < 0.7) lakes.push({ x: Math.cos(a2) * d2, z: Math.sin(a2) * d2, r: 6 + rng() * 3, off: rng() * 100 });
+  const a = Math.PI * 0.75 + (rng() - 0.5) * 0.7, d = (44 + rng() * 14) * MSw;
+  lakes.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, r: (7 + rng() * 4) * MSw, off: rng() * 100 });
+  const a2 = Math.PI * 0.75 + (rng() - 0.5) * 0.5, d2 = (88 + rng() * 14) * MSw;
+  if (rng() < 0.8) lakes.push({ x: Math.cos(a2) * d2, z: Math.sin(a2) * d2, r: (6 + rng() * 3) * MSw, off: rng() * 100 });
+  // Estanys petits als flancs (també simètrics)
+  const a3 = Math.PI * 0.25 + (rng() - 0.5) * 0.4, d3 = (60 + rng() * 12) * MSw;
+  if (rng() < 0.7) lakes.push({ x: Math.cos(a3) * d3, z: -Math.sin(a3) * d3 * 0.2 + (rng() - 0.5) * 20, r: (5 + rng() * 2) * MSw, off: rng() * 100 });
   set((x, z) => lakes.some(l => blobInside(x, z, l.x, l.z, l.r, l.off) || blobInside(-x, -z, l.x, l.z, l.r, l.off)) ? 1 : 0);
 }
 function genRiver(rng, set) {
   // El riu travessa el mapa en diagonal entre les dues bases, amb meandres (funció senar: simètric)
-  const A1 = 9 + rng() * 8, k1 = 0.016 + rng() * 0.01, A2 = 3 + rng() * 3, k2 = 0.045 + rng() * 0.03, k3 = 0.03 + rng() * 0.02;
+  const MSw = CONFIG.MAP_LIMIT / 125;
+  const A1 = (9 + rng() * 8) * MSw, k1 = (0.016 + rng() * 0.01) / MSw, A2 = (3 + rng() * 3) * MSw, k2 = (0.045 + rng() * 0.03) / MSw, k3 = 0.03 + rng() * 0.02;
   const f = (s) => A1 * Math.sin(k1 * s) + A2 * Math.sin(k2 * s);
-  const S1 = 42 + rng() * 22;
+  const S1 = (42 + rng() * 22) * MSw;
   WATER.fords = [0, S1, -S1];
   set((x, z) => {
     const s = (x - z) / Math.SQRT2, p = (x + z) / Math.SQRT2;

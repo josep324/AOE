@@ -4,7 +4,7 @@
    fullaraca als boscos, grava a les mines) i dues textures de detall que es repeteixen
    (fulles de gespa i terra) barrejades al shader segons el color de cada punt.
    ===================================================================== */
-const GROUND_PAINT = { size: 1024, span: CONFIG.MAP_LIMIT * 2 + 60, canvas: null, ctx: null, tex: null, dirty: false };
+const GROUND_PAINT = { size: 2048, span: CONFIG.MAP_LIMIT * 2 + 60, canvas: null, ctx: null, tex: null, dirty: false };
 const terrainRng = mulberry32(0x51a7e);
 
 function detailTexture(draw) {

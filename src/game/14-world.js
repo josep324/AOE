@@ -4,9 +4,11 @@
    Cada jugador té la mateixa sortida (com un mapa 1v1 de l'AoE II) i els recursos neutrals
    es col·loquen per parelles simètriques respecte del centre.
    ===================================================================== */
+/* Les coordenades de disseny són d'un mapa de 250×250; MS les escala a la mida real del mapa */
+const MS = CONFIG.MAP_LIMIT / 125;
 const BASES = {
-  [PLAYER.id]: { x: -72, z: -72, s: 1 },     // s = orientació (el rival té la base girada 180°)
-  [ENEMY.id]: { x: 72, z: 72, s: -1 },
+  [PLAYER.id]: { x: -72 * MS, z: -72 * MS, s: 1 },     // s = orientació (el rival té la base girada 180°)
+  [ENEMY.id]: { x: 72 * MS, z: 72 * MS, s: -1 },
 };
 const MAP_TYPES = {
   arabia: { name: 'Aràbia', icon: '🏜️', desc: 'Terreny obert amb boscos petits: partides ràpides i agressives' },
@@ -93,6 +95,8 @@ function createStartingBase(team) {
 /* Recurs neutral a cada meitat del mapa: posició simètrica amb una petita variació independent
    (si el lloc és ocupat, en busca un de lliure cada cop més lluny) */
 function mirrored(fn, x, z, ...args) {
+  x *= MS; z *= MS;
+  if (fn === createForest) args = [Math.round(args[0] * 1.35), args[1] * 1.18];
   for (const s of [1, -1]) {
     for (let k = 0; k < 30; k++) {
       const j = 5 + k * 0.6;
@@ -107,8 +111,9 @@ function mirrored(fn, x, z, ...args) {
 function placeWolves(n) {
   for (let i = 0; i < n; i++) {
     for (let k = 0; k < 40; k++) {
-      const x = randRange(-110, 110), z = randRange(-110, 110);
-      if (Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 52 || Math.hypot(-x - B.x, -z - B.z) < 52)) continue;
+      const lim = CONFIG.MAP_LIMIT - 15;
+      const x = randRange(-lim, lim), z = randRange(-lim, lim);
+      if (Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 60 || Math.hypot(-x - B.x, -z - B.z) < 60)) continue;
       if (isNearObstacle(x, z, 2) || isNearObstacle(-x, -z, 2)) continue;
       createAnimal('wolf', x, z); createAnimal('wolf', -x, -z);
       break;
@@ -161,6 +166,13 @@ function neutralResources(extraForests = true) {
   mirrored(createGoldMine, -26, -102);
   mirrored(createStoneMine, -104, 12);
   mirrored(createGoldMine, -58, 40);
+  // Recursos addicionals repartits per l'espai del mapa gran
+  mirrored(createGoldMine, -84, 64);
+  mirrored(createStoneMine, 44, -24);
+  mirrored(createGoldMine, 14, -92);
+  mirrored(createStoneMine, -112, -58);
+  mirrored(createSheep, -60, 20);
+  mirrored(createSheep, -12, -40);
   // Ovelles soltes per explorar
   mirrored(createSheep, -36, -12);
   mirrored(createSheep, -34, -15);
@@ -178,7 +190,11 @@ const GENERATORS = {
     mirrored(createForest, -108, 44, 16, 10);
     mirrored(createForest, 44, -108, 16, 10);
     mirrored(createForest, 0, 0, 10, 7);
-    placeWolves(3);
+    mirrored(createForest, -40, -108, 14, 9);
+    mirrored(createForest, -108, -40, 14, 9);
+    mirrored(createForest, -70, 70, 14, 10);
+    mirrored(createForest, 20, -30, 10, 7);
+    placeWolves(4);
   },
   lakes() {
     mirrored(createForest, -104, -92, 16, 11);
@@ -188,7 +204,9 @@ const GENERATORS = {
     mirrored(createForest, -62, -10, 14, 10);
     mirrored(createForest, -108, 44, 14, 10);
     mirrored(createForest, 44, -108, 14, 10);
-    placeFish(10);
+    mirrored(createForest, -40, -108, 14, 9);
+    mirrored(createForest, -108, -40, 14, 9);
+    placeFish(14);
     placeDeepFish(4);
     placeWolves(2);
   },
@@ -200,7 +218,9 @@ const GENERATORS = {
     mirrored(createForest, -70, -40, 14, 10);
     mirrored(createForest, -110, 30, 14, 10);
     mirrored(createForest, 30, -110, 14, 10);
-    placeFish(8);
+    mirrored(createForest, -100, -10, 14, 9);
+    mirrored(createForest, -10, -100, 14, 9);
+    placeFish(12);
     placeDeepFish(2);
     placeWolves(2);
   },
@@ -210,8 +230,8 @@ const GENERATORS = {
     const B1 = BASES[PLAYER.id], B2 = BASES[ENEMY.id];
     const paths = [
       [[B1.x, B1.z], [0, 0], [B2.x, B2.z]],
-      [[B1.x, B1.z], [-84, 18], [-18, 84], [B2.x, B2.z]],
-      [[B2.x, B2.z], [84, -18], [18, -84], [B1.x, B1.z]],
+      [[B1.x, B1.z], [-84 * MS, 18 * MS], [-18 * MS, 84 * MS], [B2.x, B2.z]],
+      [[B2.x, B2.z], [84 * MS, -18 * MS], [18 * MS, -84 * MS], [B1.x, B1.z]],
     ].map(pts => pts.map(([x, z]) => [x + randRange(-4, 4), z + randRange(-4, 4)]));
     const segDist = (x, z, a, b) => {
       const vx = b[0] - a[0], vz = b[1] - a[1], wx = x - a[0], wz = z - a[1];
@@ -220,7 +240,7 @@ const GENERATORS = {
     };
     const onPath = (x, z) => paths.some(p => p.some((a, i) => i > 0 && segDist(x, z, p[i - 1], a) < 5.5 + 2 * fbm(x * 0.05, z * 0.05)));
     const clearing = (x, z) => Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 34) || Math.hypot(x, z) < 12;
-    const L = CONFIG.MAP_LIMIT - 3, step = 4.0;
+    const L = CONFIG.MAP_LIMIT - 3, step = 5.3;
     for (let gx = -L; gx <= L; gx += step) for (let gz = -L; gz <= L; gz += step) {
       if (gx + gz < 0 || (gx + gz === 0 && gx < 0)) continue;           // mitja graella: l'altra meitat és el mirall
       const x = gx + randRange(-0.9, 0.9), z = gz + randRange(-0.9, 0.9);
@@ -228,7 +248,7 @@ const GENERATORS = {
       if (dens < 0.44) continue;                                        // clarianes naturals
       for (const [px, pz] of [[x, z], [-x, -z]]) {
         if (onPath(px, pz) || clearing(px, pz) || isNearObstacle(px, pz, 1.5)) continue;
-        createTree(px, pz, randRange(1.0, 1.35));
+        createTree(px, pz, randRange(1.1, 1.5));
       }
     }
     placeWolves(4);

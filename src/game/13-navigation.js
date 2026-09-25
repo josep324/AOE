@@ -174,7 +174,7 @@ function findPath(sx, sz, tx, tz) {
   NAV.seen[si] = stamp; NAV.g[si] = 0; NAV.parent[si] = -1;
   push(si, H(si));
   let found = false, iter = 0;
-  while (heap.length && iter++ < 60000) {
+  while (heap.length && iter++ < 220000) {
     const cur = pop();
     if (cur === gi) { found = true; break; }
     if (NAV.closed[cur] === stamp) continue;

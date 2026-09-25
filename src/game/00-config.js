@@ -12,7 +12,7 @@ import { CIVS } from '@data/civs.js';
    ===================================================================== */
 const CONFIG = {
   GROUND_SIZE: 1000,          // mida visual del terreny (les vores queden dins la boira)
-  MAP_LIMIT: 125,            // límit jugable (±): mapa de 250×250
+  MAP_LIMIT: 180,            // límit jugable (±): mapa de 360×360
   CAM: {
     yaw: Math.PI / 4,        // angle isomètric
     pitch: 0.95,             // ~54° d'inclinació

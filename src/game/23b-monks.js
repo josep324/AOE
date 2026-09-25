@@ -315,23 +315,32 @@ function animateRelics(t) {
     r.halo.position.y = 1.35 + Math.sin(t * 2 + r.id) * 0.12;
   }
 }
-/* Col·locació: parelles simètriques (partida justa) i una al mig, lluny de les bases */
+/* Col·locació: parelles simètriques (partida justa) ben repartides pel mapa, lluny de les bases
+   i separades entre elles; la cinquena, al mig, sobre la diagonal equidistant de les dues bases */
 function placeRelics() {
-  const spots = [[-38, 26], [26, -38], [-8, 44]];
-  let made = 0;
-  for (const [x, z] of spots) {
-    if (made + 2 > RELIC_COUNT) break;
-    for (const s of [1, -1]) {
-      for (let k = 0; k < 20; k++) {
-        const px = s * x + randRange(-7, 7), pz = s * z + randRange(-7, 7);
-        if (!isNearObstacle(px, pz, 2.5)) { createRelic(px, pz); made++; break; }
-      }
-    }
+  const L = CONFIG.MAP_LIMIT - 12, minGap = CONFIG.MAP_LIMIT * 0.3, baseGap = CONFIG.MAP_LIMIT * 0.38;
+  const placed = [];
+  const okAt = (x, z) => !isNearObstacle(x, z, 2.5)
+    && Object.values(BASES).every(B => Math.hypot(x - B.x, z - B.z) > baseGap)
+    && placed.every(([px, pz]) => Math.hypot(px - x, pz - z) > minGap);
+  // Relíquia central
+  for (let k = 0; k < 60; k++) {
+    const t = randRange(-0.25, 0.25) * CONFIG.MAP_LIMIT, px = t, pz = -t;
+    if (okAt(px, pz)) { createRelic(px, pz); placed.push([px, pz]); break; }
   }
-  // La del mig, sobre la diagonal que queda a la mateixa distància de les dues bases
-  for (let k = 0; k < 30 && made < RELIC_COUNT; k++) {
-    const t = randRange(-30, 30), px = t + randRange(-2, 2), pz = -t;
-    if (!isNearObstacle(px, pz, 2.5)) { createRelic(px, pz); made++; }
+  // Parelles simètriques
+  const pairs = Math.floor((RELIC_COUNT - placed.length) / 2);
+  for (let pair = 0; pair < pairs; pair++) {
+    for (let k = 0; k < 400; k++) {
+      const x = randRange(-L, L), z = randRange(-L, L);
+      if (Math.hypot(x + x, z + z) < minGap) continue;              // la parella no pot quedar enganxada
+      if (!okAt(x, z)) continue;
+      placed.push([x, z]);
+      if (!okAt(-x, -z)) { placed.pop(); continue; }
+      placed.push([-x, -z]);
+      createRelic(x, z); createRelic(-x, -z);
+      break;
+    }
   }
 }
 

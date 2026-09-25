@@ -126,7 +126,9 @@ function aiTick() {
   }
   if (villagers.length >= 14 && count('barracks') < D.maxBarracks && res.wood > 250) aiBuild('barracks', tc.position, 13, 30, 2);
   // Granges quan s'acaba l'aliment salvatge
-  const wildFood = state.resourceNodes.some(n => n.resourceType === 'food' && n.subtype !== 'farm' && hDist(n.position, tc.position) < 45);
+  // Menjar fàcil a prop (baies, ovelles, carn ja caçada); la caça viva i la pesca no compten per retardar les granges
+  const wildFood = state.resourceNodes.some(n => n.resourceType === 'food' && n.subtype !== 'farm' && n.subtype !== 'fish' && n.subtype !== 'deepfish'
+    && !(n.animal && n.alive) && hDist(n.position, tc.position) < 45);
   const farms = state.resourceNodes.filter(n => n.subtype === 'farm' && n.team === T).length + blds.filter(b => b.subtype === 'farm').length;
   if (!wildFood && hasCompleted('mill', T) && farms < Math.ceil(villagers.length * 0.4)) {
     const mill = blds.find(b => b.subtype === 'mill' && !b.underConstruction);
@@ -264,7 +266,7 @@ function aiTick() {
     const docks = blds.filter(b => b.subtype === 'dock');
     if (!docks.length && villagers.length >= 10 && res.wood >= 170 && !AI.saving && now > (AI.dockSearchAt || 0)) {
       AI.dockSearchAt = now + 30;
-      const spot = findDockSpot(tc.position, 85);
+      const spot = findDockSpot(tc.position, 120);
       if (spot) {
         const who = aiPickBuilders(2, spot);
         if (who.length) { applyCost(costFor('dock', T), -1, T); commandBuild(who, createBuilding('dock', spot.x, spot.z, false, T)); }

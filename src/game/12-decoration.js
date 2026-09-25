@@ -94,7 +94,7 @@ function createDecorations() {
   const tuftGeo = mergeGeometries([plane(0), plane(Math.PI), plane(Math.PI / 2), plane(-Math.PI / 2)]);
   const nrm = tuftGeo.attributes.normal;
   for (let i = 0; i < nrm.count; i++) nrm.setXYZ(i, 0, 1, 0);
-  const grassCount = 9000;
+  const grassCount = Math.round(9000 * (CONFIG.MAP_LIMIT / 125) ** 2 * 0.85);
   const grass = new THREE.InstancedMesh(
     tuftGeo,
     fogify(new THREE.MeshStandardMaterial({ map: grassTuftTexture(), alphaTest: 0.45, roughness: 1 })),
@@ -123,7 +123,7 @@ function createDecorations() {
   grass.receiveShadow = true;
   scene.add(grass);
 
-  const rockCount = 150;
+  const rockCount = Math.round(150 * (CONFIG.MAP_LIMIT / 125) ** 2);
   const rockGeo = new THREE.DodecahedronGeometry(0.5, 1);
   const rp = rockGeo.attributes.position;
   for (let i = 0; i < rp.count; i++) {
