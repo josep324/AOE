@@ -99,7 +99,7 @@ function paintGroundBase() {
   base.width = base.height = lo;
   const bctx = base.getContext('2d');
   const img = bctx.createImageData(lo, lo);
-  const lush = [86, 118, 44], dark = [66, 96, 36], dry = [132, 130, 70], yellow = [118, 124, 52];
+  const lush = [88, 108, 56], dark = [66, 84, 46], dry = [126, 120, 80], yellow = [114, 114, 66];
   for (let j = 0; j < lo; j++) for (let i = 0; i < lo; i++) {
     const x = -P.span / 2 + (i + 0.5) / lo * P.span, z = -P.span / 2 + (j + 0.5) / lo * P.span;
     const n = fbm(x * 0.03, z * 0.03), n2 = fbm(x * 0.011 + 50, z * 0.011 - 20), n3 = fbm(x * 0.09 - 7, z * 0.09 + 3);

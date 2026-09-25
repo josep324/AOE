@@ -48,29 +48,53 @@ function buildAnimalModel(e, kind, variant) {
       legs.push(leg);
     }
   };
+  const tp = (rt, rb, h, seg = 10) => {
+    const k = `${rt}|${rb}|${h}|${seg}`;
+    return (animalGeos.t = animalGeos.t || new Map()).get(k) || animalGeos.t.set(k, new THREE.CylinderGeometry(rt, rb, h, seg)).get(k);
+  };
+  const addJointLegs = (hx, hy, fz, bz, up, low, col, hoofCol, w = 1) => {
+    for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      const leg = new THREE.Group();
+      leg.position.set(sx * hx, hy, sz > 0 ? fz : bz);
+      const back = sz < 0;
+      part(leg, tp(0.035 * w, (back ? 0.085 : 0.07) * w, up), col, 0, -up / 2, back ? -0.03 : 0, 1, 1, 1);
+      part(leg, tp(0.028 * w, 0.034 * w, low), col, 0, -up - low / 2, back ? 0.02 : 0, 1, 1, 1);
+      part(leg, tp(0.03 * w, 0.036 * w, 0.06), hoofCol, 0, -up - low - 0.02, back ? 0.02 : 0, 1, 1, 1);
+      body.add(leg);
+      legs.push(leg);
+    }
+  };
   if (kind === 'deer') {
     const coat = mat([0x86603c, 0x7a5634, 0x94704a][variant % 3], { roughness: 0.85 });
-    const light = mat(0xe8dcc4, { roughness: 0.9 }), dark = mat(0x2a1e16, { roughness: 0.7 });
-    part(body, G.sphere, coat, 0, 1.12, 0, 0.3, 0.34, 0.72);
-    part(body, G.sphere, light, 0, 1.0, 0.05, 0.24, 0.22, 0.55);
-    part(body, G.cyl, coat, 0, 1.45, 0.58, 0.11, 0.62, 0.13, 0.55);
+    const light = mat(0xe2d6bc, { roughness: 0.9 }), dark = mat(0x2a1e16, { roughness: 0.7 });
+    // Tronc esvelt: barril, pit i gropa
+    part(body, tp(0.21, 0.23, 0.8, 12), coat, 0, 1.12, 0, 1, 1, 1.15, Math.PI / 2);
+    part(body, G.sphere, coat, 0, 1.13, 0.4, 0.22, 0.27, 0.22);
+    part(body, G.sphere, coat, 0, 1.16, -0.42, 0.23, 0.26, 0.24);
+    part(body, G.sphere, light, 0, 1.0, 0.0, 0.17, 0.12, 0.5);
+    part(body, tp(0.08, 0.15, 0.62, 10), coat, 0, 1.46, 0.56, 1, 1, 1, 0.5);
     e.head = new THREE.Group();
-    e.head.position.set(0, 1.78, 0.78);
-    part(e.head, G.sphere, coat, 0, 0, 0.06, 0.13, 0.14, 0.24);
-    part(e.head, G.sphere, dark, 0, -0.04, 0.28, 0.06, 0.05, 0.05);
-    for (const s of [-1, 1]) part(e.head, G.cone, coat, s * 0.1, 0.14, -0.04, 0.05, 0.16, 0.03, 0, 0, s * -0.6);
+    e.head.position.set(0, 1.76, 0.7);
+    part(e.head, tp(0.045, 0.1, 0.36, 10), coat, 0, -0.04, 0.14, 0.85, 1, 1, 1.9);
+    part(e.head, G.sphere, coat, 0, 0.02, 0.0, 0.1, 0.1, 0.11);
+    part(e.head, G.sphere, dark, 0, -0.1, 0.3, 0.035, 0.03, 0.03);
+    for (const s2 of [-1, 1]) {
+      part(e.head, G.cone, coat, s2 * 0.08, 0.1, -0.04, 0.035, 0.14, 0.02, 0, 0, s2 * -0.9);
+      part(e.head, G.sphere, dark, s2 * 0.07, 0.03, 0.08, 0.016, 0.016, 0.016);
+    }
     if (variant % 2 === 0) {
-      // Banyes del mascle
+      // Banyes del mascle, amb puntes
       const ant = mat(0x6a5236, { roughness: 0.7 });
-      for (const s of [-1, 1]) {
-        part(e.head, G.cyl, ant, s * 0.08, 0.26, -0.02, 0.018, 0.34, 0.018, -0.2, 0, s * -0.35);
-        part(e.head, G.cyl, ant, s * 0.17, 0.4, 0.04, 0.014, 0.18, 0.014, 0.5, 0, s * -0.9);
-        part(e.head, G.cyl, ant, s * 0.14, 0.44, -0.08, 0.014, 0.16, 0.014, -0.6, 0, s * -0.2);
+      for (const s2 of [-1, 1]) {
+        part(e.head, tp(0.008, 0.016, 0.34, 5), ant, s2 * 0.08, 0.26, -0.04, 1, 1, 1, -0.25, 0, s2 * -0.4);
+        part(e.head, tp(0.006, 0.012, 0.16, 5), ant, s2 * 0.16, 0.36, 0.05, 1, 1, 1, 0.7, 0, s2 * -0.9);
+        part(e.head, tp(0.006, 0.012, 0.15, 5), ant, s2 * 0.13, 0.43, -0.1, 1, 1, 1, -0.7, 0, s2 * -0.2);
+        part(e.head, tp(0.005, 0.01, 0.12, 5), ant, s2 * 0.18, 0.48, -0.02, 1, 1, 1, 0.2, 0, s2 * -1.0);
       }
     }
     body.add(e.head);
-    part(body, G.sphere, light, 0, 1.22, -0.72, 0.07, 0.1, 0.06);
-    addLegs(0.16, 0.98, 0.45, 0.95, 0.9, coat, dark);
+    part(body, G.sphere, light, 0, 1.2, -0.66, 0.06, 0.09, 0.05);
+    addJointLegs(0.13, 1.0, 0.4, -0.44, 0.48, 0.48, coat, dark);
   } else if (kind === 'boar') {
     const coat = mat(0x3a2c22, { roughness: 0.95 }), snout = mat(0x6a4a3c, { roughness: 0.8 }), tusk = mat(0xefe6d0, { roughness: 0.4 });
     part(body, G.sphere, coat, 0, 0.74, -0.05, 0.4, 0.44, 0.78);
@@ -89,19 +113,26 @@ function buildAnimalModel(e, kind, variant) {
     part(body, G.cyl, coat, 0, 0.8, -0.85, 0.02, 0.3, 0.02, 0.8);
     addLegs(0.2, 0.5, 0.42, 0.46, 1.4, coat, mat(0x1a1410));
   } else {
-    const coat = mat([0x7c7f84, 0x6e6a64, 0x8a8a86][variant % 3], { roughness: 0.9 });
+    const coat = mat([0x5e6064, 0x5a5650, 0x6c6a66][variant % 3], { roughness: 0.92 });
     const light = mat(0xc8c4bc, { roughness: 0.9 }), dark = mat(0x222222, { roughness: 0.6 });
-    part(body, G.sphere, coat, 0, 0.82, -0.05, 0.25, 0.28, 0.66);
-    part(body, G.sphere, light, 0, 0.78, 0.38, 0.22, 0.25, 0.26);
+    // Pit profund i cintura estreta, cua espessa, morro llarg
+    part(body, tp(0.15, 0.2, 0.72, 12), coat, 0, 0.86, -0.02, 1, 1, 1.1, Math.PI / 2 + 0.06);
+    part(body, G.sphere, coat, 0, 0.88, 0.34, 0.2, 0.26, 0.24);
+    part(body, G.sphere, light, 0, 0.8, 0.44, 0.15, 0.2, 0.14);
+    part(body, G.sphere, coat, 0, 0.88, -0.36, 0.17, 0.2, 0.2);
+    part(body, tp(0.1, 0.15, 0.3, 10), coat, 0, 1.04, 0.52, 1, 1, 1, 0.9);
     e.head = new THREE.Group();
-    e.head.position.set(0, 1.06, 0.62);
-    part(e.head, G.sphere, coat, 0, 0, 0, 0.16, 0.15, 0.18);
-    part(e.head, G.cone, coat, 0, -0.04, 0.24, 0.08, 0.28, 0.08, Math.PI / 2);
-    part(e.head, G.sphere, dark, 0, -0.02, 0.38, 0.035, 0.03, 0.03);
-    for (const s of [-1, 1]) part(e.head, G.cone, coat, s * 0.09, 0.17, -0.02, 0.05, 0.14, 0.04);
+    e.head.position.set(0, 1.08, 0.66);
+    part(e.head, G.sphere, coat, 0, 0, 0, 0.13, 0.12, 0.14);
+    part(e.head, tp(0.035, 0.08, 0.28, 8), coat, 0, -0.03, 0.2, 1, 1, 0.9, Math.PI / 2);
+    part(e.head, G.sphere, dark, 0, -0.03, 0.35, 0.03, 0.025, 0.025);
+    for (const s2 of [-1, 1]) {
+      part(e.head, G.cone, coat, s2 * 0.07, 0.14, -0.03, 0.045, 0.13, 0.025);
+      part(e.head, G.sphere, mat(0xd8b040, { roughness: 0.3 }), s2 * 0.06, 0.04, 0.1, 0.014, 0.012, 0.012);
+    }
     body.add(e.head);
-    part(body, G.cyl, coat, 0, 0.72, -0.8, 0.06, 0.5, 0.06, 0.9);
-    addLegs(0.13, 0.66, 0.42, 0.66, 1.0, coat, dark);
+    part(body, tp(0.03, 0.08, 0.55, 8), coat, 0, 0.72, -0.72, 1, 1, 1, 2.5);
+    addJointLegs(0.1, 0.78, 0.38, -0.38, 0.38, 0.38, coat, dark, 0.9);
   }
   e.legs = legs;
   return body;

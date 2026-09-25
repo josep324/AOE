@@ -84,10 +84,10 @@ function animate() {
 
   // Pulsació dels indicadors de selecció
   for (const m of selMaterials.values()) {
-    m.ring.opacity = 0.75 + 0.25 * Math.sin(t * 5);
-    m.disc.opacity = 0.6 + 0.25 * Math.sin(t * 5);
+    m.ring.opacity = 0.8 + 0.12 * Math.sin(t * 4);
+    m.disc.opacity = 0.28 + 0.08 * Math.sin(t * 4);
   }
-  const pulse = 1 + Math.sin(t * 4) * 0.035;
+  const pulse = 1 + Math.sin(t * 4) * 0.015;
   for (const s of state.selected) s.selection.scale.setScalar(pulse);
 
   updateSun();

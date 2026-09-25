@@ -127,7 +127,7 @@ function updateSelectionUI(panelOnly = false) {
       }
       if (first.trainQueue && first.isOwn && !first.underConstruction) {
         const items = first.trainQueue.map((it, i) =>
-          `<div class="q-item" data-idx="${i}" title="${itemDef(it.kind).name} · clic: cancel·lar (retorna ${costText(it.paid || costFor(it.kind))})">${itemDef(it.kind).icon}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
+          `<div class="q-item" data-idx="${i}" title="${itemDef(it.kind).name} · clic: cancel·lar (retorna ${costText(it.paid || costFor(it.kind))})">${isTech(it.kind) ? `<span class="emo">${itemDef(it.kind).icon}</span>` : iconHTML(it.kind, itemDef(it.kind).icon, first.team)}${i === 0 ? '<i class="q-prog"></i>' : ''}</div>`).join('');
         if (items) stats += `<div class="queue-row"><div class="queue" id="train-queue">${items}</div><div class="train-status" id="train-status"></div></div>`;
       }
     }
@@ -142,7 +142,7 @@ function updateSelectionUI(panelOnly = false) {
         ? `<div class="bar build"><i style="width:${first.progress * 100}%"></i><span>Construcció: ${Math.floor(first.progress * 100)}%</span></div>`
         : hpBar(first);
     selContent.innerHTML = `
-      <div class="portrait ${first.isOwn ? '' : first.team ? 'enemy' : 'neutral'}">${first.icon}</div>
+      <div class="portrait ${first.isOwn ? '' : first.team ? 'enemy' : 'neutral'}">${entityIconHTML(first)}</div>
       <div class="sel-info">
         <div class="sel-name">${first.name}</div>
         ${ownerLine(first)}
@@ -156,7 +156,7 @@ function updateSelectionUI(panelOnly = false) {
     const grouped = sel.length > 24;
     const shown = grouped ? [] : sel;
     const stIcon = { IDLE: '💤', MOVING: '👣', GATHERING: '⚒️', RETURNING: '🎒', BUILDING: '🔨', ATTACKING: '⚔️', GARRISONED: '🏰', TRADING: '🪙' };
-    const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${u.icon}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
+    const minis = shown.map(u => `<div class="mini" data-id="${u.id}" title="${u.name} · ${STATE_LABEL[u.state]}"><span class="st">${stIcon[u.state] || ''}</span>${entityIconHTML(u)}<div class="hp" style="width:${(u.hp / u.maxHp) * 100}%"></div></div>`).join('');
     const counts = {};
     sel.forEach(u => { counts[u.state] = (counts[u.state] || 0) + 1; });
     const summary = Object.entries(counts).map(([k, v]) => `<span class="state-tag ${k}">${STATE_LABEL[k]}: ${v}</span>`).join(' ');
@@ -164,10 +164,10 @@ function updateSelectionUI(panelOnly = false) {
     sel.forEach(u => { if (u.carry.type) carried[u.carry.type] = (carried[u.carry.type] || 0) + u.carry.amount; });
     const more = grouped ? [...byType.entries()].map(([k, list]) => {
       const hp = list.reduce((a, u) => a + u.hp / u.maxHp, 0) / list.length;
-      return `<div class="mini grp" data-type="${k}" title="${list[0].name} ×${list.length} · clic: només aquests · Shift+clic: treure'ls"><span class="st">×${list.length}</span>${list[0].icon}<div class="hp" style="width:${hp * 100}%"></div></div>`;
+      return `<div class="mini grp" data-type="${k}" title="${list[0].name} ×${list.length} · clic: només aquests · Shift+clic: treure'ls"><span class="st">×${list.length}</span>${entityIconHTML(list[0])}<div class="hp" style="width:${hp * 100}%"></div></div>`;
     }).join('') : '';
     selContent.innerHTML = `
-      <div class="portrait">${first.icon}</div>
+      <div class="portrait">${entityIconHTML(first)}</div>
       <div class="sel-info" style="justify-content:flex-start">
         <div class="sel-name">${sel.length} ${sel.every(u => u.subtype === 'villager') ? 'Aldeans' : 'Unitats'}${sel.some(u => u.isMilitary) && sel.length > 1 ? ` <small style="opacity:.7">· ${FORMATIONS[groupFormation(sel)].icon} ${FORMATIONS[groupFormation(sel)].name}</small>` : ''}</div>
         <div class="stats">${summary}<span>🎒 ${Object.keys(carried).filter(k => carried[k]).map(k => `${RES_ICON[k]} <b>${carried[k]}</b>`).join(' · ') || '<b>buida</b>'}</span></div>
@@ -206,7 +206,8 @@ function updateSelectionUI(panelOnly = false) {
       if (tech && d.requires && !T.techs.has(d.requires)) continue;     // només es mostra el pas següent de cada cadena
       const locked = (d.age || 0) > T.age;
       const cost = costFor(kind);
-      const b = makeActionButton(locked ? '🔒' : d.icon, shortLabel(kind), costHTML(cost),
+      const ic = tech ? `<span class="emo">${d.icon}</span>` : iconHTML(kind, d.icon);
+      const b = makeActionButton(locked ? `<span class="lockwrap">${ic}<i class="lock">🔒</i></span>` : ic, shortLabel(kind), costHTML(cost),
         kind === 'villager' ? 'C' : '', () => queueUnit(first, kind), true);
       b.dataset.item = kind;
       if (tech && (d.upgradeTo || d.elite || d.ageUp)) b.insertAdjacentHTML('beforeend', '<span class="upg">⬆</span>');
@@ -313,7 +314,8 @@ function updateSelectionUI(panelOnly = false) {
       if ((def.page || 0) !== buildPage) continue;
       const locked = (def.age || 0) > PLAYER.age;
       const hk = Object.entries(CONFIG.BUILD_KEYS).find(([, t]) => t === type);
-      const btn = makeActionButton(locked ? '🔒' : def.icon, def.short, costHTML(costFor(type)), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
+      const bic = iconHTML(type, def.icon);
+      const btn = makeActionButton(locked ? `<span class="lockwrap">${bic}<i class="lock">🔒</i></span>` : bic, def.short, costHTML(costFor(type)), hk ? hk[0].slice(3) : '', () => startPlacement(type), true);
       btn.dataset.build = type;
       btn.title = `${def.name} — ${costText(costFor(type))} · ${def.time}s\n${def.desc}${locked ? `\nRequereix: ${CONFIG.AGES[def.age].name}` : ''}\nClic esquerre: col·locar · Shift: col·locar-ne més · Clic dret/Esc: cancel·lar`;
       actionsEl.appendChild(btn);

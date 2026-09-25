@@ -54,8 +54,8 @@ function drawMinimap() {
   corners.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
   ctx.closePath();
   const grad = ctx.createRadialGradient(mm.size / 2, mm.size / 2, 5, mm.size / 2, mm.size / 2, mm.size / 1.4);
-  grad.addColorStop(0, '#5c9a3c');
-  grad.addColorStop(1, '#3d6e2a');
+  grad.addColorStop(0, '#62794a');
+  grad.addColorStop(1, '#3e5132');
   ctx.fillStyle = grad;
   ctx.fill();
   ctx.strokeStyle = 'rgba(216,178,90,0.8)';

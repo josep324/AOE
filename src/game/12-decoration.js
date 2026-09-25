@@ -115,7 +115,7 @@ function createDecorations() {
       dummy.updateMatrix();
       grass.setMatrixAt(gi, dummy.matrix);
       decor.grassPos.push(dummy.position.x, dummy.position.z);
-      tint.setHSL(0.22 + randRange(-0.03, 0.03), 0.36 + randRange(-0.08, 0.08), 0.31 + randRange(-0.05, 0.05));
+      tint.setHSL(0.2 + randRange(-0.03, 0.03), 0.22 + randRange(-0.06, 0.06), 0.25 + randRange(-0.04, 0.04));
       grass.setColorAt(gi, tint);
       gi++;
     }

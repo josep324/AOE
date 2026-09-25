@@ -10,10 +10,26 @@ const unitRng = mulberry32(0x5eed);
 const ur = (a, b) => a + (b - a) * unitRng();
 const upick = (arr) => arr[Math.floor(unitRng() * arr.length)];
 
+/* Gra del material: soroll segons la posició del model (teixit, cuir, metall martellejat), sense textures */
+function grainMaterial(m, scale, amount, key) {
+  m.onBeforeCompile = (shader) => {
+    shader.vertexShader = 'varying vec3 vGrainP;\n' + shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vGrainP = position;`);
+    shader.fragmentShader = 'varying vec3 vGrainP;\n' + shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      {
+        vec3 q = vGrainP * ${scale.toFixed(1)};
+        float n = fract(sin(dot(floor(q), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        float n2 = fract(sin(dot(floor(q * 2.7 + 1.3), vec3(39.34, 11.13, 83.17))) * 24634.634);
+        diffuseColor.rgb *= ${(1 - amount).toFixed(3)} + ${amount.toFixed(3)} * (0.6 * n + 0.4 * n2);
+      }`);
+  };
+  m.customProgramCacheKey = () => key;
+  return m;
+}
 const UNIT_MATS = {
   _matte: null, _metal: null,
-  get matte() { return this._matte || (this._matte = fogify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 }))); },
-  get metal() { return this._metal || (this._metal = fogify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.38, metalness: 0.75 }))); },
+  get matte() { return this._matte || (this._matte = fogify(grainMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.86, metalness: 0 }), 34, 0.14, 'unit-matte'))); },
+  get metal() { return this._metal || (this._metal = fogify(grainMaterial(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.7 }), 22, 0.1, 'unit-metal'))); },
 };
 
 /* Paletes regionals */
@@ -56,8 +72,15 @@ function bakeRig(root) {
         const g = p.geo.index ? p.geo.toNonIndexed() : p.geo;
         for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k);
         if (!g.attributes.normal) g.computeVertexNormals();
-        const col = new Float32Array(g.attributes.position.count * 3);
-        for (let i = 0; i < col.length; i += 3) { col[i] = p.color.r; col[i + 1] = p.color.g; col[i + 2] = p.color.b; }
+        // Color per vèrtex amb ombrejat: la part baixa de cada peça més fosca (oclusió) i una lleugera variació
+        const pos = g.attributes.position;
+        if (!g.boundingBox) g.computeBoundingBox();
+        const y0 = g.boundingBox.min.y, yh = Math.max(1e-3, g.boundingBox.max.y - y0);
+        const col = new Float32Array(pos.count * 3);
+        for (let i = 0; i < pos.count; i++) {
+          const f = (0.8 + 0.2 * (pos.getY(i) - y0) / yh) * (0.96 + 0.08 * hash2(pos.getX(i) * 37.1 + pos.getY(i) * 11.3, pos.getZ(i) * 29.7));
+          col[i * 3] = p.color.r * f; col[i * 3 + 1] = p.color.g * f; col[i * 3 + 2] = p.color.b * f;
+        }
         g.setAttribute('color', new THREE.BufferAttribute(col, 3));
         return g;
       });
@@ -106,7 +129,10 @@ function humanBody(rig, look) {
     piece(leg, UG.box, look.boots, { y: -0.7, z: 0.04, sx: 0.19, sy: 0.17, sz: 0.3 });
   }
   // Cadera / faldó de la túnica i tors
-  if (look.skirt) piece(torso, taper(0.3, 0.44, 0.78, 12), look.skirt, { y: 0.52 });
+  if (look.skirt) {
+    piece(torso, taper(0.29, 0.36, 0.8, 12), look.skirt, { y: 0.52, sz: 0.86 });
+    piece(torso, taper(0.36, 0.37, 0.06, 12), look.pants || look.skirt, { y: 0.14, sz: 0.86 });   // vora del vestit
+  }
   else piece(torso, taper(0.3, 0.36, 0.34, 12), look.top2 || look.top, { y: 0.95 });
   piece(torso, taper(0.31, 0.27, 0.55, 12), look.top, { y: 1.3, sz: 0.78 });
   piece(torso, UG.sphere, look.top, { y: 1.5, sx: 0.3, sy: 0.12, sz: 0.24 });
@@ -119,8 +145,9 @@ function humanBody(rig, look) {
   if (look.beard) piece(torso, UG.sphere, look.beard, { y: 1.7, z: 0.1, sx: 0.14, sy: 0.12, sz: 0.1 });
   // Braços
   for (const [arm, s] of [[armL, -1], [armR, 1]]) {
-    piece(arm, UG.sphere, look.sleeves || look.top, { sx: 0.12, sy: 0.12, sz: 0.12 });
-    piece(arm, taper(0.085, 0.07, 0.52), look.sleeves || look.top, { y: -0.26 });
+    piece(arm, UG.sphere, look.sleeves || look.top, { y: -0.02, sx: 0.095, sy: 0.1, sz: 0.1 });
+    piece(arm, taper(0.08, 0.066, 0.3), look.sleeves || look.top, { y: -0.16 });
+    piece(arm, taper(0.066, 0.055, 0.28), look.sleeves || look.top, { y: -0.43 });
     piece(arm, UG.sphere, look.skin, { y: -0.58, sx: 0.075, sy: 0.085, sz: 0.075 });
   }
   return { torso, legL, legR, armL, armR };
@@ -283,6 +310,20 @@ function buildMonkRig(team, arch) {
   return rig;
 }
 
+/* Proporcions realistes: el cap i el que hi porta (cascs, barrets) s'encongeixen cap al coll
+   (el cos fa unes 7 caps d'alçada, no 5 com un ninot) */
+function refineHead(torso, k = 0.78) {
+  const pcs = torso.userData.pieces;
+  if (!pcs) return;
+  const c = new THREE.Vector3(0, 1.69, 0), box = new THREE.Box3(), ctr = new THREE.Vector3();
+  const m = new THREE.Matrix4().makeTranslation(c.x, c.y, c.z).multiply(new THREE.Matrix4().makeScale(k, k, k)).multiply(new THREE.Matrix4().makeTranslation(-c.x, -c.y, -c.z));
+  for (const p of pcs) {
+    box.setFromBufferAttribute(p.geo.attributes.position);
+    box.getCenter(ctr);
+    if (ctr.y > 1.7 && Math.abs(ctr.z) < 0.28) p.geo.applyMatrix4(m);
+  }
+}
+
 /* ---------- Soldats ---------- */
 function soldierLook(arch, team, kind) {
   const L = REGION_LOOK[arch], T = teamOf(team);
@@ -318,7 +359,8 @@ function armorDetails(torso, arch, team, kind, tier = 0) {
   const heavy = kind === 'militia' || kind === 'knight' || kind === 'throwingaxe' || (tier >= 1 && kind !== 'archer' && kind !== 'skirmisher' && kind !== 'cavarcher');
   if (arch === 'western' && heavy) {
     piece(torso, taper(0.32, 0.36, 0.5, 12), tier >= 3 ? 0xb4bac2 : 0x8a9098, { y: 1.28, sz: 0.8, metal: true });
-    piece(torso, UG.box, T.color, { y: 1.15, z: 0.02, sx: 0.44, sy: 0.72, sz: 0.62 });
+    piece(torso, taper(0.33, 0.37, 0.7, 12), T.color, { y: 1.02, sz: 0.84 });
+    piece(torso, taper(0.332, 0.332, 0.05, 12), 0xd8cca8, { y: 0.69, sz: 0.85 });
   }
   if (arch === 'middleeast' && (heavy || kind === 'spearman' || kind === 'mameluke')) {
     piece(torso, taper(0.32, 0.35, 0.46, 12), tier >= 3 ? 0xb4bac2 : 0x8a9098, { y: 1.3, sz: 0.8, metal: true });
@@ -331,7 +373,9 @@ function armorDetails(torso, arch, team, kind, tier = 0) {
     piece(torso, UG.box, T.color, { y: 0.9, z: 0.28, sx: 0.4, sy: 0.3, sz: 0.04 });
   }
   // Nivells alts: espatlleres i braçals de metall
-  if (tier >= 2 && kind !== 'archer' && kind !== 'skirmisher') for (const s of [-1, 1]) piece(torso, UG.sphere, arch === 'eastasian' ? 0x2a2622 : 0xa8adb5, { x: s * 0.36, y: 1.5, sx: 0.17, sy: 0.12, sz: 0.19, metal: true });
+  if (tier >= 2 && kind !== 'archer' && kind !== 'skirmisher') for (const s of [-1, 1]) {
+    for (let i = 0; i < 3; i++) piece(torso, UG.box, arch === 'eastasian' ? 0x2a2622 : 0xa8adb5, { x: s * (0.34 + i * 0.02), y: 1.52 - i * 0.07, sx: 0.16, sy: 0.035, sz: 0.24, rz: s * -(0.45 + i * 0.1), metal: true });
+  }
   if (tier >= 1 && (kind === 'archer' || kind === 'skirmisher' || kind === 'cavarcher')) piece(torso, taper(0.31, 0.34, 0.4, 12), arch === 'eastasian' ? 0x3a3028 : 0x7a6a4a, { y: 1.3, sz: 0.8 });
 }
 function buildSoldierRig(kind, team, arch) {
@@ -445,30 +489,48 @@ function buildSoldierRig(kind, team, arch) {
 /* ---------- Muntures ---------- */
 function buildHorse(rig, team, arch, kind, tier = 0) {
   const T = teamOf(team);
-  const coat = kind === 'knight' ? upick([0x3b2a20, 0x2a2220, 0x5a4636]) : upick([0x8a5a32, 0x6a4428, 0xa07048, 0xd8ccb8]);
-  const mane = 0x1c1410;
+  const coat = kind === 'knight' ? upick([0x3b2a20, 0x2a2220, 0x4a3a2e]) : upick([0x7a5030, 0x5e3e24, 0x8e6444, 0xb8ab98, 0x3a2a20]);
+  const mane = 0x17110d, hoof = 0x1a1612;
   const body = rigPart(rig, 'horse');
-  piece(body, UG.sphere, coat, { y: 1.3, sx: 0.4, sy: 0.44, sz: 0.95 });
-  piece(body, taper(0.17, 0.26, 0.9, 10), coat, { y: 1.78, z: 0.8, rx: 0.65 });
-  piece(body, taper(0.1, 0.16, 0.52, 10), coat, { y: 2.05, z: 1.2, rx: 1.9 });
-  for (const s of [-1, 1]) piece(body, UG.cone, coat, { x: s * 0.08, y: 2.3, z: 1.02, sx: 0.04, sy: 0.12, sz: 0.04 });
-  piece(body, UG.box, mane, { y: 1.95, z: 0.72, sx: 0.06, sy: 0.7, sz: 0.14, rx: 0.65 });
-  piece(body, UG.cone, mane, { y: 1.25, z: -1.0, rx: -2.5, sx: 0.08, sy: 0.7, sz: 0.1 });
-  // Sella i gualdrapa
-  piece(body, UG.box, LEATHER, { y: 1.73, z: -0.05, sx: 0.5, sy: 0.08, sz: 0.55 });
+  // Tronc: barril allargat amb pit i gropa marcats
+  piece(body, taper(0.33, 0.35, 1.2, 14), coat, { y: 1.32, z: 0, rx: Math.PI / 2, sx: 1, sz: 1.12 });
+  piece(body, UG.sphere, coat, { y: 1.34, z: 0.6, sx: 0.34, sy: 0.4, sz: 0.34 });
+  piece(body, UG.sphere, coat, { y: 1.38, z: -0.6, sx: 0.36, sy: 0.4, sz: 0.38 });
+  piece(body, UG.sphere, coat, { y: 1.12, z: 0.05, sx: 0.3, sy: 0.22, sz: 0.62 });
+  // Coll, cap allargat amb morro, orelles i crinera
+  piece(body, taper(0.14, 0.25, 0.86, 12), coat, { y: 1.8, z: 0.86, rx: 0.62 });
+  piece(body, taper(0.075, 0.125, 0.56, 10), coat, { y: 2.02, z: 1.36, rx: 2.18, sx: 0.85 });
+  piece(body, UG.sphere, coat, { y: 2.12, z: 1.2, sx: 0.12, sy: 0.12, sz: 0.14 });
+  piece(body, UG.box, 0x2a1e18, { y: 1.83, z: 1.6, sx: 0.12, sy: 0.08, sz: 0.06, rx: 0.6 });
+  for (const s of [-1, 1]) {
+    piece(body, UG.cone, coat, { x: s * 0.06, y: 2.3, z: 1.14, sx: 0.035, sy: 0.13, sz: 0.03, rz: s * -0.2 });
+    piece(body, UG.sphere, 0x0e0a08, { x: s * 0.085, y: 2.08, z: 1.33, sx: 0.022, sy: 0.022, sz: 0.022 });
+  }
+  piece(body, UG.box, mane, { y: 1.98, z: 0.78, sx: 0.05, sy: 0.72, sz: 0.1, rx: 0.62 });
+  piece(body, UG.box, mane, { y: 2.2, z: 1.12, sx: 0.05, sy: 0.12, sz: 0.1, rx: 0.3 });
+  piece(body, taper(0.03, 0.09, 0.8, 8), mane, { y: 1.0, z: -1.02, rx: -0.35 });
+  // Brides, sella i gualdrapa
+  piece(body, UG.box, LEATHER, { y: 1.96, z: 1.4, sx: 0.2, sy: 0.03, sz: 0.03, rx: 0.6 });
+  piece(body, UG.box, LEATHER, { y: 1.72, z: -0.05, sx: 0.46, sy: 0.08, sz: 0.56 });
+  piece(body, UG.box, LEATHER, { y: 1.8, z: -0.3, sx: 0.4, sy: 0.12, sz: 0.06 });
   if (kind === 'knight') {
     const cap = arch === 'eastasian' ? T.colorDark : T.color;
-    for (const s of [-1, 1]) piece(body, UG.box, cap, { x: s * 0.41, y: 1.18, sx: 0.04, sy: 0.72, sz: 1.7 });
-    piece(body, UG.box, cap, { y: 1.72, sx: 0.84, sy: 0.04, sz: 1.2 });
-    piece(body, UG.box, arch === 'western' && tier < 2 ? 0xe8dcc0 : GOLD, { x: 0.43, y: 1.2, sx: 0.02, sy: 0.3, sz: 0.3 });
-    if (tier >= 1) for (const s of [-1, 1]) piece(body, UG.box, GOLD, { x: s * 0.43, y: 0.84, sx: 0.03, sy: 0.05, sz: 1.72, metal: true });
-    if (arch === 'western') piece(body, taper(0.18, 0.2, 0.55, 10), METAL, { y: 2.05, z: 1.2, rx: 1.9, metal: true });
-  } else piece(body, UG.box, T.color, { y: 1.7, z: -0.05, sx: 0.86, sy: 0.04, sz: 0.7 });
+    // Gualdrapa de tela que embolcalla el cos i penja fins als genolls, amb ribet clar
+    const drape = (rt, rb, h) => { const k = `drape${rt}|${rb}|${h}`; if (!tapers.has(k)) tapers.set(k, new THREE.CylinderGeometry(rt, rb, h, 18, 1, true)); return tapers.get(k); };
+    piece(body, drape(0.4, 0.45, 1.78), cap, { y: 1.26, rx: Math.PI / 2, sz: 1.35 });
+    piece(body, UG.box, cap, { y: 1.71, sx: 0.66, sy: 0.03, sz: 1.2 });
+    piece(body, UG.box, arch === 'western' && tier < 2 ? 0xe8dcc0 : GOLD, { x: 0.42, y: 1.22, sx: 0.02, sy: 0.3, sz: 0.3 });
+    if (tier >= 1) for (const s of [-1, 1]) piece(body, UG.box, GOLD, { x: s * 0.42, y: 0.86, sx: 0.025, sy: 0.04, sz: 1.72, metal: true });
+    if (arch === 'western') piece(body, taper(0.09, 0.14, 0.5, 10), METAL, { y: 2.03, z: 1.36, rx: 2.18, sx: 0.9, metal: true });
+  } else piece(body, UG.box, T.colorDark, { y: 1.69, z: -0.05, sx: 0.8, sy: 0.03, sz: 0.66 });
   const legs = [];
-  for (const [lx, lz, name] of [[-0.22, 0.62, 'hFL'], [0.22, -0.62, 'hBR'], [0.22, 0.62, 'hFR'], [-0.22, -0.62, 'hBL']]) {
-    const leg = rigPart(rig, name, lx, 1.05, lz);
-    piece(leg, taper(0.1, 0.065, 0.92, 8), coat, { y: -0.46 });
-    piece(leg, taper(0.075, 0.085, 0.1, 8), 0x1a1612, { y: -0.97 });
+  for (const [lx, lz, name] of [[-0.2, 0.6, 'hFL'], [0.2, -0.62, 'hBR'], [0.2, 0.6, 'hFR'], [-0.2, -0.62, 'hBL']]) {
+    const leg = rigPart(rig, name, lx, 1.12, lz);
+    const back = lz < 0;
+    piece(leg, taper(0.07, back ? 0.13 : 0.11, 0.5, 8), coat, { y: -0.24, z: back ? -0.03 : 0 });
+    piece(leg, taper(0.045, 0.055, 0.46, 8), coat, { y: -0.72, z: back ? 0.03 : 0 });
+    piece(leg, UG.sphere, coat, { y: -0.96, z: back ? 0.03 : 0, sx: 0.06, sy: 0.05, sz: 0.06 });
+    piece(leg, taper(0.055, 0.07, 0.1, 8), hoof, { y: -1.06, z: back ? 0.03 : 0 });
     legs.push(leg);
   }
   return legs;
@@ -685,6 +747,7 @@ function unitTemplate(kind, team, arch, variant) {
         else buildHorse(rig, team, arch, VIS_BASE[kind] || kind, kind === 'king' ? 2 : d.tier || 0);
       }
     }
+    rig.traverse(o => { if (o.name === 'torso') refineHead(o); });
     UNIT_TEMPLATES.set(key, bakeRig(rig));
   }
   return UNIT_TEMPLATES.get(key);

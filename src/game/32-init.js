@@ -16,6 +16,7 @@ updateSun();
 updateResourcesUI();
 updatePopulationUI();
 updateSelectionUI();
+initResourceIcons();
 animate();
 
 window.__RTS_READY = true;

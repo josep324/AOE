@@ -64,11 +64,11 @@ const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·le
 const RES_LABEL = { wood: 'Fusta', gold: 'Or', food: 'Aliment', stone: 'Pedra' };
 const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 
-const PLAYER = { id: 1, name: 'Civilització Blava', color: 0x2f6fe0, colorLight: 0x5b93ff, colorDark: 0x1c3d8f };
-const SEL_COLOR_OWN = 0x6ef2ff;
+const PLAYER = { id: 1, name: 'Civilització Blava', color: 0x2c5aa8, colorLight: 0x5b8ad8, colorDark: 0x1a3266 };
+const SEL_COLOR_OWN = 0xcfeeff;
 const SEL_COLOR_NEUTRAL = 0xffe07a;
 const SEL_COLOR_ENEMY = 0xff4a3a;
-const ENEMY = { id: 2, name: 'Imperi Vermell', color: 0xc8352b, colorLight: 0xe8604f, colorDark: 0x7a1a14,
+const ENEMY = { id: 2, name: 'Imperi Vermell', color: 0xa3302a, colorLight: 0xd05a48, colorDark: 0x661a14,
                 res: { food: 0, wood: 0, gold: 0, stone: 0 } };
 const TEAMS = { 1: PLAYER, 2: ENEMY };
 function defaultMods() {

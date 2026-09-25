@@ -17,7 +17,7 @@ function getSelMaterials(color) {
 function makeSelectionIndicator(radius, color) {
   const m = getSelMaterials(color);
   const group = new THREE.Group();
-  const tube = THREE.MathUtils.clamp(radius * 0.045, 0.05, 0.22);
+  const tube = THREE.MathUtils.clamp(radius * 0.022, 0.035, 0.09);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 8, 72), m.ring);
   ring.rotation.x = -Math.PI / 2;
   const disc = new THREE.Mesh(new THREE.CircleGeometry(radius * 1.22, 56), m.disc);
