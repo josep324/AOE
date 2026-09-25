@@ -11,6 +11,7 @@ function onBuildStrike(u, b) {
 
 function onToolStrike(u, node) {
   if (!node || node.depleted) return;
+  if (node.inst) treeDetach(node);
   if (node.subtype !== 'farm') node.shakeT = 0.25;
   // Punt d'impacte entre l'aldeà i el recurs
   const dir = new THREE.Vector3(node.position.x - u.position.x, 0, node.position.z - u.position.z).normalize();
@@ -26,8 +27,7 @@ function onNodeHarvested(node) {
     node.nuggets.scale.setScalar(0.35 + 0.65 * f);
   }
   if (node.berries) {
-    const visible = Math.ceil(f * node.berries.length);
-    node.berries.forEach((b, i) => { b.visible = i < visible; });
+    node.berries.count = Math.ceil(f * node.berries.instanceMatrix.count);
   }
   if (node.model && node.model.userData.crops) node.model.userData.crops.scale.y = 0.2 + 0.8 * f;
 }
@@ -36,6 +36,7 @@ function depleteResource(node) {
   if (node.depleted) return;
   node.depleted = true;
   node.amount = 0;
+  if (node.inst) treeDetach(node);
   state.resourceNodes = state.resourceNodes.filter(n => n !== node);
   if (node.animal) state.animals = state.animals.filter(n => n !== node);
   state.obstacles = state.obstacles.filter(o => o.entity !== node);

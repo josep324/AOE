@@ -82,6 +82,7 @@ function loadGame(data) {
   const size = MAP_SIZES[data.mapSize] ? data.mapSize : 'medium';
   if (size !== MAP_SIZE) { reloadWithSize(size, { load: data }); return false; }
   clearWorld();
+  clearTreeBatches();
   // Mapa: terreny, aigua i decoració del tipus i la llavor desats
   removeDecorations();
   clearWater();

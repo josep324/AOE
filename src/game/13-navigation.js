@@ -66,23 +66,33 @@ function rebuildNav() {
 }
 /* Índex espacial dels obstacles (cel·les de 8 unitats): la col·lisió només mira els propers.
    Els obstacles grans (edificis) van en una llista a part que es comprova sempre. */
-const OBS_GRID = { cell: 8, map: new Map(), big: [], count: -1 };
+/* Graella d'obstacles: els petits (arbres, mines…) per cel·les; els grans i els mòbils, en una llista a part.
+   Si només s'han afegit obstacles (el cas habitual en generar el mapa o construir) s'hi afegeixen
+   sense refer-la; si se n'han tret (la llista es refà amb filter), es refà sencera. */
+const OBS_GRID = { cell: 8, map: new Map(), big: [], count: -1, src: null };
+const OBS_REACH = 5;                     // marge màxim que es pot consultar amb la graella
+function obstacleGridInsert(o) {
+  const ext = o.rect ? Math.max(o.hw, o.hd) : o.r;
+  if (ext > 2.6 || (o.entity && o.entity.mobile)) { OBS_GRID.big.push(o); return; }
+  const c = OBS_GRID.cell, k = spatialKey(Math.floor(o.x / c), Math.floor(o.z / c));
+  let arr = OBS_GRID.map.get(k);
+  if (!arr) OBS_GRID.map.set(k, arr = []);
+  arr.push(o);
+}
 function rebuildObstacleGrid() {
-  OBS_GRID.map.clear();
-  OBS_GRID.big = [];
-  const c = OBS_GRID.cell;
-  for (const o of state.obstacles) {
-    const ext = o.rect ? Math.max(o.hw, o.hd) : o.r;
-    if (ext > 2.6 || (o.entity && o.entity.mobile)) { OBS_GRID.big.push(o); continue; }
-    const k = spatialKey(Math.floor(o.x / c), Math.floor(o.z / c));
-    let arr = OBS_GRID.map.get(k);
-    if (!arr) OBS_GRID.map.set(k, arr = []);
-    arr.push(o);
+  const list = state.obstacles;
+  if (OBS_GRID.src === list && list.length > OBS_GRID.count) {
+    for (let i = OBS_GRID.count; i < list.length; i++) obstacleGridInsert(list[i]);
+  } else {
+    OBS_GRID.map.clear();
+    OBS_GRID.big = [];
+    for (const o of list) obstacleGridInsert(o);
   }
-  OBS_GRID.count = state.obstacles.length;
+  OBS_GRID.src = list;
+  OBS_GRID.count = list.length;
 }
 function obstaclesNear(x, z, out) {
-  if (OBS_GRID.count !== state.obstacles.length) rebuildObstacleGrid();
+  if (OBS_GRID.count !== state.obstacles.length || OBS_GRID.src !== state.obstacles) rebuildObstacleGrid();
   out.length = 0;
   for (const o of OBS_GRID.big) out.push(o);
   const c = OBS_GRID.cell;

@@ -33,6 +33,7 @@ function inReach(u, ent) {
   return d - u.radius <= CONFIG.GATHER.reach;
 }
 
+const approachObsBuf = [];
 function approachPointAt(ent, angle, naval = false) {
   const m = CONFIG.VILLAGER.radius + 0.3;
   if (ent.landAngle !== undefined && !naval) {
@@ -60,7 +61,7 @@ function approachPointAt(ent, angle, naval = false) {
     p = new THREE.Vector3(ent.position.x + sx * r, 0, ent.position.z + sz * r);
   }
   // Evitem que el punt quedi dins d'un altre obstacle (p. ex. un arbre veí)
-  for (const o of state.obstacles) {
+  for (const o of obstaclesNear(p.x, p.z, approachObsBuf)) {
     if (o.entity === ent) continue;
     pushOutOf(p, o, CONFIG.VILLAGER.radius + 0.1);
   }

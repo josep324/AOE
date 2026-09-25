@@ -27,7 +27,7 @@ function forestBlocked(x, z, keep) {
   const L = CONFIG.MAP_LIMIT - 2.5;
   if (Math.abs(x) > L || Math.abs(z) > L) return true;
   if (WATER.any && waterNear(x, z, 1.2)) return true;
-  for (const o of state.obstacles) {
+  for (const o of obstaclesNear(x, z, nearObsBuf)) {
     const d = obstacleSurface(o, x, z).d;
     if (d < (o.entity && o.entity.subtype === 'tree' ? 0.75 : 3.5)) return true;
   }
@@ -352,6 +352,7 @@ function resetWorld() {
   Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [],
     projectiles: [], markers: [], relics: [], animals: [], relicWin: null, controlGroups: {}, pings: [] });
   removeDecorations();
+  clearTreeBatches();
   clearWater();
   paintGroundBase();
   if (FOG.explored) FOG.explored.fill(0);

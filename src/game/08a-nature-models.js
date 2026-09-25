@@ -172,9 +172,7 @@ function pineTemplate(v) {
   });
 }
 function makeTreeModel(x, z) {
-  const pine = hash2(x * 0.071 + 3, z * 0.053 - 1) < 0.33;
-  const v = Math.floor(hash2(x * 1.3, z * 1.7) * 6);
-  const tpl = pine ? pineTemplate(v) : oakTemplate(v);
+  const { tpl } = treeTemplateAt(x, z);
   const g = new THREE.Group();
   for (const [geo, m] of tpl.parts) g.add(new THREE.Mesh(geo, NM[m]));
   return g;

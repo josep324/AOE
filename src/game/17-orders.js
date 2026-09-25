@@ -6,10 +6,11 @@ function clampToMap(v) {
   v.z = THREE.MathUtils.clamp(v.z, -CONFIG.MAP_LIMIT, CONFIG.MAP_LIMIT);
   return v;
 }
+const pushObsBuf = [];
 function pushOutOfObstacles(p, margin) {
   for (let iter = 0; iter < 3; iter++) {
     let moved = false;
-    for (const o of state.obstacles) if (pushOutOf(p, o, margin)) moved = true;
+    for (const o of margin <= OBS_REACH ? obstaclesNear(p.x, p.z, pushObsBuf) : state.obstacles) if (pushOutOf(p, o, margin)) moved = true;
     if (!moved) break;
   }
   return p;

@@ -26,9 +26,11 @@ function pushOutOf(p, o, margin) {
   p.z += s.nz * k;
   return s;
 }
+const nearObsBuf = [];
 function isNearObstacle(x, z, margin) {
   if (WATER.any && waterNear(x, z, Math.max(0.5, margin))) return true;
-  for (const o of state.obstacles) if (obstacleSurface(o, x, z).d < margin) return true;
+  const list = margin <= OBS_REACH ? obstaclesNear(x, z, nearObsBuf) : state.obstacles;
+  for (const o of list) if (obstacleSurface(o, x, z).d < margin) return true;
   return false;
 }
 /* Distància d'un punt a la vora d'una entitat (0 si és a dins d'un edifici) */

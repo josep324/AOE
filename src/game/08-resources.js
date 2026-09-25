@@ -5,7 +5,8 @@ function createTree(x, z, scale = 1) {
   e.amount = 100; e.maxAmount = 100;
 
   // Subgrup del model: permet sacsejar-lo o fer-lo caure sense moure l'anell de selecció
-  e.model = makeTreeModel(x, z);
+  const batched = !hasModel('resources/tree');
+  e.model = batched ? new THREE.Group() : makeTreeModel(x, z);
   e.group.add(e.model);
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
@@ -14,7 +15,13 @@ function createTree(x, z, scale = 1) {
   e.shakeT = 0;
   e.depleted = false;
   e.particleColor = 0x9a6a3a;
-  swapModel(e, 'resources/tree', { w: 3.6 });
+  if (batched) {
+    // Es dibuixa dins del lot de la zona; aquí només hi ha el volum per seleccionar-lo
+    const pick = new THREE.Mesh(treePickGeo, treePickMat);
+    pick.userData.noShadow = true;
+    e.group.add(pick);
+    treeBatchAdd(e);
+  } else swapModel(e, 'resources/tree', { w: 3.6 });
   e.finalize();
 
   state.resourceNodes.push(e);
@@ -89,12 +96,12 @@ function createBerryBush(x, z) {
   e.group.add(e.model);
   const bt = bushTemplate(Math.floor(hash2(x * 1.7, z * 0.7) * 3));
   e.model.add(new THREE.Mesh(bt.geo, NM.bush));
-  e.berries = bt.berries.map(p => {
-    const berry = new THREE.Mesh(berryGeoShared, NM.berry);
-    berry.position.copy(p);
-    e.model.add(berry);
-    return berry;
-  });
+  // Totes les baies d'un arbust en una sola malla instanciada: en collir-les se'n mostren menys
+  const berries = new THREE.InstancedMesh(berryGeoShared, NM.berry, bt.berries.length);
+  bt.berries.forEach((p, i) => berries.setMatrixAt(i, new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)));
+  berries.computeBoundingSphere();
+  e.model.add(berries);
+  e.berries = berries;
   e.group.position.set(x, 0, z);
   e.group.rotation.y = rand() * Math.PI * 2;
   groundPaint(x, z, 1.9, 'forest', 0.35);

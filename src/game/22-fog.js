@@ -87,5 +87,6 @@ function updateFog() {
     const ex = isExploredAt(n.position.x, n.position.z) || (n.footprint && entityVisible(n));
     if (n.subtype === 'sheep' || n.animal) n.group.visible = entityVisible(n) || (ex && n.killed);
     else n.group.visible = ex;
+    if (n.inst) treeBatchShow(n, ex);
   }
 }
