@@ -215,7 +215,7 @@ window.addEventListener('keyup', (e) => keys.delete(e.code));
 
 const lastGroupPress = { n: 0, time: 0 };
 function groupMembers(n) {
-  const list = (state.controlGroups[n] || []).filter(e => state.units.includes(e) || state.buildings.includes(e));
+  const list = (state.controlGroups[n] || []).filter(e => e.isOwn && (state.units.includes(e) || state.buildings.includes(e)));
   state.controlGroups[n] = list;
   return list;
 }

@@ -92,6 +92,13 @@ export const UNITS = {
               armor: [1, 1], speed: 5.2, los: 12, cat: 'infantry', age: 2, unique: 'japanese', bonusUnique: 10,
               elite: { name: "Samurai d'elit", hp: 80, attack: 12 },
               desc: 'Unitat única dels Japonesos: infanteria que ataca molt ràpid. +10 contra unitats úniques' },
+  // --- Monestir i regicidi ---
+  monk:     { name: 'Monjo', icon: '📿', cost: { gold: 100 }, time: 30, hp: 30, attack: 0, range: 0, reload: 2.0,
+              armor: [0, 0], speed: 3.9, los: 11, cat: 'monk', age: 2, convRange: 9, healRange: 4,
+              desc: "Cura les teves unitats i converteix les enemigues (clic dret). Recull relíquies i porta-les al Monestir" },
+  king:     { name: 'Rei', icon: '👑', cost: {}, time: 1, hp: 75, attack: 0, range: 0, reload: 2.0,
+              armor: [0, 0], speed: 6.2, los: 12, cat: 'king', mounted: true, age: 9,
+              desc: 'Regicidi: si el teu rei mor, perds la partida. Es pot refugiar al Centre, a les torres o al castell' },
   knight:   { name: 'Cavaller', icon: '🏇', cost: { food: 60, gold: 75 }, time: 28, hp: 100, attack: 10, range: 0, reach: 0.6, reload: 1.8,
               armor: [2, 2], speed: 7.4, los: 12, cat: 'cavalry', age: 2, desc: 'Cavalleria pesant molt poderosa' },
 };

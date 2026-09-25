@@ -56,9 +56,11 @@ const CONFIG = {
 };
 
 const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING', BUILDING: 'BUILDING',
-                              ATTACKING: 'ATTACKING', GARRISONED: 'GARRISONED', TRADING: 'TRADING' });
+                              ATTACKING: 'ATTACKING', GARRISONED: 'GARRISONED', TRADING: 'TRADING',
+                              CONVERTING: 'CONVERTING', HEALING: 'HEALING' });
 const STATE_LABEL = { IDLE: 'Inactiu', MOVING: 'En marxa', GATHERING: 'Recol·lectant', RETURNING: 'A descarregar', BUILDING: 'Construint',
-                      ATTACKING: 'Atacant', GARRISONED: 'Refugiat', TRADING: 'Comerciant' };
+                      ATTACKING: 'Atacant', GARRISONED: 'Refugiat', TRADING: 'Comerciant',
+                      CONVERTING: 'Convertint', HEALING: 'Curant' };
 const RES_LABEL = { wood: 'Fusta', gold: 'Or', food: 'Aliment', stone: 'Pedra' };
 const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 
@@ -77,6 +79,7 @@ function defaultMods() {
     hpMul: {}, reloadMul: {}, vsBuilding: {}, tradeMul: 1,
     elite: {}, unitRange: {}, unitHp: {}, towerArrows: 0, buildingHpMul: 1, buildingArmor: 0,
     lineKind: {}, buildSpeed: 1, towerLevel: 0, siegeBldMul: 1,
+    monkSpeed: 1, monkHp: 0, faithRegen: 1, convRange: 0,
   };
 }
 for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }
@@ -112,6 +115,10 @@ const state = {
   floaters: [],
   dying: [],          // recursos esgotats fent l'animació de desaparició
   projectiles: [],
+  relics: [],         // relíquies (a terra, portades per un monjo o guardades en un monestir)
+  sparkles: [],       // espurnes de conversió i curació (només visuals)
+  victory: 'standard',   // standard (conquesta + Meravella + relíquies) · conquest · regicide
+  relicWin: null,     // { team, end }: un equip té totes les relíquies
   pings: [],          // avisos d'atac al minimapa
   elapsed: 0,
   paused: true,       // la partida comença en prémer «Començar»

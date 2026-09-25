@@ -174,6 +174,11 @@ function applyTechEffect(team, kind) {
     case 'beardedaxe': M.unitRange.throwingaxe = (M.unitRange.throwingaxe || 0) + 1; break;
     case 'zealotry': M.unitHp.mameluke = (M.unitHp.mameluke || 0) + 20; break;
     case 'yasama': M.towerArrows += 2; break;
+    case 'fervor': M.monkSpeed *= 1.15; break;
+    case 'sanctity': M.monkHp += 15; break;
+    case 'illumination': M.faithRegen *= 1.5; break;
+    case 'blockprinting': M.convRange += 3; break;
+    case 'redemption': case 'atonement': case 'faith': break;
     case 'masonry': M.buildingHpMul *= 1.1; M.buildingArmor += 1; break;
     default:
       if (d.elite) M.elite[d.elite] = true;

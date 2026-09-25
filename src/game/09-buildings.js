@@ -19,11 +19,11 @@ const TC_SIZE = [13.5, 13.5];
 
 /* Retorna { model, height } per a cada tipus d'edifici. El model mira cap a +Z.
    Prioritat: model de la biblioteca (assets/models) → kit d'estil AoE II segons la civilització */
-function makeBuildingModel(type, team = PLAYER.id) {
+function makeBuildingModel(type, team = PLAYER.id, arch = null) {
   const [fw, fd] = type === 'towncenter' ? TC_SIZE : CONFIG.BUILDINGS[type].size;
   const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96, maxH: LIB_MAX_HEIGHT[type] });
   if (lib) return { model: lib, height: lib.userData.height };
-  const kit = kitBuildingModel(type, team);
+  const kit = kitBuildingModel(type, team, arch);
   if (kit && type === 'watchtower' && teamOf(team).mods.towerLevel) {
     // Torres millorades: més grans (el contenidor manté l'escala mentre es construeix)
     const s = TOWER_LEVELS[teamOf(team).mods.towerLevel].scale;
@@ -55,7 +55,7 @@ function applyBuildingMods(b, mul) {
 }
 /* Torna a fer el model d'un edifici (p. ex. en triar la civilització) conservant l'estat */
 function rebuildBuildingModel(b) {
-  const { model, height } = makeBuildingModel(b.subtype, b.team);
+  const { model, height } = makeBuildingModel(b.subtype, b.team, b.visArch);
   if (b.rot) model.rotation.y = Math.PI / 2;
   replaceEntityModel(b, model);
   b.height = height;
@@ -199,6 +199,8 @@ function updateConstruction(dt) {
 function demolishBuilding(b) {
   if (!b || b.subtype === 'towncenter' || !b.isOwn || b.dead) return;
   if (b.underConstruction && b.progress < 0.02) applyCost(costFor(b.subtype, b.team), +1, b.team);
+  if (b.garrison && b.garrison.length) ungarrison(b);
+  buildingDropRelics(b);
   b.dead = true;
   b.depleted = true;
   state.buildings = state.buildings.filter(x => x !== b);

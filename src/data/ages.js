@@ -3,5 +3,5 @@ export const AGES = [
   { name: 'Edat Fosca' },
   { name: 'Edat Feudal', req: ['barracks', 'mill', 'lumbercamp', 'miningcamp'] },
   { name: 'Edat dels Castells', req: ['blacksmith', 'stable', 'watchtower', 'market', 'archeryrange'] },
-  { name: 'Edat Imperial', req: ['university', 'siegeworkshop', 'castle'] },
+  { name: 'Edat Imperial', req: ['university', 'siegeworkshop', 'castle', 'monastery'] },
 ];

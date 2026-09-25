@@ -21,7 +21,12 @@
     <h2>Tria la teva civilització</h2>
     <div class="civ-grid" id="civ-choices"></div>
     <div class="row enemy-civ" id="enemy-civ-choices"><span>Rival:</span></div>
-    <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i destrueix tots els edificis i unitats de l'enemic.</p>
+    <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i derrota l'enemic.</p>
+    <div class="row" id="victory-choices">
+      <button class="choice on" data-victory="standard" title="Guanya qui destrueixi l'enemic, qui mantingui una Meravella 5 minuts o qui tingui totes les relíquies 200 segons">🏆 Estàndard</button>
+      <button class="choice" data-victory="conquest" title="Només es guanya destruint tots els edificis i unitats de l'enemic">⚔️ Conquesta</button>
+      <button class="choice" data-victory="regicide" title="Cada bàndol té un rei: si mor, perd la partida">👑 Regicidi</button>
+    </div>
     <div class="row" id="diff-choices">
       <button class="choice" data-diff="easy">Fàcil</button>
       <button class="choice on" data-diff="normal">Normal</button>
@@ -37,6 +42,8 @@
       🔔 <b>Campana</b> (<kbd>B</kbd>): els aldeans es refugien al Centre i aquest dispara més fletxes.<br>
       🏯 <b>Edats</b>: Fosca → Feudal → Castells → Imperial. Cada edat desbloqueja edificis, unitats, millores de línia i tecnologies.<br>
       🏰 <b>Castells</b>: Castell (unitat única de cada civilització i trabucs) i Taller de setge (ariets, mangonells i escorpins).<br>
+      ⛪ <b>Monestir</b>: monjos que curen i converteixen enemics; les <b>relíquies</b> guardades donen or. 🏛️ <b>Meravella</b> (Imperial): si resisteix 5 minuts, guanyes.<br>
+      ▣ <b>Formacions</b> (<kbd>F</kbd>): línia, quadrat (arquers a dins), esglaonada i flancs. Selecció sense límit d'unitats.<br>
       ⏸️ <kbd>P</kbd> pausa · <kbd>Clic dret</kbd> sobre un enemic: atacar.
     </div>
   </div>
@@ -110,6 +117,8 @@
     <li>Centre seleccionat + <kbd>clic dret</kbd>: <b>punt de reunió</b></li>
     <li>Aldeans: botons de <b>construcció</b> · <kbd>Shift</kbd> col·locar-ne més · <kbd>Supr</kbd> enderrocar</li>
     <li><kbd>Clic dret</kbd> enemic: <b>atacar</b> · <kbd>B</kbd> campana · <kbd>P</kbd> pausa</li>
+    <li>Tropes: <kbd>F</kbd> canviar <b>formació</b> (línia, quadrat, esglaonada, flancs)</li>
+    <li>Monjos: <kbd>clic dret</kbd> enemic <b>convertir</b> · ferit <b>curar</b> · relíquia <b>recollir</b></li>
     <li>Centre: <b>avançar d'edat</b> · muralles: <b>prem i arrossega</b> · <kbd>R</kbd> girar edifici</li>
     <li>Botó del mig: <b>arrossegar el mapa</b> · <kbd>M</kbd> menú (desar / carregar)</li>
   </ul>
@@ -124,6 +133,7 @@
   <span class="sep"></span>
   <span class="stat">FPS <b id="fps">--</b></span>
   <span class="sep"></span>
+  <span id="vic-timers"></span>
   <span class="stat idle" id="menu-btn" title="Menú (M): desar, carregar, nova partida">☰ <b>Menú</b></span>
 </div>
 

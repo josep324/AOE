@@ -9,6 +9,22 @@ document.querySelectorAll('#diff-choices .choice').forEach(btn => btn.addEventLi
   chosenDiff = btn.dataset.diff;
   document.querySelectorAll('#diff-choices .choice').forEach(b => b.classList.toggle('on', b === btn));
 }));
+let chosenVictory = 'standard';
+document.querySelectorAll('#victory-choices .choice').forEach(btn => btn.addEventListener('click', () => {
+  chosenVictory = btn.dataset.victory;
+  document.querySelectorAll('#victory-choices .choice').forEach(b => b.classList.toggle('on', b === btn));
+}));
+/* Regicidi: cada bàndol comença amb un rei a cavall al costat del Centre de Ciutat */
+function createKings() {
+  for (const team of [PLAYER.id, ENEMY.id]) {
+    if (hasKing(team)) continue;
+    const tc = state.buildings.find(b => b.team === team && b.subtype === 'towncenter');
+    if (!tc) continue;
+    const s = findSpawnSpot(tc);
+    const k = createSoldier('king', s.x, s.z, team);
+    k.stance = 'stand';
+  }
+}
 /* ---------- Tria de civilització ---------- */
 let chosenCiv = 'franks', chosenEnemyCiv = 'random';
 const civChoices = document.getElementById('civ-choices');
@@ -55,6 +71,9 @@ document.getElementById('start-btn').addEventListener('click', () => {
   setTeamCiv(PLAYER, chosenCiv);
   setTeamCiv(ENEMY, chosenEnemyCiv === 'random' ? others[Math.floor(Math.random() * others.length)] : chosenEnemyCiv);
   updateCivLabels();
+  state.victory = chosenVictory;
+  if (state.victory === 'regicide') createKings();
+  updateVictoryUI();
   AI.diff = DIFFICULTY[chosenDiff];
   AI.nextWaveAt = AI.diff.firstWave;
   for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;

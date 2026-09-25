@@ -76,5 +76,14 @@ export const TECHS = {
                  desc: 'Tecnologia única dels Japonesos: torres i castells disparen +2 fletxes' },
   masonry:     { name: 'Maçoneria', icon: '🧱', cost: { wood: 175, stone: 150 }, time: 40, age: 2, at: 'university',
                  desc: 'Edificis i muralles: +10% vida i +1/+1 armadura' },
+  // --- Monestir ---
+  redemption:  { name: 'Redempció', icon: '✨', cost: { gold: 475 }, time: 50, age: 2, at: 'monastery',
+                 desc: 'Els monjos poden convertir edificis (menys Centre, Castell, Meravella i muralles) i màquines de setge' },
+  atonement:   { name: 'Expiació', icon: '🕯️', cost: { gold: 325 }, time: 40, age: 2, at: 'monastery', desc: 'Els monjos poden convertir monjos enemics' },
+  fervor:      { name: 'Fervor', icon: '🔥', cost: { gold: 140 }, time: 30, age: 2, at: 'monastery', desc: 'Monjos +15% de velocitat' },
+  sanctity:    { name: 'Santedat', icon: '😇', cost: { gold: 120 }, time: 30, age: 2, at: 'monastery', desc: 'Monjos +15 de vida' },
+  illumination: { name: 'Il·luminació', icon: '💡', cost: { gold: 120 }, time: 35, age: 3, at: 'monastery', desc: 'La fe dels monjos es recupera un 50% més de pressa' },
+  blockprinting: { name: 'Impremta', icon: '📖', cost: { gold: 200 }, time: 40, age: 3, at: 'monastery', desc: 'Monjos: +3 d\'abast de conversió' },
+  faith:       { name: 'Fe', icon: '🙏', cost: { food: 750, gold: 1000 }, time: 60, age: 3, at: 'monastery', desc: 'Les teves unitats són més difícils de convertir (+50% de temps)' },
   barding:     { name: 'Bardissa', icon: '🐴', cost: { food: 150 }, time: 30, age: 2, at: 'blacksmith', desc: 'Cavalleria: +1/+1 armadura' },
 };

@@ -23,6 +23,18 @@ Edificis nous: **Galeria de tir** i **Universitat** (Maçoneria, Arquitectura, Q
 Setge i fortificacions (Edat dels Castells): **Castell** (fletxes, refugi per a 20 unitats, unitat única i trabucs) i **Taller de setge**
 (Ariet, Mangonell amb dany en àrea i atac al terra, Escorpí amb virots que travessen). El Trabuc s'ha de muntar per disparar.
 
+**Monestir** (Edat dels Castells): els **monjos** curen les unitats pròpies i converteixen les enemigues (amb la fe plena),
+i recullen les **relíquies** del mapa: cada relíquia guardada en un Monestir dona +0,5 d'or per segon.
+Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjos), Fervor, Santedat, Il·luminació, Impremta i Fe.
+
+**Condicions de victòria** (es trien a l'inici):
+- 🏆 **Estàndard**: conquesta, o bé mantenir una **Meravella** 5 minuts, o bé tenir **totes les relíquies** 200 segons.
+- ⚔️ **Conquesta**: només destruint l'enemic.
+- 👑 **Regicidi**: cada bàndol té un rei; si mor, perd.
+
+**Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
+esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
+
 ## Desenvolupar
 
 Cal [Node.js](https://nodejs.org) 18 o superior.
@@ -51,7 +63,7 @@ src/
     14 món           generació simètrica del mapa
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
     21 IA            economia, edats, exèrcit i atacs de l'enemic
-    22…24            boira de guerra, combat, efectes
+    22…24            boira de guerra, combat, setge (23a), monjos i relíquies (23b), efectes
     25…30            HUD, entrada, minimapa, barres de vida, flux de partida, desar/carregar
     31 bucle         simulació a pas fix (60 passos/s) i renderitzat
 assets/models/      models 3D opcionals (.glb) que substitueixen els generats pel codi

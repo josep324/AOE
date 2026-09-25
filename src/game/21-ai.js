@@ -49,6 +49,13 @@ function aiBuild(type, near, minR, maxR, builders = 1) {
   return true;
 }
 function nearestPlayerTarget(pos) {
+  // Prioritats: una Meravella en compte enrere i el Monestir amb totes les relíquies
+  const wonder = state.buildings.find(b => b.isOwn && b.subtype === 'wonder' && !b.underConstruction && b.seen !== false);
+  if (wonder && state.victory === 'standard') return wonder;
+  if (state.relicWin && state.relicWin.team === PLAYER.id) {
+    const m = state.buildings.find(b => b.isOwn && b.subtype === 'monastery' && b.relics && b.relics.length);
+    if (m) return m;
+  }
   let best = null, bestD = Infinity;
   for (const u of state.units) if (u.isOwn && !u.garrisoned) { const d = hDist(u.position, pos); if (d < bestD) { bestD = d; best = u; } }
   for (const b of state.buildings) if (b.isOwn) { const d = hDist(b.position, pos) * 0.8; if (d < bestD) { bestD = d; best = b; } }
@@ -79,6 +86,7 @@ function aiTick() {
   const tc = blds.find(b => b.subtype === 'towncenter');
   const villagers = state.units.filter(u => u.team === T && u.subtype === 'villager');
   const army = state.units.filter(u => u.team === T && u.isMilitary);
+  const monks = state.units.filter(u => u.team === T && u.category === 'monk' && !u.garrisoned);
   const has = (type, includeFoundations = true) => blds.some(b => b.subtype === type && (includeFoundations || !b.underConstruction));
   const count = (type) => blds.filter(b => b.subtype === type).length;
   const now = state.elapsed;
@@ -171,6 +179,10 @@ function aiTick() {
       const dir = toward ? new THREE.Vector3(toward.position.x - tc.position.x, 0, toward.position.z - tc.position.z).normalize() : new THREE.Vector3(-1, 0, -1).normalize();
       aiBuild('castle', tc.position.clone().addScaledVector(dir, 20), 0, 16, 4);
     }
+    // Monestir, monjos i les seves tecnologies
+    if (!has('monastery') && villagers.length >= 17 && res.wood >= 200) aiBuild('monastery', tc.position, 12, 30, 2);
+    if (hasCompleted('monastery', T) && res.gold > 400) for (const k of ['fervor', 'sanctity', 'redemption', 'atonement']) tryTech(k);
+    if (E.age >= 3 && hasCompleted('monastery', T) && res.gold > 900) for (const k of ['illumination', 'blockprinting']) tryTech(k);
     if (hasCompleted('castle', T) && res.food > 900 && res.gold > 600) {
       const u = uniqueUnitOf(T);
       tryTech('elite_' + u);
@@ -183,11 +195,13 @@ function aiTick() {
     if (AI.saving) break;
     if (!b.def || !b.def.trains || b.underConstruction || b.trainQueue.length >= 2) continue;
     const siegeCount = army.filter(u => u.category === 'siege').length;
+    if (b.subtype === 'monastery' && monks.length >= (D === DIFFICULTY.hard ? 4 : D === DIFFICULTY.easy ? 1 : 3)) continue;
     if (b.subtype === 'siegeworkshop' && siegeCount >= (D === DIFFICULTY.hard ? 4 : 3)) continue;
     const order = b.subtype === 'stable' ? (ENEMY.civ === 'saracens' ? ['camel', 'knight', 'scout'] : ['knight', 'scout', 'knight'])
       : b.subtype === 'siegeworkshop' ? (E.age >= 3 && T && ENEMY.techs.has('chemistry') ? ['ram', 'bombard', 'mangonel'] : ['ram', 'mangonel', 'ram'])
       : b.subtype === 'castle' ? (E.age >= 3 && army.filter(u => u.subtype === 'trebuchet').length < 2 ? [uniqueUnitOf(T), uniqueUnitOf(T), 'trebuchet'] : [uniqueUnitOf(T)])
       : b.subtype === 'archeryrange' ? ['archer', 'skirmisher', 'archer', 'cavarcher']
+      : b.subtype === 'monastery' ? ['monk']
       : ['militia', 'spearman', 'militia'];
     for (let k = 0; k < order.length; k++) {
       const kind = order[(AI.armyCycle + k) % order.length];
@@ -212,6 +226,39 @@ function aiTick() {
     }
   }
 
+  // 5b) Monjos: recullen relíquies lliures i les guarden; si no, acompanyen l'onada per curar i convertir
+  const claimed = new Set(monks.map(m => m.relicTarget).filter(Boolean));
+  for (const m of monks) {
+    if (m.state !== STATE.IDLE) continue;
+    if (m.relic) { orderDepositRelic(m); continue; }
+    const free = hasCompleted('monastery', T) ? state.relics.filter(r => !r.carrier && !r.holder && !claimed.has(r))
+      .sort((a, b) => hDist(a.position, m.position) - hDist(b.position, m.position))[0] : null;
+    if (free) { orderPickRelic(m, free); claimed.add(free); continue; }
+    const W0 = AI.wave;
+    if (W0 && W0.phase === 'attack' && W0.units.length) {
+      const c = new THREE.Vector3();
+      W0.units.forEach(u => c.add(u.position));
+      c.divideScalar(W0.units.length);
+      if (hDist(c, m.position) > 8) { orderMove(m, clampToMap(c)); m.attackMove = c.clone(); }
+    }
+  }
+  // 5c) Regicidi: el rei es queda refugiat al Castell o al Centre
+  if (state.victory === 'regicide') {
+    const king = state.units.find(u => u.team === T && u.category === 'king');
+    if (king && !king.garrisoned && !king.garrisonTarget) {
+      const safe = blds.find(b => b.subtype === 'castle' && !b.underConstruction) || tc;
+      if (safe && (!safe.garrison || safe.garrison.length < garrisonCap(safe))) orderGarrison(king, safe);
+    }
+  }
+  // 5d) Meravella: a l'Edat Imperial, amb recursos de sobres
+  if (state.victory === 'standard' && E.age >= 3 && D !== DIFFICULTY.easy && !has('wonder') && villagers.length >= 20
+      && canAfford({ wood: 1300, gold: 1300, stone: 1100 }, T)) aiBuild('wonder', tc.position, 16, 45, 8);
+  // Contra una Meravella o totes les relíquies del jugador: atac immediat
+  if ((state.relicWin && state.relicWin.team === PLAYER.id) || state.buildings.some(b => b.isOwn && b.subtype === 'wonder' && b.wonderEnd)) {
+    AI.nextWaveAt = Math.min(AI.nextWaveAt, now);
+    AI.urgent = true;
+  } else AI.urgent = false;
+
   // 6) Defensa: només contra intrusos a prop de la base (no contra torres o tropes llunyanes que disparen a l'onada)
   const home = tc.position;
   let intruder = null;
@@ -227,7 +274,7 @@ function aiTick() {
   // 7) Onades d'atac: primer es reuneixen davant la base i després avancen juntes al pas de la més lenta
   if ((!AI.wave || AI.wave.phase === 'attack') && now >= AI.nextWaveAt) {
     const avail = army.filter(u => !u.inWave && !u.garrisoned);
-    const need = D.waveBase + AI.waveCount * 2;
+    const need = AI.urgent ? Math.min(4, D.waveBase) : D.waveBase + AI.waveCount * 2;
     const target = avail.length >= need ? nearestPlayerTarget(home) : null;
     if (target) {
       const dir = new THREE.Vector3(target.position.x - home.x, 0, target.position.z - home.z).normalize();
@@ -239,7 +286,7 @@ function aiTick() {
   }
   const W = AI.wave;
   if (W) {
-    W.units = W.units.filter(u => !u.dead);
+    W.units = W.units.filter(u => !u.dead && u.team === T);
     if (!W.units.length) AI.wave = null;
     else if (W.phase === 'gather') {
       const ready = W.units.filter(u => hDist(u.position, W.rally) < 10).length;

@@ -285,3 +285,8 @@
     .res-grid { grid-template-columns: repeat(4, 1fr); }
   }
 .mini.grp .st{font-size:10px;font-weight:700;color:var(--gold);top:0;right:3px}
+.bar.faith>i{background:linear-gradient(180deg,#e8f0ff,#8aa8e8)}
+#vic-timers{display:none;gap:10px}
+#vic-timers.on{display:flex}
+#vic-timers .vt{color:var(--gold);font-weight:600}
+#vic-timers .vt.enemy{color:#ff8a7a}

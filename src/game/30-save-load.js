@@ -17,11 +17,16 @@ function serializeGame() {
       progress: b.subtype === 'towncenter' ? 1 : b.progress, hp: Math.round(b.hp), amount: b.subtype === 'farm' ? b.amount : undefined,
       queue: b.trainQueue ? b.trainQueue.map(q => ({ kind: q.kind, t: r2(q.t) })) : null,
       rally: b.rally ? { x: r2(b.rally.point.x), z: r2(b.rally.point.z) } : null, seen: !!b.seen,
+      arch: b.visArch, wonderEnd: b.wonderEnd ? r2(b.wonderEnd - state.elapsed) : undefined,
     });
   }
   for (const u of state.units) {
     add(u, { k: 'unit', sub: u.subtype, team: u.team, x: r2(u.position.x), z: r2(u.position.z), ry: r2(u.group.rotation.y),
-             hp: r2(u.hp), carry: u.carry.amount ? { ...u.carry } : null, inWave: !!u.inWave });
+             hp: r2(u.hp), carry: u.carry.amount ? { ...u.carry } : null, inWave: !!u.inWave, faith: u.category === 'monk' ? r2(u.faith) : undefined,
+             arch: u.visArch, formation: u.formation });
+  }
+  for (const r of state.relics) {
+    add(r, { k: 'relic', x: r2(r.position.x), z: r2(r.position.z), carrier: r.carrier ? idx.get(r.carrier) : undefined, holder: r.holder ? idx.get(r.holder) : undefined });
   }
   // Segona passada: tasques (referències entre entitats)
   for (const u of state.units) {
@@ -35,7 +40,8 @@ function serializeGame() {
   let explored = '';
   for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
   return {
-    v: 1, date: new Date().toISOString(), elapsed: state.elapsed,
+    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory,
+    relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: { 1: team(PLAYER), 2: team(ENEMY) },
     ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), waveCount: AI.waveCount, nextWaveAt: AI.nextWaveAt, armyCycle: AI.armyCycle },
     fog: { enabled: FOG.enabled, explored },
@@ -64,7 +70,8 @@ function clearWorld() {
   for (const p of state.projectiles) scene.remove(p.g);
   for (const m of state.markers) scene.remove(m.g);
   for (const f of state.floaters) f.el.remove();
-  Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [],
+  for (const r of state.relics) scene.remove(r.group);
+  Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [], relics: [], relicWin: null,
                          projectiles: [], markers: [], floaters: [], pings: [], controlGroups: {} });
   cancelPlacement();
 }
@@ -105,7 +112,9 @@ function loadGame(data) {
         else { e.progress = d.progress; applyConstructionVisual(e); }
         if (d.sub === 'farm' && d.progress >= 1) { e.amount = d.amount; onNodeHarvested(e); }
       }
+      if (d.arch && d.arch !== archOf(d.team)) { e.visArch = d.arch; rebuildBuildingModel(e); }
       e.hp = d.hp;
+      if (d.wonderEnd !== undefined) e.wonderEnd = data.elapsed + d.wonderEnd;
       if (d.queue && e.trainQueue) e.trainQueue = d.queue.map(q => ({ ...q }));
       if (d.rally) e.rally = { point: new THREE.Vector3(d.rally.x, 0, d.rally.z), node: null };
       e.seen = d.seen;
@@ -113,15 +122,29 @@ function loadGame(data) {
       e = d.sub === 'villager' ? createVillager(d.x, d.z, d.team)
         : d.sub === 'tradecart' ? createTradeCart(d.x, d.z, d.team)
         : createSoldier(d.sub, d.x, d.z, d.team);
+      if (d.arch && d.arch !== archOf(d.team)) { e.visArch = d.arch; rebuildUnitModel(e); }
       e.hp = d.hp;
       e.group.rotation.y = d.ry || 0;
       e.inWave = d.inWave;
+      if (d.faith !== undefined) e.faith = d.faith;
+      if (d.formation) e.formation = d.formation;
       if (d.carry) { e.carry = { ...d.carry }; updateCarryVisual(e); }
+    } else if (d.k === 'relic') {
+      e = createRelic(d.x, d.z);
     }
     made.push(e);
   }
   createBuilding.batch = false;
   rebuildNav();
+  // Relíquies portades o guardades
+  data.ents.forEach((d, i) => {
+    if (d.k !== 'relic') return;
+    const r = made[i];
+    if (d.carrier !== undefined && made[d.carrier]) { const u = made[d.carrier]; r.carrier = u; u.relic = r; r.group.visible = false; if (u.relicMesh) u.relicMesh.visible = true; }
+    else if (d.holder !== undefined && made[d.holder]) { const m = made[d.holder]; r.holder = m; (m.relics = m.relics || []).push(r); r.group.visible = false; }
+  });
+  state.victory = data.victory || 'conquest';
+  state.relicWin = data.relicWin ? { team: data.relicWin.team, end: data.elapsed + data.relicWin.left } : null;
   // Tasques
   data.ents.forEach((d, i) => {
     const u = made[i];
@@ -304,16 +327,64 @@ function teamAlive(team) {
   if (team === AI.team && AI.resigned) return false;
   return state.units.some(u => u.team === team) || state.buildings.some(b => b.team === team && !b.underConstruction);
 }
+const hasKing = (team) => state.units.some(u => u.team === team && u.category === 'king');
+/* Meravelles i relíquies: comptes enrere de victòria (victòria estàndard) */
+function victoryCheck() {
+  if (state.victory !== 'standard') { state.relicWin = null; updateVictoryUI(); return; }
+  for (const b of state.buildings) {
+    if (b.subtype !== 'wonder' || b.underConstruction || b.wonderEnd) continue;
+    b.wonderEnd = state.elapsed + WONDER_WIN_TIME;
+    toast(b.isOwn ? `🏛️ Meravella acabada! Si resisteix ${WONDER_WIN_TIME / 60} minuts, guanyes` : `🏛️ Els ${civOf(b.team).name} han acabat una Meravella! Destrueix-la abans de ${WONDER_WIN_TIME / 60} minuts`);
+    if (!b.isOwn) state.pings.push({ x: b.position.x, z: b.position.z, t: 0 });
+  }
+  if (state.relics.length) {
+    const t0 = state.relics[0].holder ? state.relics[0].holder.team : 0;
+    const team = t0 && state.relics.every(r => r.holder && r.holder.team === t0) ? t0 : 0;
+    if (team && (!state.relicWin || state.relicWin.team !== team)) {
+      state.relicWin = { team, end: state.elapsed + RELIC_WIN_TIME };
+      toast(team === PLAYER.id ? `🏺 Tens totes les relíquies! Guarda-les ${RELIC_WIN_TIME} segons per guanyar` : `🏺 L'enemic té totes les relíquies! Tens ${RELIC_WIN_TIME} segons per recuperar-ne una`);
+    } else if (!team && state.relicWin) {
+      state.relicWin = null;
+      toast('🏺 Ningú no té totes les relíquies: compte enrere aturat');
+    }
+  }
+  updateVictoryUI();
+}
+const vicEl = document.getElementById('vic-timers');
+function updateVictoryUI() {
+  const items = [];
+  if (state.victory === 'regicide') items.push(`<span class="vt" title="Regicidi: si el teu rei mor, perds">👑 ${hasKing(PLAYER.id) ? 'Rei viu' : 'Sense rei'}</span>`);
+  for (const b of state.buildings) if (b.subtype === 'wonder' && b.wonderEnd) items.push(`<span class="vt ${b.isOwn ? '' : 'enemy'}" title="Meravella: si resisteix, guanya">🏛️ ${civOf(b.team).name} ${formatTime(Math.max(0, b.wonderEnd - state.elapsed))}</span>`);
+  if (state.relicWin) items.push(`<span class="vt ${state.relicWin.team === PLAYER.id ? '' : 'enemy'}" title="Totes les relíquies">🏺 ${civOf(state.relicWin.team).name} ${formatTime(Math.max(0, state.relicWin.end - state.elapsed))}</span>`);
+  const html = items.join('');
+  if (vicEl.innerHTML !== html) vicEl.innerHTML = html;
+  vicEl.classList.toggle('on', items.length > 0);
+}
 function checkGameOver() {
   if (state.over) return;
-  const win = !teamAlive(ENEMY.id), lose = !teamAlive(PLAYER.id);
+  victoryCheck();
+  let win = !teamAlive(ENEMY.id), lose = !teamAlive(PLAYER.id), how = 'conquest';
+  if (state.victory === 'regicide') {
+    if (!hasKing(ENEMY.id)) { win = true; how = 'king'; }
+    if (!hasKing(PLAYER.id)) { lose = true; how = 'king'; }
+  }
+  if (state.victory === 'standard') {
+    const w = state.buildings.find(b => b.subtype === 'wonder' && b.wonderEnd && state.elapsed >= b.wonderEnd);
+    if (w) { if (w.isOwn) win = true; else lose = true; how = 'wonder'; }
+    if (state.relicWin && state.elapsed >= state.relicWin.end) { if (state.relicWin.team === PLAYER.id) win = true; else lose = true; how = 'relics'; }
+  }
   if (!win && !lose) return;
+  if (win && lose) win = false;
   state.over = true;
   state.paused = true;
-  const mins = Math.floor(state.elapsed / 60), secs = Math.floor(state.elapsed % 60);
+  const T = `<b>${formatTime(state.elapsed)}</b>`, E = civOf(ENEMY.id).name, P = civOf(PLAYER.id).name;
+  const WHY = {
+    conquest: win ? `${AI.resigned ? `Els ${E} s'han rendit` : `Has derrotat els ${E}`} en ${T} (dificultat ${AI.diff.label}).` : `La teva civilització (${P}) ha caigut després de ${T}.`,
+    king: win ? `El rei dels ${E} ha mort: victòria per regicidi en ${T}.` : `El teu rei ha mort. Els ${E} guanyen per regicidi (${T}).`,
+    wonder: win ? `La teva Meravella ha resistit! Victòria en ${T}.` : `La Meravella dels ${E} ha resistit. Derrota en ${T}.`,
+    relics: win ? `Has reunit totes les relíquies. Victòria en ${T}.` : `Els ${E} han reunit totes les relíquies. Derrota en ${T}.`,
+  };
   document.getElementById('end-title').textContent = win ? 'VICTÒRIA' : 'DERROTA';
-  document.getElementById('end-text').innerHTML = win
-    ? `${AI.resigned ? `Els ${civOf(ENEMY.id).name} s'han rendit` : `Has derrotat els ${civOf(ENEMY.id).name}`} en <b>${mins}:${String(secs).padStart(2, '0')}</b> (dificultat ${AI.diff.label}).`
-    : `La teva civilització (${civOf(PLAYER.id).name}) ha caigut després de <b>${mins}:${String(secs).padStart(2, '0')}</b>.`;
+  document.getElementById('end-text').innerHTML = WHY[how];
   endScreen.classList.remove('hidden');
 }

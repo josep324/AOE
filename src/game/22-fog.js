@@ -79,6 +79,10 @@ function updateFog() {
     if (entityVisible(b)) b.seen = true;       // els edificis enemics es recorden un cop vistos
     b.group.visible = !!b.seen;
   }
+  for (const r of state.relics) {
+    r.group.visible = !r.carrier && !r.holder && isExploredAt(r.position.x, r.position.z);
+    if (!r.group.visible && r.selected) { removeFromSelection(r); onSelectionChanged(); }
+  }
   for (const n of state.resourceNodes) {
     const ex = isExploredAt(n.position.x, n.position.z) || (n.footprint && entityVisible(n));
     if (n.subtype === 'sheep') n.group.visible = entityVisible(n) || (ex && n.killed);

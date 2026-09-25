@@ -655,8 +655,8 @@ const COMMON_BUILDERS = {};   // edificis iguals per a totes les civilitzacions 
 const KIT_VARIANTS = { house: 3 };
 const kitCache = new Map();
 /* Model d'un edifici del kit segons la civilització de l'equip (null si el tipus no hi és) */
-function kitBuildingModel(type, team) {
-  const arch = archOf(team);
+function kitBuildingModel(type, team, archOverride = null) {
+  const arch = archOverride || archOf(team);
   const build = COMMON_BUILDERS[type] || (ARCH[arch] && ARCH[arch][type]);
   if (!build) return null;
   const variant = Math.floor(kitRng() * (KIT_VARIANTS[type] || 1));

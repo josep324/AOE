@@ -54,6 +54,10 @@ function unitTaskLine(u) {
   const tag = `<span class="state-tag ${u.state}">${STATE_LABEL[u.state]}</span>`;
   let detail = '';
   if (u.state === STATE.ATTACKING && u.attackTarget) detail = ` ${u.attackTarget.name}`;
+  else if (u.state === STATE.CONVERTING && u.convTarget) detail = ` ${u.convTarget.name}${u.faith < 100 ? ' (esperant la fe)' : ''}`;
+  else if (u.state === STATE.HEALING && u.healTarget) detail = ` ${u.healTarget.name}`;
+  else if (u.state === STATE.MOVING && u.relicTarget) detail = ' cap a una relíquia';
+  else if (u.state === STATE.MOVING && u.relic && u.relicDrop) detail = ' a guardar la relíquia';
   else if (u.state === STATE.TRADING) detail = u.tradeLoaded ? ` · porta <b>${u.tradeLoaded} 🪙</b>` : ' · anant a carregar';
   else if (u.state === STATE.GATHERING && u.gatherNode) detail = ` ${RES_LABEL[u.gatherNode.resourceType]} de ${u.gatherNode.name.toLowerCase()}`;
   else if (u.state === STATE.MOVING && u.gatherNode) detail = ` cap a ${u.gatherNode.name.toLowerCase()}`;
@@ -70,7 +74,7 @@ function carryLine(u) {
 /* Signatura de l'estat visible: si canvia, es refà el panell de selecció */
 function selectionSignature() {
   return state.selected.map(e => e.kind === 'unit'
-    ? `${e.id}:${e.state}:${Math.ceil(e.hp)}:${e.carry.amount}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
+    ? `${e.id}:${e.state}:${Math.ceil(e.hp)}:${e.carry.amount}:${Math.floor((e.faith || 0) / 4)}:${e.relic ? 1 : 0}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
     : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.garrison ? e.garrison.length : 0}:${Math.ceil(e.hp / 50)}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
 }
 let lastSelSignature = '';
@@ -93,6 +97,13 @@ function updateSelectionUI(panelOnly = false) {
   if (sel.length === 1) {
     let stats = '';
     if (first.kind === 'unit') {
+      if (first.category === 'monk') {
+        stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.relic ? '<span>🏺 <b>Porta una relíquia</b></span>' : ''}</div>
+        <div class="bar faith"><i style="width:${first.faith}%"></i><span>🙏 Fe: ${Math.floor(first.faith)}%</span></div>
+        <div class="stats"><span>✨ Conversió <b>${first.convRange}</b></span><span>💚 Cura <b>${first.healRange}</b></span><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>👁 Visió <b>${first.los}</b></span></div>`;
+      } else if (first.category === 'king') {
+        stats = `<div class="stats"><span>${unitTaskLine(first)}</span><span>👑 <b>${state.victory === 'regicide' ? 'Si mor, perds la partida' : 'Rei'}</b></span></div>`;
+      } else
       stats = `<div class="stats"><span>${unitTaskLine(first)}</span>${first.isMilitary || !first.isOwn ? (first.isMilitary && first.isOwn ? `<span>${STANCES[first.stance].icon} ${STANCES[first.stance].name}</span>` : '') : carryLine(first)}</div>
         <div class="stats"><span>⚔ Atac <b>${first.attack}</b></span><span>🛡 Armadura <b>${first.armor[0]}/${first.armor[1]}</b></span><span>🎯 Abast <b>${first.range ? first.range : 'cos a cos'}</b></span><span>👁 Visió <b>${first.los}</b></span></div>`;
     } else if (first.kind === 'building') {
@@ -110,6 +121,8 @@ function updateSelectionUI(panelOnly = false) {
         if (d.dropoff) parts.push(`<span>📦 Magatzem <b>${d.dropoff.map(t => RES_ICON[t]).join(' ')}</b></span>`);
         if (first.subtype === 'mill') parts.push('<span>🌱 Permet construir <b>granges</b></span>');
         if (first.subtype === 'barracks') parts.push(`<span>🚩 Reunió <b>${first.rally ? 'establert' : 'cap'}</b></span>`);
+        if (first.subtype === 'monastery') { const n = first.relics ? first.relics.length : 0; parts.push(`<span>🏺 Relíquies <b>${n}</b></span><span>🪙 <b>+${(n * RELIC_GOLD).toFixed(1)}/s</b></span>`); }
+        if (first.subtype === 'wonder' && first.wonderEnd) parts.push(`<span>🏛️ Victòria en <b>${formatTime(Math.max(0, first.wonderEnd - state.elapsed))}</b></span>`);
         stats = `<div class="stats">${parts.join('')}</div>`;
       }
       if (first.trainQueue && first.isOwn && !first.underConstruction) {
@@ -118,9 +131,12 @@ function updateSelectionUI(panelOnly = false) {
         stats += `<div class="queue-row"><div class="queue" id="train-queue">${items || '<span class="q-empty">Cua buida</span>'}</div><div class="train-status" id="train-status"></div></div>`;
       }
     }
+    if (first.kind === 'relic') {
+      stats = `<div class="stats"><span>${first.carrier ? `La porta un monjo (${teamOf(first.carrier.team).name})` : first.holder ? 'Guardada en un Monestir' : 'A terra: envia-hi un monjo'}</span></div>`;
+    }
     const isRes = first.kind === 'resource';
     const resLabel = isRes ? RES_LABEL[first.resourceType] : '';
-    const bar = isRes
+    const bar = first.kind === 'relic' ? `<div class="bar res"><i style="width:100%"></i><span>🪙 +${RELIC_GOLD} d'or/s en un Monestir</span></div>` : isRes
       ? `<div class="bar res"><i style="width:${(first.amount / first.maxAmount) * 100}%"></i><span>${resLabel}: ${first.amount}</span></div>`
       : first.underConstruction
         ? `<div class="bar build"><i style="width:${first.progress * 100}%"></i><span>Construcció: ${Math.floor(first.progress * 100)}%</span></div>`
@@ -245,6 +261,18 @@ function updateSelectionUI(panelOnly = false) {
       g.title = 'Muntar / desmuntar el trabuc (G): muntat pot disparar, desmuntat es pot moure. Triga uns segons';
       actionsEl.appendChild(g);
     }
+    const relicMonks = mil.filter(u => u.relic);
+    if (relicMonks.length) {
+      const d = makeActionButton('🏺', 'Deixar', 'relíquia', '', () => { relicMonks.forEach(unitDropRelic); updateSelectionUI(); }, true);
+      d.title = 'Deixa la relíquia a terra. Clic dret sobre un Monestir teu per guardar-la (+0,5 d\'or/s)';
+      actionsEl.appendChild(d);
+    }
+    if (mil.every(isMonk)) {
+      const h = document.createElement('div');
+      h.className = 'action-hint';
+      h.innerHTML = '<kbd>clic dret</kbd> enemic: convertir · ferit propi: curar · relíquia: recollir';
+      actionsEl.appendChild(h);
+    }
     const carriers = mil.filter(u => u.garrison && u.garrison.length);
     if (carriers.length) actionsEl.appendChild(makeActionButton('🚪', 'Sortir', `${carriers[0].garrison.length}`, 'U', () => carriers.forEach(c => ungarrison(c)), true));
     for (const [k, st] of Object.entries(STANCES)) {
@@ -307,6 +335,8 @@ function updateSelectionUI(panelOnly = false) {
     actionsEl.appendChild(hint);
   } else if (first.team && !first.isOwn) {
     actionsEl.innerHTML = `<div class="action-hint">${first.kind === 'unit' ? 'Unitat' : 'Edifici'} de l'<b style="color:#ff8a7a">${teamOf(first.team).name}</b>.<br>Selecciona unitats i fes <kbd>clic dret</kbd><br>per atacar-lo.</div>`;
+  } else if (first.kind === 'relic') {
+    actionsEl.innerHTML = `<div class="action-hint">Relíquia sagrada. Només els <b>monjos</b> la poden portar.<br>Guardada en un <b>Monestir</b> dona +0,5 d'or per segon.${state.victory === 'standard' ? '<br>Qui tingui <b>totes</b> les relíquies uns minuts guanya.' : ''}</div>`;
   } else if (first.kind === 'resource' && first.subtype === 'farm') {
     actionsEl.innerHTML = `<div class="action-hint">Granja: ${first.amount} d'aliment.<br>Un sol granger hi pot treballar.<br>Descarrega al Molí o al Centre.</div>`;
   } else if (first.kind === 'resource') {

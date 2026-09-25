@@ -85,6 +85,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
 
 function orderMove(u, point) {
   u.anchor = point.clone ? point.clone() : null;
+  u.convTarget = null; u.healTarget = null; u.relicTarget = null; u.relicDrop = null;
   u.forcedTarget = false;
   u.gatherNode = null;
   u.dropTarget = null;
@@ -354,6 +355,7 @@ function updateUnit(u, dt) {
   }
 
   if (updatePacking(u, dt)) return;
+  if (u.category === 'monk') updateFaith(u, dt);
   let walking = false;
   switch (u.state) {
     case STATE.MOVING: {
@@ -362,6 +364,10 @@ function updateUnit(u, dt) {
         const g = u.garrisonTarget;
         if (g.dead) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); break; }
         if (entSurfaceDist(g, u.position.x, u.position.z) - u.radius <= 1.0) { enterGarrison(u, g); break; }
+      }
+      if (u.category === 'monk') {
+        if (monkMoveTick(u)) break;
+        if (u.attackMove && monkAutoScan(u, dt, true)) break;
       }
       // Moviment amb atac (IA): si troba enemics pel camí, els ataca
       if (u.attackMove && u.isMilitary) {
@@ -390,6 +396,11 @@ function updateUnit(u, dt) {
           if (inReach(u, bt)) startBuilding(u); else retryApproach(u);
         } else if (node) {
           if (inReach(u, node)) startGathering(u); else retryApproach(u);
+        } else if (u.relicTarget || (u.relicDrop && u.relic)) {
+          if (!monkMoveTick(u)) {
+            if (++u.approachTries > 5) { u.relicTarget = null; u.relicDrop = null; setUnitState(u, STATE.IDLE); }
+            else setMoveTarget(u, u.relicTarget ? u.relicTarget.position.clone() : approachPoint(u.relicDrop, u.position, 0.6 * u.approachTries));
+          }
         } else if (u.garrisonTarget) {
           if (++u.approachTries > 4) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); }
           else setMoveTarget(u, approachPoint(u.garrisonTarget, u.position, 0.6 * u.approachTries));
@@ -495,6 +506,12 @@ function updateUnit(u, dt) {
     case STATE.GATHERING:
       gatherTick(u, dt);
       break;
+    case STATE.CONVERTING:
+      walking = monkConvertTick(u, dt);
+      break;
+    case STATE.HEALING:
+      walking = monkHealTick(u, dt);
+      break;
     case STATE.TRADING: {
       const dest = u.tradeDest, home = u.tradeHome;
       if (!dest || dest.dead || !home || home.dead) { u.tradeDest = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
@@ -525,6 +542,7 @@ function updateUnit(u, dt) {
     default:
       if (u.target) setMoveTarget(u, null);
       if (u.orderQueue.length) { runOrder(u, u.orderQueue.shift()); break; }
+      if (u.category === 'monk') { monkAutoScan(u, dt, false); break; }
       // Les unitats militars ataquen automàticament l'enemic que veuen (segons la postura)
       if (u.isMilitary && !(u.packable && u.packed)) {
         u.returningToAnchor = false;
@@ -577,6 +595,14 @@ function updateUnit(u, dt) {
       if (u.state === STATE.BUILDING) onBuildStrike(u, u.buildTarget);
       else onToolStrike(u, u.gatherNode);
     }
+  } else if ((u.state === STATE.CONVERTING || u.state === STATE.HEALING) && u.inRange) {
+    // Monjo: braços alçats pregant (conversió) o estesos sobre el ferit (curació)
+    for (const l of u.legs) l.rotation.x *= (1 - k);
+    const up = u.state === STATE.CONVERTING ? -2.7 + Math.sin(state.elapsed * 3 + u.id) * 0.15 : -1.35;
+    u.arms[0].rotation.x += (up - u.arms[0].rotation.x) * k;
+    u.arms[1].rotation.x += (up - u.arms[1].rotation.x) * k;
+    u.model.position.y = 0;
+    u.model.rotation.x *= (1 - k);
   } else if (u.state === STATE.ATTACKING && u.inRange) {
     // Combat: preparació del cop (o tensar l'arc) i descàrrega ràpida
     const prep = u.reload ? 1 - u.attackCooldown / u.reload : 1;

@@ -303,6 +303,73 @@ ARCH.middleeast = {
     kPennant(g, team, 3.1, 2.4, 3.1, 1.2);
     return 4.2;
   },
+  monastery(g, { team }) {
+    // Mesquita: sala amb cúpula de rajola, iwan d'entrada, minaret i pati amb font
+    kbox(g, 5.8, 0.3, 5.8, KM.sandstone, 0, 0.15, 0);
+    meBody(g, { w: 4.2, d: 3.6, h: 2.6, y0: 0.3, cz: -0.7, parapet: 0.35 });
+    for (const sx of [-1, 1]) meArch(g, 0.5, 1.1, sx * 2.11, 1.0, -0.7, sx * Math.PI / 2);
+    kcyl(g, 1.3, 1.35, 0.6, 16, KM.sandstone, 0, 3.35, -0.7);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; kopening(g, 0.2, 0.34, Math.sin(a) * 1.33, 3.18, -0.7 + Math.cos(a) * 1.33, a, 'pointed'); }
+    kdome(g, 1.35, 1.4, KM.tile, 0, 3.65, -0.7, 0.55, 20);
+    kcyl(g, 0.04, 0.07, 0.6, 8, KM.gold, 0, 5.45, -0.7);
+    kshape(g, (() => { const s = new THREE.Shape(); s.absarc(0, 0, 0.16, 0.6, Math.PI * 2 - 0.6, false); s.absarc(0.07, 0, 0.12, Math.PI * 2 - 0.9, 0.9, true); return s; })(), KM.gold, 0, 5.9, -0.7);
+    // Iwan
+    kbox(g, 2.2, 3.7, 0.7, KM.sandstone, 0, 2.15, 1.35);
+    meArch(g, 1.1, 2.5, 0, 0.3, 1.71, 0);
+    kbox(g, 1.9, 0.3, 0.05, KM.tile, 0, 3.3, 1.72);
+    battlements(g, 2.2, 0.7, 4.0, KM.sandstone, { z: 1.35, round: true, size: 0.26, gap: 0.2, h: 0.3, thick: 0.16 });
+    // Minaret
+    kcyl(g, 0.42, 0.52, 6.0, 12, KM.sandstone, 2.2, 3.3, -2.1);
+    kcyl(g, 0.66, 0.5, 0.3, 12, KM.sandstone, 2.2, 5.3, -2.1);
+    kcyl(g, 0.34, 0.36, 1.1, 12, KM.adobe, 2.2, 6.9, -2.1);
+    kdome(g, 0.36, 0.5, KM.tile, 2.2, 7.45, -2.1, 0.8, 12);
+    kcyl(g, 0.03, 0.03, 0.4, 6, KM.gold, 2.2, 8.1, -2.1);
+    // Pati: font, catifes i gerres
+    kcyl(g, 0.6, 0.65, 0.35, 14, KM.sandstone, -1.8, 0.47, 2.0);
+    kcyl(g, 0.5, 0.5, 0.05, 14, mat(0x3a7aa0, { roughness: 0.15, metalness: 0.1 }), -1.8, 0.64, 2.0);
+    kRug(g, 1.6, 2.2, 1.4, 0.9, 0x2a6a4a);
+    kAmphora(g, 2.4, 1.5, 0.8);
+    kPennant(g, team, -2.4, 0.2, -2.4, 2.2);
+    return 8.2;
+  },
+  wonder(g, { team }) {
+    // Gran mesquita: sala hipòstila, cúpula gran, cúpules petites, iwan monumental i quatre minarets
+    kbox(g, 11.8, 0.5, 11.8, KM.sandstone, 0, 0.25, 0);
+    meBody(g, { w: 7.6, d: 7.0, h: 4.6, y0: 0.5, cz: -0.8, parapet: 0.5 });
+    for (let i = -1; i <= 1; i++) for (const sx of [-1, 1]) meArch(g, 0.8, 2.0, sx * 3.81, 0.5, -0.8 + i * 2.1, sx * Math.PI / 2);
+    kcyl(g, 2.7, 2.8, 1.4, 20, KM.sandstone, 0, 6.2, -0.8);
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; kopening(g, 0.34, 0.7, Math.sin(a) * 2.78, 5.9, -0.8 + Math.cos(a) * 2.78, a, 'pointed'); }
+    kdome(g, 2.8, 3.4, KM.tile, 0, 6.9, -0.8, 0.7, 28);
+    kcyl(g, 0.08, 0.14, 1.2, 8, KM.gold, 0, 11.2, -0.8);
+    ksphere(g, 0.24, KM.gold, 0, 11.9, -0.8);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      kcyl(g, 0.9, 0.9, 0.5, 12, KM.sandstone, sx * 2.6, 5.85, -0.8 + sz * 2.4);
+      kdome(g, 0.9, 0.9, KM.tile, sx * 2.6, 6.1, -0.8 + sz * 2.4, 0.5, 14);
+    }
+    // Iwan monumental
+    kbox(g, 4.6, 8.4, 1.4, KM.sandstone, 0, 4.7, 3.2);
+    meArch(g, 2.6, 5.8, 0, 0.5, 3.91, 0);
+    kbox(g, 4.2, 0.5, 0.06, KM.tile, 0, 7.6, 3.92);
+    for (const sx of [-1, 1]) kbox(g, 0.3, 7.8, 0.06, KM.tile, sx * 2.0, 4.4, 3.92);
+    battlements(g, 4.6, 1.4, 8.9, KM.sandstone, { z: 3.2, round: true, size: 0.34, gap: 0.26, h: 0.45, thick: 0.2 });
+    // Quatre minarets amb balcons
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      const x = sx * 5.1, z = sz * 5.1;
+      kcyl(g, 0.55, 0.72, 12.0, 14, KM.sandstone, x, 6.5, z);
+      for (const y of [6.5, 11.0]) { kcyl(g, 0.9, 0.62, 0.36, 14, KM.sandstone, x, y, z); kcyl(g, 0.02, 0.02, 0.01, 4, KM.sandstone, x, y, z); }
+      kcyl(g, 0.44, 0.46, 1.8, 12, KM.adobe, x, 12.4, z);
+      for (let k = 0; k < 4; k++) kopening(g, 0.22, 0.6, x + Math.sin(k * Math.PI / 2) * 0.45, 12.2, z + Math.cos(k * Math.PI / 2) * 0.45, k * Math.PI / 2, 'pointed');
+      kdome(g, 0.48, 0.8, KM.tile, x, 13.3, z, 0.9, 12);
+      kcyl(g, 0.03, 0.03, 0.6, 6, KM.gold, x, 14.35, z);
+      kPennant(g, team, x + sx * 0.3, 0.5, z - sz * 0.9, 2.0);
+    }
+    // Pati d'entrada amb font
+    kcyl(g, 1.0, 1.05, 0.4, 16, KM.sandstone, -3.2, 0.7, 4.6);
+    kcyl(g, 0.85, 0.85, 0.05, 16, mat(0x3a7aa0, { roughness: 0.15, metalness: 0.1 }), -3.2, 0.9, 4.6);
+    kRug(g, 3.2, 4.6, 1.8, 1.2, 0x8a2a2a);
+    meCanopy(g, KM.team(team), 3.2, 4.6, 2.0, 1.4, 2.0, 0, 0.5);
+    return 14.6;
+  },
   stonewall(g) {
     kbox(g, 1.0, 2.7, 1.0, KM.sandstone, 0, 1.35, 0);
     kbox(g, 1.04, 0.12, 1.04, KM.sandstone, 0, 2.72, 0);

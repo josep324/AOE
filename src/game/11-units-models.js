@@ -20,7 +20,9 @@ function setUnitStats(e, kind) {
   e.unitKind = kind;
   e.category = cat;
   e.name = el ? el.name : d.name;
-  e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : 1);
+  e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : cat === 'monk' ? M.monkSpeed : 1);
+  e.convRange = d.convRange ? d.convRange + M.convRange : 0;
+  e.healRange = d.healRange || 0;
   e.attack = (el ? el.attack : d.attack) + (M.attack[cat] || 0);
   const baseRange = el && el.range ? el.range : (d.range || 0);
   e.range = baseRange + (baseRange ? (M.range[cat] || 0) + (M.unitRange[kind] || 0) : 0);
@@ -44,7 +46,7 @@ function setUnitStats(e, kind) {
   e.mounted = cat === 'cavalry' || !!d.mounted;
   e.bonusArcher = d.bonusArcher || 0;
   if (cat === 'siege') e.vsBuilding = Math.round(e.vsBuilding * M.siegeBldMul);
-  const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : 0);
+  const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : cat === 'monk' ? M.monkHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
   e.barH = e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
@@ -65,6 +67,8 @@ function applyUnitStats(e, kind) {
   e.packable = !!CONFIG.UNITS[kind].packable;   // trabuc: comença desmuntat
   e.packed = true; e.packTo = true; e.packT = 0;
   e.swingT = 0;
+  e.faith = 100;                // fe del monjo (cal tenir-la plena per convertir)
+  e.relic = null;               // relíquia que porta
 }
 
 function createVillager(x, z, team = PLAYER.id) {

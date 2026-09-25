@@ -293,6 +293,55 @@ ARCH.eastasian = {
     kNobori(g, team, 3.0, 2.8, 3.8);
     return 4.6;
   },
+  monastery(g, { team }) {
+    // Temple budista: sala de dues teulades sobre sòcol de granit, encenser, llanternes i campana
+    eaStoneBase(g, 5.6, 5.2, 0.5, 0, -0.2);
+    kbox(g, 1.6, 0.25, 0.8, KM.granite, 0, 0.13, 2.6);
+    eaBody(g, { w: 4.0, d: 3.0, h: 1.8, y0: 0.5, cz: -0.6, door: { x: 0, w: 1.6, h: 1.5 } });
+    eaRoof(g, { w: 4.0, d: 3.0, h: 1.0, y0: 2.3, z: -0.6, over: 0.75, lift: 0.35 });
+    eaBody(g, { w: 2.6, d: 1.8, h: 0.8, y0: 3.2, cz: -0.6, lower: false });
+    eaRoof(g, { w: 2.6, d: 1.8, h: 1.1, y0: 4.0, z: -0.6, over: 0.6, lift: 0.3, gold: true });
+    // Encenser de bronze i llanternes de pedra
+    const bronze = mat(0x5a4a30, { metalness: 0.7, roughness: 0.45 });
+    kcyl(g, 0.35, 0.28, 0.4, 12, bronze, 0, 0.75, 1.7);
+    for (let k = 0; k < 3; k++) kcyl(g, 0.04, 0.04, 0.35, 6, bronze, Math.sin(k * 2.1) * 0.25, 0.55 + 0.02, 1.7 + Math.cos(k * 2.1) * 0.25);
+    kcyl(g, 0.02, 0.28, 0.25, 12, bronze, 0, 1.08, 1.7);
+    for (const sx of [-1, 1]) kLantern(g, sx * 1.9, 1.9);
+    // Campanar (shōrō)
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) kbox(g, 0.14, 2.0, 0.14, KM.darkwood, 2.3 + sx * 0.5, 1.5, -2.1 + sz * 0.5);
+    eaRoof(g, { w: 1.1, d: 1.1, h: 0.5, y0: 2.5, x: 2.3, z: -2.1, over: 0.35, lift: 0.18 });
+    kcyl(g, 0.26, 0.3, 0.7, 12, bronze, 2.3, 1.95, -2.1);
+    kNobori(g, team, -2.3, 2.3, 3.4);
+    return 6.4;
+  },
+  wonder(g, { team }) {
+    // Gran temple (tipus Tōdai-ji) amb una pagoda de cinc pisos i un pati de llanternes
+    eaStoneBase(g, 11.8, 11.8, 0.8);
+    kbox(g, 2.6, 0.4, 1.2, KM.granite, 1.4, 0.2, 6.2);
+    // Sala principal
+    eaBody(g, { w: 7.2, d: 5.4, h: 3.2, y0: 0.8, cx: 1.4, cz: -2.4, door: { x: 0, w: 2.2, h: 2.3 } });
+    eaRoof(g, { w: 7.2, d: 5.4, h: 1.2, y0: 4.0, x: 1.4, z: -2.4, over: 1.0, lift: 0.5 });
+    eaBody(g, { w: 5.6, d: 3.8, h: 1.4, y0: 5.0, cx: 1.4, cz: -2.4, lower: false });
+    for (const x of [-1.2, 0, 1.2]) kbox(g, 0.7, 0.7, 0.05, KM.paper, 1.4 + x, 5.8, -0.48);
+    eaRoof(g, { w: 5.6, d: 3.8, h: 2.2, y0: 6.4, x: 1.4, z: -2.4, over: 0.9, lift: 0.55, gold: true });
+    // Pagoda de cinc pisos
+    const px = -3.6, pz = 2.6;
+    eaStoneBase(g, 3.2, 3.2, 0.6, px, pz);
+    for (let i = 0; i < 5; i++) {
+      const w = 2.3 - i * 0.28, y = 0.6 + i * 2.0;
+      eaBody(g, { w, d: w, h: 1.2, y0: y, cx: px, cz: pz, lower: i === 0 });
+      eaRoof(g, { w, d: w, h: 0.55, y0: y + 1.2, x: px, z: pz, over: 0.7 - i * 0.05, lift: 0.3 });
+    }
+    kcyl(g, 0.08, 0.1, 2.6, 8, KM.gold, px, 12.2, pz);
+    for (let k = 0; k < 5; k++) kcyl(g, 0.24 - k * 0.02, 0.24 - k * 0.02, 0.05, 10, KM.gold, px, 11.2 + k * 0.35, pz);
+    // Pati: llanternes, encenser gran i banderes
+    for (const [x, z] of [[1.5, 3.3], [3.8, 3.3], [1.5, 5.0], [3.8, 5.0], [5.3, 1.5], [5.3, 4.2]]) kLantern(g, x, z);
+    const bronze = mat(0x5a4a30, { metalness: 0.7, roughness: 0.45 });
+    kcyl(g, 0.55, 0.45, 0.6, 14, bronze, 2.6, 1.1, 2.2);
+    kcyl(g, 0.02, 0.45, 0.4, 14, bronze, 2.6, 1.6, 2.2);
+    for (const [x, z] of [[-5.3, -5.3], [5.3, -5.3], [-5.3, 5.3], [5.3, 5.6]]) kNobori(g, team, x, z, 5.0);
+    return 13.6;
+  },
   stonewall(g) {
     eaStoneBase(g, 1.04, 1.04, 1.1);
     kbox(g, 0.8, 1.4, 0.8, KM.whiteplaster, 0, 1.8, 0);

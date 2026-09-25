@@ -29,6 +29,7 @@ function simulate(dt) {
   updateConstruction(dt);
   updateProjectiles(dt);
   updateDefensiveBuildings(dt);
+  updateRelics(dt);
   for (const pg of state.pings) pg.t += dt;
   fogTimer += dt;
   if (fogTimer >= 0.2 || !fogReady) { fogTimer = 0; fogReady = true; updateFog(); }
@@ -60,6 +61,8 @@ function animate() {
   updateMarkers(dt);
   updateParticles(dt);
   updateFloaters(dt);
+  updateSparkles(dt);
+  animateRelics(state.elapsed);
   updatePlacement();
   updateTrainingUI();
   updateRallyFlag(t);

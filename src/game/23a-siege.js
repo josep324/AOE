@@ -19,7 +19,7 @@ function canGarrison(u, b) {
   if (b.kind === 'unit') return c === 'infantry';
   if (c === 'siege' || c === 'trade') return false;
   if (b.subtype === 'castle') return true;
-  return c === 'villager' || c === 'infantry' || c === 'archer';
+  return c === 'villager' || c === 'infantry' || c === 'archer' || c === 'monk' || c === 'king';
 }
 /* Velocitat d'un ariet segons els infants que porta */
 function refreshContainer(b) {

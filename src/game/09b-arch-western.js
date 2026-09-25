@@ -340,6 +340,86 @@ ARCH.western = {
     kBanner(g, team, 3.0, 2.8, 3.6);
     return 5.0;
   },
+  monastery(g, { team }) {
+    // Església romànica: nau de pedra, absis, campanar i un petit hort
+    kbox(g, 5.8, 0.3, 5.8, KM.stone, 0, 0.15, 0);
+    const n = new THREE.Group(); n.rotation.y = Math.PI / 2; g.add(n);
+    kbox(n, 4.6, 3.0, 3.0, KM.stone, 0, 1.8, 0);
+    gableRoof(n, { w: 4.6, d: 3.0, h: 1.7, over: 0.28, y0: 3.3, roofMat: KM.darkplanks, gableMat: KM.stone, frame: false, ridgeMat: KM.darkplanks });
+    kopening(g, 0.9, 1.7, 0, 0.3, 2.31, 0, 'round', KM.stone);
+    kcyl(g, 0.52, 0.52, 0.06, 18, KM.stone, 0, 3.0, 2.32, [Math.PI / 2, 0, 0]);
+    kcyl(g, 0.4, 0.4, 0.08, 18, mat(teamOf(team).color, { emissive: teamOf(team).colorDark, emissiveIntensity: 0.5, roughness: 0.3 }), 0, 3.0, 2.34, [Math.PI / 2, 0, 0]);
+    kbox(g, 0.08, 0.8, 0.02, KM.dark, 0, 3.0, 2.39); kbox(g, 0.8, 0.08, 0.02, KM.dark, 0, 3.0, 2.39);
+    kbox(g, 0.1, 0.62, 0.1, KM.gold, 0, 5.35, 2.35); kbox(g, 0.36, 0.1, 0.1, KM.gold, 0, 5.46, 2.35);
+    for (const sx of [-1, 1]) for (const z of [-1.2, 0, 1.2]) {
+      kopening(g, 0.32, 0.85, sx * 1.51, 1.7, z, sx * Math.PI / 2, 'round');
+      kbox(g, 0.28, 2.2, 0.34, KM.stone, sx * 1.62, 1.4, z + 0.6);
+    }
+    // Absis semicircular
+    kcyl(g, 1.25, 1.25, 2.5, 16, KM.stone, 0, 1.55, -2.3);
+    kcyl(g, 0, 1.42, 1.1, 16, KM.darkplanks, 0, 3.35, -2.3);
+    // Campanar amb finestres geminades i coberta piramidal
+    kbox(g, 1.3, 6.4, 1.3, KM.stone, -2.05, 3.5, 1.6);
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 2;
+      kopening(g, 0.3, 0.7, -2.05 + Math.sin(a) * 0.66, 5.6, 1.6 + Math.cos(a) * 0.66, a, 'round');
+    }
+    kcyl(g, 0.2, 0.26, 0.34, 10, mat(0x8a6a2a, { metalness: 0.7, roughness: 0.4 }), -2.05, 5.7, 1.6);
+    kcyl(g, 0, 1.05, 1.9, 4, KM.darkplanks, -2.05, 7.65, 1.6, [0, Math.PI / 4, 0]);
+    kbox(g, 0.07, 0.5, 0.07, KM.gold, -2.05, 8.8, 1.6); kbox(g, 0.28, 0.07, 0.07, KM.gold, -2.05, 8.88, 1.6);
+    // Hort del monestir i pou
+    kbox(g, 1.3, 0.12, 1.9, KM.soil, 2.25, 0.36, 1.4);
+    for (let i = 0; i < 3; i++) kbox(g, 1.1, 0.18, 0.2, KM.sprouts, 2.25, 0.48, 0.8 + i * 0.6);
+    kcyl(g, 0.4, 0.42, 0.6, 12, KM.stone, 2.3, 0.6, -1.4);
+    kcyl(g, 0.3, 0.3, 0.05, 12, KM.dark, 2.3, 0.92, -1.4);
+    kBanner(g, team, 1.2, 2.8, 3.2);
+    return 9.0;
+  },
+  wonder(g, { team }) {
+    // Catedral gòtica: nau alta, naus laterals, arcbotants, dues torres amb agulla i rosassa
+    kbox(g, 11.8, 0.5, 11.8, KM.stone, 0, 0.25, 0);
+    kbox(g, 5.6, 0.4, 2.4, KM.stone, 0, 0.7, 5.2);
+    const n = new THREE.Group(); n.rotation.y = Math.PI / 2; g.add(n);
+    kbox(n, 8.4, 7.2, 4.2, KM.stone, 0.4, 4.1, 0);
+    gableRoof(n, { w: 8.4, d: 4.2, h: 3.4, over: 0.3, y0: 7.7, x: 0.4, roofMat: KM.darkplanks, gableMat: KM.stone, frame: false, ridgeMat: KM.darkplanks });
+    for (const sx of [-1, 1]) {
+      // Nau lateral i coberta en pendent
+      kbox(g, 1.9, 4.2, 8.0, KM.stone, sx * 3.05, 2.6, -0.3);
+      kbox(g, 2.3, 0.2, 8.2, KM.darkplanks, sx * 3.05, 5.05, -0.3, [0, 0, sx * -0.42]);
+      for (let i = 0; i < 5; i++) {
+        const z = -3.6 + i * 1.65;
+        kopening(g, 0.6, 1.9, sx * 4.01, 1.6, z, sx * Math.PI / 2, 'pointed');
+        kopening(g, 0.55, 1.9, sx * 2.11, 5.4, z, sx * Math.PI / 2, 'pointed');
+        // Arcbotant i pinacle
+        kbox(g, 0.45, 5.4, 0.5, KM.stone, sx * 4.25, 3.2, z + 0.8);
+        kcyl(g, 0, 0.3, 1.0, 4, KM.stone, sx * 4.25, 6.4, z + 0.8);
+        kbox(g, 2.4, 0.3, 0.3, KM.stone, sx * 3.2, 6.4, z + 0.8, [0, 0, sx * 0.5]);
+      }
+    }
+    // Façana: portals, rosassa i torres
+    for (const x of [-1.4, 0, 1.4]) kopening(g, x ? 0.8 : 1.3, x ? 2.1 : 3.0, x, 0.9, 4.02, 0, 'pointed', KM.stone);
+    kcyl(g, 1.2, 1.2, 0.1, 24, KM.stone, 0, 6.0, 4.02, [Math.PI / 2, 0, 0]);
+    kcyl(g, 1.0, 1.0, 0.12, 24, mat(teamOf(team).color, { emissive: teamOf(team).colorDark, emissiveIntensity: 0.6, roughness: 0.25 }), 0, 6.0, 4.05, [Math.PI / 2, 0, 0]);
+    for (let k = 0; k < 6; k++) kbox(g, 0.07, 2.0, 0.03, KM.gold, 0, 6.0, 4.12, [0, 0, k * Math.PI / 6]);
+    for (const sx of [-1, 1]) {
+      const x = sx * 3.0;
+      kbox(g, 2.4, 11.5, 2.4, KM.stone, x, 6.25, 3.3);
+      for (const y of [4.0, 8.0]) kopening(g, 0.55, 1.8, x, y, 4.51, 0, 'pointed');
+      battlements(g, 2.4, 2.4, 12.0, KM.stone, { x, z: 3.3, size: 0.3, gap: 0.3, h: 0.4, thick: 0.2 });
+      kcyl(g, 0, 1.2, 5.2, 8, KM.darkplanks, x, 14.6, 3.3);
+      kcyl(g, 0.06, 0.06, 0.8, 6, KM.gold, x, 17.5, 3.3);
+      for (const sz of [-1, 1]) kcyl(g, 0, 0.18, 1.1, 4, KM.stone, x + 1.05, 12.6, 3.3 + sz * 1.05);
+    }
+    // Agulla del creuer
+    kbox(g, 1.4, 1.6, 1.4, KM.stone, 0, 11.6, -1.2);
+    kcyl(g, 0, 0.8, 5.0, 8, KM.darkplanks, 0, 14.9, -1.2);
+    kbox(g, 0.1, 0.9, 0.1, KM.gold, 0, 17.8, -1.2); kbox(g, 0.5, 0.1, 0.1, KM.gold, 0, 17.95, -1.2);
+    // Absis
+    kcyl(g, 2.1, 2.1, 7.2, 16, KM.stone, 0, 4.1, -4.4);
+    kcyl(g, 0, 2.4, 2.6, 16, KM.darkplanks, 0, 9.0, -4.4);
+    kBanner(g, team, -5.0, 5.2, 5.0); kBanner(g, team, 5.0, 5.2, 5.0);
+    return 18.2;
+  },
   stonewall(g) {
     kbox(g, 1.0, 2.6, 1.0, KM.stone, 0, 1.3, 0);
     kbox(g, 1.04, 0.16, 1.04, KM.stone, 0, 2.62, 0);

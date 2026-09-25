@@ -69,6 +69,13 @@ function drawMinimap() {
     const r = n.subtype === 'tree' ? 1.8 : n.subtype === 'sheep' ? 1.6 : n.subtype === 'berries' ? 1.8 : 3;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
+  // Relíquies (quadrats blancs amb vora daurada)
+  for (const r of state.relics) {
+    if (!r.group.visible) continue;
+    const [x, y] = worldToMM(r.position.x, r.position.z, ax);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
+    ctx.strokeStyle = '#d8aa3a'; ctx.lineWidth = 1; ctx.strokeRect(x - 2.5, y - 2.5, 5, 5);
+  }
   // Edificis
   for (const b of state.buildings) {
     if (!b.group.visible) continue;

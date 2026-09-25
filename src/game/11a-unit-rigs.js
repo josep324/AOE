@@ -239,6 +239,50 @@ function buildVillagerRig(team, arch, female) {
   return rig;
 }
 
+/* ---------- Monjo ----------
+   Occident: hàbit marró amb caputxa i bàcul amb creu · Orient Mitjà: túnica blanca i turbant,
+   bàcul amb mitja lluna · Àsia oriental: hàbit safrà, cap rapat i bàcul de monjo budista amb anelles */
+function buildMonkRig(team, arch) {
+  const L = REGION_LOOK[arch], T = teamOf(team);
+  const rig = new THREE.Group();
+  const skin = upick(L.skin);
+  let look;
+  if (arch === 'middleeast') look = { skin, hair: null, beard: 0xd8d4cc, top: 0xeee8d8, top2: 0xeee8d8, skirt: 0xe6dfcc, sleeves: 0xeee8d8, pants: 0xe6dfcc, boots: 0x6a4a2a, belt: T.color };
+  else if (arch === 'eastasian') look = { skin, hair: null, top: 0xd8862a, top2: 0xc9761e, skirt: 0xc9761e, sleeves: 0xd8862a, pants: 0x8a5a2a, boots: 0x5a4632, belt: 0x6a4a2a };
+  else look = { skin, hair: 0x6a5a48, top: 0x5a4030, top2: 0x5a4030, skirt: 0x503828, sleeves: 0x5a4030, pants: 0x4a3426, boots: 0x3a2616, belt: 0xd8cca8, beard: unitRng() < 0.5 ? 0x8a7a68 : null };
+  const P = humanBody(rig, look);
+  const t = P.torso;
+  // Estola amb el color de l'equip
+  for (const sx of [-1, 1]) piece(t, UG.box, T.color, { x: sx * 0.11, y: 1.08, z: 0.27, sx: 0.08, sy: 0.9, sz: 0.03 });
+  if (arch === 'western') {
+    piece(t, UG.cone, 0x4a3426, { y: 1.72, z: -0.24, rx: -2.6, sx: 0.2, sy: 0.3, sz: 0.12 });   // caputxa abaixada
+    piece(t, taper(0.3, 0.34, 0.12, 12), 0x4a3426, { y: 1.58, sz: 0.85 });
+    piece(t, UG.box, GOLD, { y: 1.3, z: 0.3, sx: 0.04, sy: 0.18, sz: 0.02, metal: true });
+    piece(t, UG.box, GOLD, { y: 1.34, z: 0.3, sx: 0.12, sy: 0.04, sz: 0.02, metal: true });
+  } else if (arch === 'middleeast') {
+    HATS.turban(t, 0xf6f2e6);
+    piece(t, UG.box, 0x3a7a4a, { y: 1.32, z: -0.24, sx: 0.5, sy: 0.7, sz: 0.03, rx: 0.1 });
+  } else {
+    piece(t, UG.box, 0xc9761e, { x: 0.12, y: 1.3, z: 0.02, sx: 0.5, sy: 0.12, sz: 0.62, rz: -0.8 });   // kesa creuada
+    piece(t, UG.torus, 0x3a2418, { y: 1.52, z: 0.1, rx: Math.PI / 2 - 0.3, sx: 0.19, sy: 0.19, sz: 0.4 });   // rosari
+  }
+  // Bàcul (a la mà dreta, vertical)
+  const staff = P.armR;
+  piece(staff, taper(0.03, 0.035, 2.2, 6), arch === 'eastasian' ? 0x2a2018 : WOOD, { y: -0.35, z: 0.14 });
+  if (arch === 'western') {
+    piece(staff, UG.box, GOLD, { y: 0.82, z: 0.14, sx: 0.05, sy: 0.34, sz: 0.05, metal: true });
+    piece(staff, UG.box, GOLD, { y: 0.88, z: 0.14, sx: 0.24, sy: 0.05, sz: 0.05, metal: true });
+  } else if (arch === 'middleeast') {
+    piece(staff, arcGeo(0.12, 0.022, Math.PI * 1.4), GOLD, { y: 0.84, z: 0.14, rz: -0.9, metal: true });
+  } else {
+    piece(staff, UG.torus, GOLD, { y: 0.82, z: 0.14, ry: Math.PI / 2, sx: 0.14, sy: 0.18, sz: 0.1, metal: true });
+    for (const s of [-1, 1]) piece(staff, UG.torus, GOLD, { x: s * 0.1, y: 0.72, z: 0.14, ry: Math.PI / 2, sx: 0.05, sy: 0.05, sz: 0.05, metal: true });
+  }
+  // Llibre a la mà esquerra
+  piece(P.armL, UG.box, arch === 'eastasian' ? 0xe8dcc0 : 0x6a2a1a, { y: -0.6, z: 0.1, sx: 0.08, sy: 0.24, sz: 0.18 });
+  return rig;
+}
+
 /* ---------- Soldats ---------- */
 function soldierLook(arch, team, kind) {
   const L = REGION_LOOK[arch], T = teamOf(team);
@@ -267,7 +311,7 @@ const VIS_BASE = {
   manatarms: 'militia', longsword: 'militia', twohanded: 'militia', champion: 'militia',
   pikeman: 'spearman', halberdier: 'spearman', crossbow: 'archer', arbalester: 'archer',
   eliteskirm: 'skirmisher', heavycavarcher: 'cavarcher', lightcav: 'scout', hussar: 'scout',
-  cavalier: 'knight', paladin: 'knight', heavycamel: 'camel',
+  cavalier: 'knight', paladin: 'knight', heavycamel: 'camel', king: 'knight',
 };
 function armorDetails(torso, arch, team, kind, tier = 0) {
   const T = teamOf(team);
@@ -300,6 +344,25 @@ function buildSoldierRig(kind, team, arch) {
   const P = humanBody(rig, look);
   armorDetails(P.torso, arch, team, base, tier);
   const t = P.torso;
+  // Rei (regicidi): mantell, corona i ceptre
+  if (kind === 'king') {
+    piece(t, UG.box, T.color, { y: 1.05, z: -0.3, sx: 0.66, sy: 1.1, sz: 0.05, rx: 0.12 });
+    piece(t, taper(0.32, 0.3, 0.1, 12), 0xf2eee4, { y: 1.58, sz: 0.85 });
+    if (arch === 'eastasian') {
+      piece(t, taper(0.2, 0.2, 0.22, 12), 0x151210, { y: 2.0 });
+      piece(t, UG.box, 0x151210, { y: 2.15, z: -0.12, sx: 0.06, sy: 0.3, sz: 0.1 });
+    } else if (arch === 'middleeast') {
+      HATS.turban(t, 0xf6f2e6);
+      piece(t, UG.sphere, 0x2a8a5a, { y: 2.0, z: 0.18, sx: 0.05, sy: 0.05, sz: 0.03, metal: true });
+      piece(t, UG.cone, GOLD, { y: 2.18, sx: 0.04, sy: 0.18, sz: 0.04, metal: true });
+    } else {
+      piece(t, taper(0.2, 0.19, 0.12, 12), GOLD, { y: 2.0, metal: true });
+      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; piece(t, UG.cone, GOLD, { x: Math.sin(a) * 0.17, y: 2.12, z: Math.cos(a) * 0.17, sx: 0.04, sy: 0.12, sz: 0.04, metal: true }); }
+    }
+    piece(P.armR, taper(0.025, 0.025, 0.9, 6), GOLD, { y: -0.6, z: 0.3, rx: Math.PI / 2 - 0.5, metal: true });
+    piece(P.armR, UG.sphere, GOLD, { y: -0.4, z: 0.68, sx: 0.07, sy: 0.07, sz: 0.07, metal: true });
+    return { rig, parts: P };
+  }
   // Unitats úniques
   if (kind === 'throwingaxe') {
     HATS.coif(t, 0x7a5a38);
@@ -599,6 +662,7 @@ function unitTemplate(kind, team, arch, variant) {
     let rig;
     const d = CONFIG.UNITS[kind];
     if (kind === 'villager') rig = buildVillagerRig(team, arch, variant % 2 === 1);
+    else if (kind === 'monk') rig = buildMonkRig(team, arch);
     else if (SIEGE_BUILDERS[kind]) {
       rig = new THREE.Group();
       SIEGE_BUILDERS[kind](rig, team, arch);
@@ -618,7 +682,7 @@ function unitTemplate(kind, team, arch, variant) {
         rig.remove(s.parts.legL); rig.remove(s.parts.legR);
         for (const sx of [-1, 1]) piece(s.parts.torso, taper(0.1, 0.085, 0.62), soldierLook(arch, team, kind).pants, { x: sx * 0.3, y: 0.62, z: 0.1, rx: 0.5, rz: sx * 0.35 });
         if (kind === 'mameluke' || kind === 'camel' || kind === 'heavycamel') { rider.position.y = 1.18; buildCamelMount(rig, team); }
-        else buildHorse(rig, team, arch, VIS_BASE[kind] || kind, d.tier || 0);
+        else buildHorse(rig, team, arch, VIS_BASE[kind] || kind, kind === 'king' ? 2 : d.tier || 0);
       }
     }
     UNIT_TEMPLATES.set(key, bakeRig(rig));
@@ -627,7 +691,7 @@ function unitTemplate(kind, team, arch, variant) {
 }
 /* Crea el model d'una unitat i n'omple les referències d'animació (e.legs, e.arms, e.tool…) */
 function buildUnitVisual(e, kind, team) {
-  const arch = archOf(team);
+  const arch = e.visArch || archOf(team);
   const variant = Math.floor(unitRng() * UNIT_VARIANTS);
   const model = unitTemplate(kind, team, arch, variant).clone(true);
   const get = (n) => model.getObjectByName(n);
@@ -673,6 +737,15 @@ function buildUnitVisual(e, kind, team) {
   } else {
     e.tool = { visible: false }; e.axeHead = { visible: false }; e.pickHead = { visible: false }; e.hammerHead = { visible: false };
     e.carryMesh = { visible: false };
+  }
+  if (kind === 'monk') {
+    // Relíquia portada als braços
+    const r = relicTemplate().clone(true);
+    r.scale.setScalar(0.42);
+    r.position.set(0, 1.12, 0.42);
+    r.visible = !!e.relic;
+    model.add(r);
+    e.relicMesh = r;
   }
   return model;
 }

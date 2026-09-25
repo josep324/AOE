@@ -124,13 +124,16 @@ function killEntity(e, killer) {
   e.hp = 0;
   if (e.kind === 'unit') {
     if (e.garrison && e.garrison.length) ungarrison(e);
+    if (e.relic) unitDropRelic(e);
+    if (e.category === 'king') toast(e.isOwn ? '👑 El teu rei ha mort!' : `👑 El rei dels ${civOf(e.team).name} ha mort!`);
     state.units = state.units.filter(u => u !== e);
     e.deathKind = 'unit';
     e.model.rotation.set(0, 0, 0);
     e.fallDir = rand() < 0.5 ? -1 : 1;
   } else {
-    // Edifici (o granja): els refugiats surten, s'allibera el terreny
+    // Edifici (o granja): els refugiats surten, les relíquies cauen, s'allibera el terreny
     if (e.garrison && e.garrison.length) ungarrison(e);
+    buildingDropRelics(e);
     e.depleted = true;
     state.buildings = state.buildings.filter(b => b !== e);
     state.resourceNodes = state.resourceNodes.filter(n => n !== e);

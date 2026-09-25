@@ -134,7 +134,9 @@ function formationSlots(units, point, type = null) {
   units.forEach(u => centroid.add(u.position));
   centroid.divideScalar(n);
   // Orientem la formació segons la direcció de marxa del grup
-  const heading = Math.atan2(point.x - centroid.x, point.z - centroid.z);
+  // (si el grup ja és al punt, conserva l'orientació que tenia)
+  const heading = hDist(centroid, point) < 4 ? (units[0].formHeading ?? units[0].group.rotation.y) : Math.atan2(point.x - centroid.x, point.z - centroid.z);
+  for (const u of units) u.formHeading = heading;
   const cos = Math.cos(heading), sin = Math.sin(heading);
   const allCivil = units.every(u => !u.isMilitary && u.category !== 'monk');
   let groups;
@@ -187,7 +189,7 @@ function setFormation(units, f) {
 function commandMove(units, point, queued = false) {
   const slots = formationSlots(units, point, groupFormation(units));
   // Marxa agrupada: un grup militar avança al pas de la unitat més lenta per no desfer la formació
-  const grouped = units.length > 1 && units.some(u => u.isMilitary);
+  const grouped = units.length > 1 && units[0].isOwn && units.some(u => u.isMilitary);
   const slow = grouped ? Math.min(...units.map(u => u.speed)) : null;
   for (const [u, slot] of slots) {
     if (queued) enqueueOrder(u, { type: 'move', point: slot });
@@ -226,6 +228,7 @@ function commandStop(units) {
     u.buildTarget = null;
     u.gatherNode = null;
     u.dropTarget = null;
+    u.convTarget = null; u.healTarget = null; u.relicTarget = null; u.relicDrop = null;
     setUnitState(u, STATE.IDLE);
   }
 }
@@ -323,8 +326,38 @@ function issueRightClick(x, y, queued = false) {
     return;
   }
 
+  // Monjos: convertir enemics, curar els propis, recollir i guardar relíquies
+  const monks = units.filter(isMonk);
+  if (monks.length && targetEnt) {
+    let used = [];
+    if (targetEnt.kind === 'relic' && !targetEnt.carrier && !targetEnt.holder) {
+      const free = monks.filter(m => !m.relic).sort((a, b) => hDist(a.position, targetEnt.position) - hDist(b.position, targetEnt.position));
+      if (free.length) { free[0].orderQueue.length = 0; orderPickRelic(free[0], targetEnt); used = [free[0]]; }
+      else toast('🏺 Aquests monjos ja porten una relíquia');
+      spawnMoveMarker(targetEnt.position, 0xffe6a0, 1.4);
+    } else if (targetEnt.team && targetEnt.team !== PLAYER.id && (targetEnt.kind === 'unit' || targetEnt.kind === 'building')) {
+      if (commandConvert(monks, targetEnt)) used = monks.filter(m => m.convTarget === targetEnt);
+      spawnMoveMarker(targetEnt.position, teamOf(PLAYER.id).colorLight, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
+    } else if (targetEnt.kind === 'unit' && targetEnt.isOwn && canHeal(monks[0], targetEnt)) {
+      monks.forEach(m => { m.orderQueue.length = 0; orderHeal(m, targetEnt); });
+      used = monks;
+      spawnMoveMarker(targetEnt.position, 0x9dffa0, 1.2);
+    } else if (targetEnt.subtype === 'monastery' && targetEnt.isOwn && !targetEnt.underConstruction && monks.some(m => m.relic)) {
+      used = monks.filter(m => m.relic);
+      used.forEach(m => { m.orderQueue.length = 0; orderDepositRelic(m, targetEnt); });
+      spawnMoveMarker(targetEnt.position, 0xffe6a0, 3.5);
+    }
+    if (used.length) {
+      units = units.filter(u => !used.includes(u));
+      if (!units.length) return;
+      // La resta de monjos acompanya el grup; els soldats ataquen l'enemic
+      if (targetEnt.kind === 'relic' || !(targetEnt.team && targetEnt.team !== PLAYER.id)) { commandMove(units, targetEnt.position.clone(), queued); return; }
+    }
+  }
   // Enemic: atacar (tothom)
   if (targetEnt && targetEnt.team && targetEnt.team !== PLAYER.id && isAttackable(targetEnt)) {
+    units = units.filter(u => !isMonk(u));
+    if (!units.length) return;
     commandAttack(units, targetEnt, queued);
     spawnMoveMarker(targetEnt.position, 0xff4a3a, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
     return;
