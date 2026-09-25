@@ -38,7 +38,7 @@ function orderConvert(u, t) {
   clearMonkTask(u);
   u.convTarget = t;
   setUnitState(u, STATE.CONVERTING);
-  if (t.team === AI.team) aiAlert(u);
+  aiAlert(u, t.team);
   return true;
 }
 function orderHeal(u, t) {

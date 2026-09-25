@@ -121,7 +121,7 @@ function applyDamage(target, amount, attacker) {
       && (target.stance !== 'stand' || inAttackRange(target, attacker))) {
     orderAttack(target, attacker);
   }
-  if (target.team === ENEMY.id && attacker) aiAlert(attacker);
+  if (attacker) aiAlert(attacker, target.team);
   if (target.isOwn && state.elapsed - lastAttackAlert > 12) {
     lastAttackAlert = state.elapsed;
     toast(`⚔️ T'estan atacant! (${target.name})`);

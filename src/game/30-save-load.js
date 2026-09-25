@@ -345,7 +345,7 @@ function togglePause() {
 }
 document.getElementById('restart-btn').addEventListener('click', () => location.reload());
 function teamAlive(team) {
-  if (team === AI.team && AI.resigned) return false;
+  if (aiOf(team) && aiOf(team).resigned) return false;
   return state.units.some(u => u.team === team) || state.buildings.some(b => b.team === team && !b.underConstruction);
 }
 const hasKing = (team) => state.units.some(u => u.team === team && u.category === 'king');
