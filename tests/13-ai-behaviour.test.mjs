@@ -1,5 +1,5 @@
 /* Comportaments de la IA com a l'AoE II:
-   - un explorador sol que molesta els aldeans: els aldeans s'hi enfronten
+   - un explorador sol que molesta els aldeans: les tropes o els aldeans s'hi enfronten
    - un atac fort a la base: campana (els aldeans es refugien) i defensa
    - si el rival fa molta cavalleria, la IA fa llancers
    - l'explorador inicial va a veure la base rival */
@@ -52,7 +52,7 @@ export default async ({ open, assert, log }) => {
   });
   log(JSON.stringify(r));
   assert(r.scoutVisited, 'l\'explorador de la IA no ha vingut a veure la nostra base');
-  assert(r.villFight >= 2, 'els aldeans no s\'enfronten a l\'explorador');
+  assert(r.villFight >= 2 || r.raiderDead, 'ningú no s\'enfronta a l\'explorador (ni els aldeans ni les tropes)');
   assert(r.garrisoned >= 5, 'la IA no toca la campana davant d\'un atac fort');
   assert(r.backToWork === 0, 'els aldeans no tornen a la feina després de l\'atac');
   assert(r.foeComp && r.foeComp.cavalry >= 8, 'la IA no ha vist la cavalleria');

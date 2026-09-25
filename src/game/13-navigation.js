@@ -32,12 +32,15 @@ function rebuildNav() {
   for (const o of state.obstacles) {
     if (o.entity && o.entity.mobile) continue;          // les ovelles es mouen: no bloquegen la graella
     const ex = (o.rect ? o.hw : o.r) + 1.2, ez = (o.rect ? o.hd : o.r) + 1.2;
+    // Arbres i penya-segats: marge més ample, perquè els forats entre troncs (més estrets que una
+    // unitat) no semblin passos; com a l'AoE II, un bosc dens no es pot travessar
+    const wm = (o.entity && o.entity.subtype === 'tree') || o.cliff ? 0.72 : 0.35;
     const i0 = navCell(o.x - ex), i1 = navCell(o.x + ex), j0 = navCell(o.z - ez), j1 = navCell(o.z + ez);
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
         const d = obstacleSurface(o, navCenter(i), navCenter(j)).d;
         if (o.gateTeam) { if (d < 0) NAV.gate[j * N + i] = o.gateTeam; else if (d < 0.35) NAV.walk[j * N + i] = 1; }
-        else if (d < 0.35) NAV.walk[j * N + i] = 1;
+        else if (d < wm) NAV.walk[j * N + i] = 1;
         if (d < 0.5) NAV.build[j * N + i] = 1;
       }
     }

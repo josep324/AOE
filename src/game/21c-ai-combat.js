@@ -169,7 +169,7 @@ function aiAttacks(A, C) {
     const target = aiObjective(A, C, C.home);
     if (target) {
       const dir = new THREE.Vector3(target.position.x - C.home.x, 0, target.position.z - C.home.z).normalize();
-      const rally = clampToMap(C.home.clone().addScaledVector(dir, 24));
+      const rally = clampToMap(aiHighSpot(C.home.clone().addScaledVector(dir, 24), 10));
       homeArmy.forEach(u => { u.aiRole = 'army'; u.speedCap = null; });
       commandMove(homeArmy, rally);
       A.army = { units: homeArmy, rally, phase: 'gather', t0: now, target };

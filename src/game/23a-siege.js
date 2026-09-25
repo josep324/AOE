@@ -98,8 +98,16 @@ function hitDamage(u, t, type) {
   if (t.spearLine) d += u.bonusSpear || 0;
   if (t.isUnique) d += u.bonusUnique || 0;
   if (t.naval) d += u.bonusShip || 0;
+  // Avantatge d'altura (com a l'AoE II): +25% contra unitats més baixes, −25% contra les més altes
+  if (t.kind === 'unit' && !t.naval && !u.naval) {
+    const dh = (u.position.y || 0) - (t.position.y || 0);
+    if (dh > ELEV_STEP) d *= 1.25;
+    else if (dh < -ELEV_STEP) d *= 0.75;
+    d = Math.max(1, Math.round(d));
+  }
   return d;
 }
+const ELEV_STEP = 1;              // desnivell (m) a partir del qual compta l'altura
 /* Dispara el projectil propi de la unitat cap a l'objectiu (o al terra) */
 function fireProjectile(u, t) {
   const kind = u.projectile || 'arrow';

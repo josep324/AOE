@@ -38,6 +38,9 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 Com a l'AoE II, cada jugador té la mateixa sortida (línia de bosc, 5 arbres solts a prop del Centre, or, pedra i menjar);
 els boscos són taques compactes i irregulars repartides a l'atzar per tot el mapa, i les 5 relíquies queden escampades
 a més de 25 caselles de qualsevol base i a més de 20 l'una de l'altra.
+**Relleu** com a l'AoE II: turons (Aràbia el més accidentat) i penya-segats de roca que no es poden travessar
+(als extrems s'hi pot pujar). Des de dalt es fa +25% de dany i des de baix −25%. Els edificis anivellen el terreny
+i no es poden fer en pendents massa forts. La IA reuneix l'exèrcit i fa torres i castells en terreny alt.
 **Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba.
 
 **Naval** (mapes amb aigua): ⚓ **Moll** a l'aigua fonda tocant a la riba; vaixells pesquers (també peix d'altura),
@@ -100,6 +103,7 @@ src/
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
     21 IA            nucli (21), economia (21a), estratègia i producció (21b), combat i micro (21c)
     05b aigua        llacs, rius i guals (graella, shader i navegació)
+    05c relleu       mapa d'alçades, turons, penya-segats, anivellar per als edificis, clic al terreny
     20a naval        moll, vaixells, pesca, transport i combat a l'aigua
     08b fauna        cérvols, senglars, llops i peixos
     22…24            boira de guerra, combat, setge (23a), monjos i relíquies (23b), efectes

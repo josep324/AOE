@@ -85,6 +85,18 @@ function aiBuild(A, type, near, minR, maxR, builders = 1, prefer = null) {
   return b;
 }
 
+/* Punt més alt (i transitable) a prop d'un punt: la IA hi reuneix l'exèrcit i hi fa torres i castells */
+function aiHighSpot(pos, r) {
+  let best = pos, bh = groundY(pos.x, pos.z) + 0.5;
+  for (let dz = -r; dz <= r; dz += 3) for (let dx = -r; dx <= r; dx += 3) {
+    if (dx * dx + dz * dz > r * r) continue;
+    const x = pos.x + dx, z = pos.z + dz;
+    if (Math.abs(x) > CONFIG.MAP_LIMIT - 4 || Math.abs(z) > CONFIG.MAP_LIMIT - 4 || waterCell(x, z) || NAV.walk[navCell(z) * NAV.N + navCell(x)]) continue;
+    const h = groundY(x, z);
+    if (h > bh) { bh = h; best = new THREE.Vector3(x, 0, z); }
+  }
+  return best;
+}
 /* ---------- Coneixement del rival ---------- */
 /* On és la base rival: el Centre que ha vist, o on sap que comença */
 function aiFoeHome(A) {

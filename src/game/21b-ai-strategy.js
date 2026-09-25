@@ -256,14 +256,14 @@ function aiProduction(A, C) {
     A.wantCastle = C.age >= 2 && D !== DIFFICULTY.easy && !C.has('castle') && C.villagers.length >= 32 && C.count('towncenter') >= Math.min(D.tcs, 2);
     if (A.wantCastle && canAfford(costFor('castle', C.T), C.T)) {
       const dir = new THREE.Vector3(C.foeHome.x - C.home.x, 0, C.foeHome.z - C.home.z).normalize();
-      aiBuild(A, 'castle', C.home.clone().addScaledVector(dir, 22), 0, 18, 4);
+      aiBuild(A, 'castle', aiHighSpot(C.home.clone().addScaledVector(dir, 22), 14), 0, 18, 4);
     }
     // Torres de defensa als campaments més exposats
     if (C.age >= 1 && !A.wantTC && C.count('watchtower') < D.towers && C.res.stone >= 150 && C.villagers.length >= 20) {
       const camps = C.blds.filter(b => (b.subtype === 'miningcamp' || b.subtype === 'lumbercamp') && !b.underConstruction)
         .sort((a, b) => hDist(a.position, C.foeHome) - hDist(b.position, C.foeHome));
       const camp = camps.find(c => !C.blds.some(t => t.subtype === 'watchtower' && hDist(t.position, c.position) < 14));
-      if (camp) aiBuild(A, 'watchtower', camp.position, 4, 9);
+      if (camp) aiBuild(A, 'watchtower', aiHighSpot(camp.position, 8), 0, 9);
     }
   }
   // Unitats: a cada edifici, la que més falta respecte a la composició (respectant la reserva per a l'edat)

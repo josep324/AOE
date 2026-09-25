@@ -6,7 +6,7 @@
    Els edificis anivellen el terreny que ocupen (com a l'AoE II) i no es poden construir en un
    pendent massa fort. groundY(x, z) dona l'alçada de qualsevol punt (interpolació bilineal).
    ===================================================================== */
-const TERRAIN = { hs: 2, pad: 30, n: 0, x0: 0, h: null, mesh: null, mmCanvas: null, maxH: 0, dirty: false };
+const TERRAIN = { hs: 2, pad: 30, n: 0, x0: 0, h: null, mesh: null, mmCanvas: null, maxH: 0, dirty: false, cliffs: [], cliffMesh: null };
 const TERRAIN_AMP = { arabia: 9, blackforest: 5, lakes: 5.5, rivers: 5.5 };
 const MAX_BUILD_SLOPE = 3.2;          // desnivell màxim (m) dins la planta d'un edifici
 
@@ -79,8 +79,9 @@ function setupHeights(type, seed) {
       }
     }
     T.h[j * n + i] = h;
-    maxH = Math.max(maxH, h);
   }
+  generateCliffs(type, rng, wd);
+  for (let k = 0; k < n * n; k++) maxH = Math.max(maxH, T.h[k]);
   T.maxH = maxH;
   applyTerrainMesh();
   buildTerrainMinimap();
@@ -240,5 +241,132 @@ function buildTerrainMinimap() {
     img.data[k + 3] = Math.round(Math.min(0.5, Math.abs(light) * 0.6 + Math.max(0, h) * 0.015) * 255);
   }
   g.putImageData(img, 0, 0);
+  // Penya-segats: línia de roca
+  g.strokeStyle = 'rgba(92,80,66,0.95)';
+  g.lineWidth = 1.6;
+  g.lineCap = 'round';
+  for (const cl of T.cliffs) {
+    g.beginPath();
+    cl.pts.forEach(([x, z], i) => { const px = (x + L) / T.hs, pz = (z + L) / T.hs; if (i) g.lineTo(px, pz); else g.moveTo(px, pz); });
+    g.stroke();
+  }
   T.mmCanvas = c;
+}
+
+/* ---------- Penya-segats ----------
+   Trams de roca que separen dos nivells: un costat queda més alt (un altiplà que baixa suaument
+   cap enfora) i la paret no es pot travessar; als extrems s'hi pot pujar. Com a l'AoE II, no
+   aturen els projectils. */
+const CLIFF_COUNT = { arabia: 5, lakes: 3, rivers: 3, blackforest: 2 };
+const CLIFF_H = 3.6;
+function clearCliffs() {
+  const T = TERRAIN;
+  if (T.cliffMesh) { scene.remove(T.cliffMesh); T.cliffMesh.geometry.dispose(); T.cliffMesh = null; }
+  T.cliffs = [];
+}
+/* Distància amb signe d'un punt a una línia trencada (positiu: costat alt) i posició al llarg (0..1) */
+function cliffSide(pts, x, z) {
+  let best = Infinity, sign = 1, along = 0, total = 0, acc = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+    const vx = bx - ax, vz = bz - az, len = Math.hypot(vx, vz);
+    const t = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / (len * len)));
+    const px = ax + vx * t, pz = az + vz * t, d = Math.hypot(x - px, z - pz);
+    if (d < best) { best = d; sign = (vx * (z - az) - vz * (x - ax)) >= 0 ? 1 : -1; along = (acc + t * len) / total; }
+    acc += len;
+  }
+  return { d: best * sign, along, total };
+}
+function generateCliffs(type, rng, wd) {
+  clearCliffs();
+  const T = TERRAIN, L = CONFIG.MAP_LIMIT, WN = WATER.N;
+  const count = Math.round((CLIFF_COUNT[type] ?? 3) * (L / 180) ** 2);
+  const bases = Object.values(BASES);
+  const farFromWater = (x, z) => {
+    if (!wd) return true;
+    const i = Math.floor(x + L), j = Math.floor(z + L);
+    return i < 0 || j < 0 || i >= WN || j >= WN || wd[j * WN + i] > 14;
+  };
+  for (let c = 0; c < count; c++) {
+    for (let tries = 0; tries < 60; tries++) {
+      const x0 = (rng() * 2 - 1) * (L - 25), z0 = (rng() * 2 - 1) * (L - 25);
+      let a = rng() * Math.PI * 2;
+      const segs = 3 + Math.floor(rng() * 3), pts = [[x0, z0]];
+      for (let s = 0; s < segs; s++) {
+        a += (rng() - 0.5) * 0.9;
+        const len = 6 + rng() * 4, [px, pz] = pts[pts.length - 1];
+        pts.push([px + Math.cos(a) * len, pz + Math.sin(a) * len]);
+      }
+      const ok = pts.every(([x, z]) => Math.abs(x) < L - 15 && Math.abs(z) < L - 15 && farFromWater(x, z)
+        && bases.every(B => Math.hypot(x - B.x, z - B.z) > 55) && Math.hypot(x, z) > 18
+        && T.cliffs.every(o => o.pts.every(([ox, oz]) => Math.hypot(ox - x, oz - z) > 26)));
+      if (!ok) continue;
+      T.cliffs.push({ pts });
+      break;
+    }
+  }
+  // Alçada: el costat alt puja CLIFF_H a tocar de la paret i torna a baixar en uns 16 m;
+  // als extrems el penya-segat s'esvaeix (rampes per pujar-hi)
+  const n = T.n;
+  for (const cl of T.cliffs) {
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const [x, z] of cl.pts) { minX = Math.min(minX, x); maxX = Math.max(maxX, x); minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z); }
+    const i0 = Math.max(0, Math.floor((minX - 20 - T.x0) / T.hs)), i1 = Math.min(n - 1, Math.ceil((maxX + 20 - T.x0) / T.hs));
+    const j0 = Math.max(0, Math.floor((minZ - 20 - T.x0) / T.hs)), j1 = Math.min(n - 1, Math.ceil((maxZ + 20 - T.x0) / T.hs));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const x = T.x0 + i * T.hs, z = T.x0 + j * T.hs;
+      const { d, along } = cliffSide(cl.pts, x, z);
+      if (d < 0) continue;
+      const ends = THREE.MathUtils.smoothstep(along, 0, 0.14) * (1 - THREE.MathUtils.smoothstep(along, 0.86, 1));
+      T.h[j * n + i] += CLIFF_H * ends * (1 - THREE.MathUtils.smoothstep(d, 0.5, 16));
+    }
+  }
+  if (!T.cliffs.length) return;
+  // Paret de roca: pedres grans al llarg de la línia (instanciades) i obstacles per a la navegació
+  // Blocs de roca facetats (ombrejat pla), de color terrós com els penya-segats de l'AoE II
+  const rockGeo = lumpGeo(1, 1, 77, 0.3, false);
+  rockGeo.computeVertexNormals();
+  const cliffMat = natureMat('cliff', () => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, flatShading: true }));
+  const places = [];
+  for (const cl of T.cliffs) {
+    for (let i = 1; i < cl.pts.length; i++) {
+      const [ax, az] = cl.pts[i - 1], [bx, bz] = cl.pts[i];
+      const len = Math.hypot(bx - ax, bz - az), steps = Math.ceil(len / 1.3);
+      for (let s = 0; s < steps; s++) {
+        const t = s / steps, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+        const { along } = cliffSide(cl.pts, x, z);
+        const ends = THREE.MathUtils.smoothstep(along, 0, 0.14) * (1 - THREE.MathUtils.smoothstep(along, 0.86, 1));
+        if (ends < 0.35) continue;                   // extrems: rampa lliure
+        places.push([x, z, ends]);
+        state.obstacles.push({ x, z, r: 1.25, cliff: true });
+      }
+    }
+  }
+  const mesh = new THREE.InstancedMesh(rockGeo, cliffMat, places.length * 2);
+  const tone = new THREE.Color();
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(), p = new THREE.Vector3();
+  let k = 0;
+  for (const [x, z, ends] of places) {
+    for (let r = 0; r < 2; r++) {
+      const ox = (rng() - 0.5) * 0.9, oz = (rng() - 0.5) * 0.9;
+      const lo = groundY(x + ox, z + oz) - 0.6;
+      const hgt = CLIFF_H * ends * (0.75 + rng() * 0.35) + 0.6;
+      // Lloses dretes (girades al voltant de la vertical i una mica inclinades), de tons de roca diferents
+      e.set((rng() - 0.5) * 0.35, rng() * Math.PI * 2, (rng() - 0.5) * 0.35);
+      q.setFromEuler(e);
+      sc.set(1.25 + rng() * 0.5, hgt * 0.5, 1.1 + rng() * 0.4);
+      p.set(x + ox, lo + hgt * 0.42, z + oz);
+      tone.setRGB(0.36, 0.31, 0.26).offsetHSL((rng() - 0.5) * 0.02, (rng() - 0.5) * 0.08, (rng() - 0.5) * 0.08);
+      mesh.setColorAt(k, tone);
+      mesh.setMatrixAt(k++, m4.compose(p, q, sc));
+    }
+  }
+  mesh.count = k;
+  mesh.castShadow = mesh.receiveShadow = true;
+  mesh.computeBoundingSphere();
+  mesh.name = 'cliffs';
+  scene.add(mesh);
+  T.cliffMesh = mesh;
+  for (const [x, z] of places) groundPaint(x, z, 4, 'rock', 0.95);
 }
