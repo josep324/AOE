@@ -370,6 +370,19 @@ ARCH.middleeast = {
     meCanopy(g, KM.team(team), 3.2, 4.6, 2.0, 1.4, 2.0, 0, 0.5);
     return 14.6;
   },
+  dock(g, { team }) {
+    // Moll de pedra arenisca amb arcs sobre l'aigua, tendal i gerres
+    kbox(g, 4.9, 0.9, 4.9, KM.sandstone, 0, 0.45, 0);
+    for (const s of [-1, 1]) for (const x of [-1.4, 0, 1.4]) kopening(g, 0.8, 0.6, x, 0.0, s * 2.46, s > 0 ? 0 : Math.PI, 'pointed');
+    kbox(g, 5.0, 0.12, 5.0, KM.sandstone, 0, 0.96, 0);
+    for (const s of [-1, 1]) kbox(g, 4.9, 0.3, 0.2, KM.sandstone, 0, 1.17, s * 2.35);
+    meCanopy(g, KM.team(team), -1.1, -1.1, 2.2, 1.8, 2.0, 0, 1.0);
+    meTower(g, 0.5, 3.2, 1.8, -1.8, KM.sandstone, true);
+    kAmphora(g, 0.6, 1.2); kAmphora(g, 1.0, 1.5, 0.8);
+    kbox(g, 1.0, 0.1, 0.7, KM.cloth(0x8a2a2a), -1.3, 1.06, 1.2);
+    for (const x of [-2.1, 2.1]) kcyl(g, 0.12, 0.12, 0.35, 8, KM.sandstone, x, 1.15, 2.1);
+    return 4.8;
+  },
   stonewall(g) {
     kbox(g, 1.0, 2.7, 1.0, KM.sandstone, 0, 1.35, 0);
     kbox(g, 1.04, 0.12, 1.04, KM.sandstone, 0, 2.72, 0);

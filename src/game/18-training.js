@@ -2,6 +2,7 @@
    CREACIÓ D'ALDEANS DES DEL CENTRE DE CIUTAT
    ===================================================================== */
 function findSpawnSpot(building) {
+  if (building.def && building.def.dock) return findWaterSpot(building);
   const base = (building.footprint ? Math.max(building.footprint.hw, building.footprint.hd) : building.radius) + 1.3;
   for (let ring = 0; ring < 8; ring++) {
     const r = base + ring * 1.4;
@@ -174,6 +175,9 @@ function applyTechEffect(team, kind) {
     case 'beardedaxe': M.unitRange.throwingaxe = (M.unitRange.throwingaxe || 0) + 1; break;
     case 'zealotry': M.unitHp.mameluke = (M.unitHp.mameluke || 0) + 20; break;
     case 'yasama': M.towerArrows += 2; break;
+    case 'gillnets': M.shipGather *= 1.25; break;
+    case 'careening': M.shipArmor += 1; M.transportCap += 5; break;
+    case 'drydock': M.shipSpeed *= 1.15; break;
     case 'fervor': M.monkSpeed *= 1.15; break;
     case 'sanctity': M.monkHp += 15; break;
     case 'illumination': M.faithRegen *= 1.5; break;

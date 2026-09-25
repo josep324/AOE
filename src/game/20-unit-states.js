@@ -27,14 +27,15 @@ function setUnitState(u, st) {
 function hDist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 function inReach(u, ent) {
   const d = entSurfaceDist(ent, u.position.x, u.position.z);
+  if (ent.def && ent.def.dock && !u.naval) return d - u.radius <= 2.4;   // el moll es construeix des de la riba
   if (ent.animal && ent.alive) return d - u.radius <= HUNT_RANGE;     // caça: llança des de lluny
   if (ent.subtype === 'farm') return d <= 0.25;          // el granger treballa a sobre de la granja
   return d - u.radius <= CONFIG.GATHER.reach;
 }
 
-function approachPointAt(ent, angle) {
+function approachPointAt(ent, angle, naval = false) {
   const m = CONFIG.VILLAGER.radius + 0.3;
-  if (ent.landAngle !== undefined) {
+  if (ent.landAngle !== undefined && !naval) {
     // Peixos: sempre des de la riba
     const dA = Math.atan2(Math.sin(angle - ent.landAngle), Math.cos(angle - ent.landAngle));
     angle = ent.landAngle + THREE.MathUtils.clamp(dA, -0.9, 0.9);
@@ -63,19 +64,20 @@ function approachPointAt(ent, angle) {
     if (o.entity === ent) continue;
     pushOutOf(p, o, CONFIG.VILLAGER.radius + 0.1);
   }
-  return clampToMap(p);
+  return fitToMedium(clampToMap(p), naval);
 }
-function approachPoint(ent, fromPos, angleOffset = 0) {
-  return approachPointAt(ent, Math.atan2(fromPos.x - ent.position.x, fromPos.z - ent.position.z) + angleOffset);
+function approachPoint(ent, fromPos, angleOffset = 0, naval = false) {
+  return approachPointAt(ent, Math.atan2(fromPos.x - ent.position.x, fromPos.z - ent.position.z) + angleOffset, naval);
 }
 
-function acceptsDropoff(b, type, team = PLAYER.id) {
-  return b && !b.dead && b.team === team && !b.underConstruction && b.dropoffTypes && (!type || b.dropoffTypes.includes(type));
+function acceptsDropoff(b, type, team = PLAYER.id, naval = false) {
+  if (!b || !!(b.def && b.def.dock) !== naval) return false;      // els vaixells descarreguen al moll; els aldeans, a terra
+  return !b.dead && b.team === team && !b.underConstruction && b.dropoffTypes && (!type || b.dropoffTypes.includes(type));
 }
-function nearestDropoff(pos, type = null, team = PLAYER.id) {
+function nearestDropoff(pos, type = null, team = PLAYER.id, naval = false) {
   let best = null, bestD = Infinity;
   for (const b of state.buildings) {
-    if (!acceptsDropoff(b, type, team)) continue;
+    if (!acceptsDropoff(b, type, team, naval)) continue;
     const d = entSurfaceDist(b, pos.x, pos.z);
     if (d < bestD) { bestD = d; best = b; }
   }
@@ -86,6 +88,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
   for (const n of state.resourceNodes) {
     if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
     if (n.subtype === 'boar' && n.alive) continue;          // els senglars només si l'ordena el jugador
+    if (forUnit && forUnit.naval ? !(n.subtype === 'fish' || n.subtype === 'deepfish') : n.subtype === 'deepfish') continue;
     if (farmTaken(n, forUnit)) continue;
     if (n.subtype === 'farm' && forUnit && n.team !== forUnit.team) continue;
     const d = hDist(n.position, pos);
@@ -96,7 +99,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
 
 function orderMove(u, point) {
   u.anchor = point.clone ? point.clone() : null;
-  u.convTarget = null; u.healTarget = null; u.relicTarget = null; u.relicDrop = null;
+  u.convTarget = null; u.healTarget = null; u.relicTarget = null; u.relicDrop = null; u.unloadAt = null;
   u.forcedTarget = false;
   u.gatherNode = null;
   u.dropTarget = null;
@@ -192,7 +195,7 @@ function orderGather(u, node, angle = null) {
 function goToResource(u) {
   const node = u.gatherNode;
   if (!node || node.depleted) { findNextResource(u); return; }
-  if (node.animal && node.alive) { setMoveTarget(u, node.position.clone()); setUnitState(u, STATE.MOVING); return; }
+  if ((node.animal && node.alive) || u.naval) { setMoveTarget(u, node.position.clone()); setUnitState(u, STATE.MOVING); return; }
   setMoveTarget(u, u.gatherAngle !== null
     ? approachPointAt(node, u.gatherAngle)
     : approachPoint(node, u.position, ((u.id % 5) - 2) * 0.35));
@@ -201,10 +204,11 @@ function goToResource(u) {
 
 function goToDropoff(u, building = null) {
   // El magatzem més proper que accepti el tipus de càrrega (Centre, Serradora, Campament miner, Molí)
-  const tc = acceptsDropoff(building, u.carry.type, u.team) ? building : nearestDropoff(u.position, u.carry.type, u.team);
-  if (!tc) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); return; }
+  const nv = !!u.naval;
+  const tc = acceptsDropoff(building, u.carry.type, u.team, nv) ? building : nearestDropoff(u.position, u.carry.type, u.team, nv);
+  if (!tc) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); if (nv && u.isOwn) toast('⚓ Cal un Moll acabat perquè el vaixell hi descarregui'); return; }
   u.dropTarget = tc;
-  setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06));
+  setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06, nv));
   setUnitState(u, STATE.RETURNING);
 }
 
@@ -212,11 +216,12 @@ function goToDropoff(u, building = null) {
 /* Tria el recurs que queda més a prop del magatzem de la zona (i no gaire lluny d'on treballava) */
 function nextResourceNear(type, fromPos, u) {
   const R = CONFIG.GATHER.autoSearchRadius;
-  const drop = nearestDropoff(fromPos, type, u.team);
+  const drop = nearestDropoff(fromPos, type, u.team, !!u.naval);
   let best = null, bestS = Infinity;
   for (const n of state.resourceNodes) {
     if (n.depleted || n.amount <= 0 || n.resourceType !== type) continue;
     if (n.subtype === 'boar' && n.alive) continue;
+    if (u.naval ? !(n.subtype === 'fish' || n.subtype === 'deepfish') : n.subtype === 'deepfish') continue;
     if (farmTaken(n, u) || (n.subtype === 'farm' && n.team !== u.team)) continue;
     const dWork = hDist(n.position, fromPos);
     if (dWork > R * 1.5) continue;
@@ -274,7 +279,7 @@ function depositCarry(u) {
   else { u.target = null; setUnitState(u, STATE.IDLE); }
 }
 
-function capOf(u) { return CONFIG.GATHER.capacity + teamOf(u.team).mods.capacity; }
+function capOf(u) { return u.naval ? (CONFIG.UNITS[u.unitKind].capacity || 15) : CONFIG.GATHER.capacity + teamOf(u.team).mods.capacity; }
 function updateCarryVisual(u) {
   const m = u.carryMesh;
   if (u.carry.amount <= 0 || !u.carry.type) { m.visible = false; return; }
@@ -341,7 +346,7 @@ function gatherTick(u, dt) {
     node.name = 'Ovella (carn)';
   }
 
-  u.gatherProgress += (CONFIG.GATHER.rates[node.subtype] ?? 1) * (u.team === AI.team ? AI.diff.gather : 1)
+  u.gatherProgress += (CONFIG.GATHER.rates[node.subtype] ?? 1) * (u.team === AI.team ? AI.diff.gather : 1) * (u.naval ? 1.4 * teamOf(u.team).mods.shipGather : 1)
     * (teamOf(u.team).mods.gather[node.subtype] || 1) * dt;
   const cap = capOf(u);
   while (u.gatherProgress >= 1 && u.carry.amount < cap && node.amount > 0) {
@@ -384,8 +389,9 @@ function updateUnit(u, dt) {
       if (u.garrisonTarget) {
         const g = u.garrisonTarget;
         if (g.dead) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); break; }
-        if (entSurfaceDist(g, u.position.x, u.position.z) - u.radius <= 1.0) { enterGarrison(u, g); break; }
+        if (entSurfaceDist(g, u.position.x, u.position.z) - u.radius <= (g.naval ? 5.5 : 1.0)) { enterGarrison(u, g); break; }
       }
+      if (u.unloadAt && shipUnloadTick(u)) break;
       if (u.category === 'monk') {
         if (monkMoveTick(u)) break;
         if (u.attackMove && monkAutoScan(u, dt, true)) break;
@@ -422,6 +428,8 @@ function updateUnit(u, dt) {
           if (inReach(u, bt)) startBuilding(u); else retryApproach(u);
         } else if (node) {
           if (inReach(u, node)) startGathering(u); else retryApproach(u);
+        } else if (u.unloadAt) {
+          doUnload(u);
         } else if (u.relicTarget || (u.relicDrop && u.relic)) {
           if (!monkMoveTick(u)) {
             if (++u.approachTries > 5) { u.relicTarget = null; u.relicDrop = null; setUnitState(u, STATE.IDLE); }
@@ -494,6 +502,8 @@ function updateUnit(u, dt) {
           setMoveTarget(u, t.kind === 'unit' || t.isGround ? t.position.clone() : approachPoint(t, u.position));
         }
         walking = !stepTowardsTarget(u, dt);
+        // Un vaixell que no pot acostar-se més (l'objectiu és terra endins) ho deixa córrer
+        if (u.naval && !u.target && !inAttackRange(u, t) && ++u.approachTries > 3) { u.approachTries = 0; u.attackTarget = null; setUnitState(u, STATE.IDLE); break; }
         // Les unitats militars abandonen una persecució massa llarga
         if (u.isMilitary && !u.forcedTarget && t.kind === 'unit' && hDist(u.position, t.position) > u.los * 2.5) {
           u.attackTarget = null;
@@ -518,7 +528,7 @@ function updateUnit(u, dt) {
     }
     case STATE.RETURNING: {
       const tc = u.dropTarget;
-      if (!acceptsDropoff(tc, u.carry.type, u.team)) { goToDropoff(u); break; }
+      if (!acceptsDropoff(tc, u.carry.type, u.team, !!u.naval)) { goToDropoff(u); break; }
       if (inReach(u, tc)) { depositCarry(u); break; }
       const arrived = stepTowardsTarget(u, dt);
       walking = !arrived;
@@ -588,6 +598,7 @@ function updateUnit(u, dt) {
 
   // ---------- Animació procedimental ----------
   if (u.category === 'siege') { animateSiege(u, dt, walking); return; }
+  if (u.category === 'ship') { animateShip(u, dt, walking); return; }
   const k = 1 - Math.exp(-12 * dt);
   if (walking) {
     u.walkPhase += dt * u.speed * 2.2;

@@ -389,6 +389,26 @@ function issueRightClick(x, y, queued = false) {
       units = units.filter(u => !goers.includes(u));
     }
   }
+  // Vaixells pesquers: clic dret sobre un banc de peixos
+  const fishers = units.filter(u => u.subtype === 'fishingship');
+  if (fishers.length && targetEnt && (targetEnt.subtype === 'fish' || targetEnt.subtype === 'deepfish') && !targetEnt.depleted) {
+    if (queued) fishers.forEach(u => enqueueOrder(u, { type: 'gather', node: targetEnt })); else commandGather(fishers, targetEnt);
+    spawnMoveMarker(targetEnt.position, 0xffd84a, targetEnt.radius + 0.9);
+    units = units.filter(u => !fishers.includes(u));
+    if (!units.length) return;
+  }
+  // Transport carregat: clic dret a terra ferma = desembarcar-hi les tropes
+  const loaded = units.filter(u => u.subtype === 'transport' && u.garrison && u.garrison.length);
+  if (loaded.length && (!targetEnt || targetEnt.kind === 'resource')) {
+    const gp = pickGround(x, y);
+    if (gp && waterCell(gp.x, gp.z) !== 1) {
+      loaded.forEach(t => orderUnload(t, clampToMap(gp)));
+      spawnMoveMarker(gp, 0x6ef2ff, 1.4);
+      units = units.filter(u => !loaded.includes(u));
+      if (!units.length) return;
+    }
+  }
+  if (targetEnt && targetEnt.subtype === 'deepfish' && units.some(u => u.subtype === 'villager')) toast("🐟 Al peix d'altura només hi poden pescar els vaixells pesquers");
   const vills = units.filter(u => u.subtype === 'villager');
   const soldiers = units.filter(u => u.subtype !== 'villager');
   const soldiersTo = (pos) => { if (soldiers.length) commandMove(soldiers, pos, queued); };
@@ -400,7 +420,7 @@ function issueRightClick(x, y, queued = false) {
     spawnMoveMarker(targetEnt.position, 0x6ef2ff, targetEnt.radius * 0.8);
     return;
   }
-  if (vills.length && targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted) {
+  if (vills.length && targetEnt && targetEnt.kind === 'resource' && !targetEnt.depleted && targetEnt.subtype !== 'deepfish') {
     if (queued) vills.forEach(u => enqueueOrder(u, { type: 'gather', node: targetEnt }));
     else commandGather(vills, targetEnt);
     soldiersTo(approachPoint(targetEnt, soldiers.length ? soldiers[0].position : targetEnt.position));

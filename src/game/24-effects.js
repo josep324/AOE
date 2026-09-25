@@ -66,7 +66,7 @@ function updateResourceNodes(dt) {
   for (const n of state.resourceNodes) {
     if (n.subtype === 'sheep') updateSheep(n, dt);
     else if (n.animal) updateAnimal(n, dt);
-    else if (n.subtype === 'fish') updateFish(n, dt);
+    else if (n.subtype === 'fish' || n.subtype === 'deepfish') updateFish(n, dt);
     if (n.shakeT > 0) {
       n.shakeT = Math.max(0, n.shakeT - dt);
       const a = n.shakeT * 40;

@@ -290,19 +290,19 @@ function wolvesNear(x, z, r) {
 }
 
 /* ---------- Peixos ---------- */
-function createFish(x, z) {
-  const e = new Entity({ kind: 'resource', subtype: 'fish', name: 'Peixos', icon: '🐟', radius: 1.0, selRadius: 1.5 });
+function createFish(x, z, deep = false) {
+  const e = new Entity({ kind: 'resource', subtype: deep ? 'deepfish' : 'fish', name: deep ? "Peix d'altura" : 'Peixos', icon: '🐟', radius: deep ? 1.4 : 1.0, selRadius: deep ? 2.0 : 1.5 });
   e.resourceType = 'food';
-  e.amount = e.maxAmount = 200;
+  e.amount = e.maxAmount = deep ? 300 : 200;
   e.depleted = false;
   e.shakeT = 0;
   e.particleColor = 0x9fd8ff;
-  e.landAngle = landAngleFrom(x, z);
+  if (!deep) e.landAngle = landAngleFrom(x, z);
   e.model = new THREE.Group();
   const G = animalGeos();
   const scale = mat(0x8a9aa4, { roughness: 0.35, metalness: 0.5 });
   e.fish = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < (deep ? 7 : 4); i++) {
     const f = new THREE.Group();
     part(f, G.sphere, scale, 0, 0, 0, 0.07, 0.1, 0.26);
     part(f, G.cone, scale, 0, 0, -0.3, 0.02, 0.14, 0.1, -Math.PI / 2);

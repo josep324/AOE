@@ -36,6 +36,10 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb tres camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals).
 **Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba.
 
+**Naval** (mapes amb aigua): ⚓ **Moll** a l'aigua fonda tocant a la riba; vaixells pesquers (també peix d'altura),
+transport (10 unitats: clic dret sobre el vaixell per embarcar, clic dret a terra per desembarcar), Galera → Galera de guerra → Galió,
+Brulot (foc, fort contra vaixells), Vaixell de demolició (explota) i Galió artiller (amb Química). Tecnologies: Xarxes, Carenatge, Dic sec.
+
 **Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 
@@ -68,6 +72,7 @@ src/
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
     21 IA            economia, edats, exèrcit i atacs de l'enemic
     05b aigua        llacs, rius i guals (graella, shader i navegació)
+    20a naval        moll, vaixells, pesca, transport i combat a l'aigua
     08b fauna        cérvols, senglars, llops i peixos
     22…24            boira de guerra, combat, setge (23a), monjos i relíquies (23b), efectes
     25…30            HUD, entrada, minimapa, barres de vida, flux de partida, desar/carregar

@@ -42,6 +42,10 @@ function rebuildNav() {
       }
     }
   }
+  // Graella naval: només l'aigua fonda lliure d'obstacles (molls…) és navegable
+  if (!NAV.naval || NAV.naval.length !== N * N) NAV.naval = new Uint8Array(N * N);
+  if (WATER.any && WATER.N === N) for (let k = 0; k < N * N; k++) NAV.naval[k] = (WATER.mask[k] !== 1 || NAV.walk[k]) ? 1 : 0;
+  else NAV.naval.fill(1);
   // Aigua: la fonda bloqueja el pas; els guals es travessen però no s'hi construeix
   if (WATER.any && WATER.N === N) {
     for (let k = 0; k < N * N; k++) {
@@ -216,10 +220,16 @@ function setMoveTarget(u, p) {
   u.pathVersion = NAV.version;
   if (!p) return;
   NAV.team = u.team;                  // les portes només deixen passar el seu equip
-  if (segmentWalkable(u.position.x, u.position.z, p.x, p.z)) { u.path = [p]; return; }
-  const cells = findPath(u.position.x, u.position.z, p.x, p.z);
-  if (!cells) { u.path = [p]; return; }
-  const pts = cells.map(([x, z]) => new THREE.Vector3(x, 0, z));
-  pts.push(p);
-  u.path = smoothPath(u.position, pts);
+  // Els vaixells fan servir la graella naval (només aigua fonda)
+  const landWalk = NAV.walk;
+  if (u.naval) NAV.walk = NAV.naval;
+  try {
+    if (segmentWalkable(u.position.x, u.position.z, p.x, p.z) && (!u.naval || waterCell(p.x, p.z) === 1)) { u.path = [p]; return; }
+    const cells = findPath(u.position.x, u.position.z, p.x, p.z);
+    if (!cells) { u.path = u.naval ? [] : [p]; return; }
+    const pts = cells.map(([x, z]) => new THREE.Vector3(x, 0, z));
+    // Un vaixell no pot arribar a un punt de terra: s'atura a la darrera cel·la d'aigua
+    if (!u.naval || waterCell(p.x, p.z) === 1) pts.push(p);
+    u.path = smoothPath(u.position, pts);
+  } finally { NAV.walk = landWalk; }
 }

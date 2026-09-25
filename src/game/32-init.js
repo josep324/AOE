@@ -30,5 +30,5 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
   PLAYER, completeTech, itemBlockReason, createSoldierAt: createSoldier, saveGame, loadGame, readSave, serializeGame,
   createTradeCart, marketTrade, orderTrade, exportGameCode, importGameCode, setStance, orderBuild, orderGather, depleteResource, simulate, createTownCenter, setTeamCiv, createVillager, createTradeCart, snapGateToWall, costFor, commandAttackGround, orderGarrison, ungarrison, togglePack, canGarrison, commandAttack, uniqueUnitOf,
   commandMove, setFormation, formationSlots, setSelection, updateSelectionUI,
-  buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, createAnimal, createFish, waterCell,
+  buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, canPlaceDock, findDockSpot, orderUnload, spawnUnit, orderAttack, orderGarrison, createAnimal, createFish, waterCell,
   orderConvert, orderHeal, orderPickRelic, orderDepositRelic, createRelic, convertEntity, checkGameOver, createKings, victoryCheck, issueRightClick, unitDropRelic, pickEntity };

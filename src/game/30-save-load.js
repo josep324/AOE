@@ -113,7 +113,7 @@ function loadGame(data) {
         if (d.alive === false) { e.alive = false; e.killed = true; e.hp = 0; e.name = `${ANIMALS[d.sub].name} (carn)`; }
         else if (d.hp !== undefined) e.hp = d.hp;
       }
-      else if (d.sub === 'fish') e = createFish(d.x, d.z);
+      else if (d.sub === 'fish' || d.sub === 'deepfish') e = createFish(d.x, d.z, d.sub === 'deepfish');
       else if (d.sub === 'sheep') {
         e = createSheep(d.x, d.z);
         if (d.killed) { e.killed = true; e.mobile = false; e.name = 'Ovella (carn)'; }

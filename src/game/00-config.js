@@ -30,7 +30,7 @@ const CONFIG = {
   GATHER: {
     capacity: 10,                         // càrrega màxima per viatge
     // unitats per segon segons el tipus de recurs
-    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1, farm: 0.7, deer: 1.2, boar: 1.3, fish: 0.8 },
+    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1, farm: 0.7, deer: 1.2, boar: 1.3, fish: 0.8, deepfish: 1.1 },
     reach: 0.75,                          // distància extra per començar a treballar
     autoSearchRadius: 32,                 // radi per buscar un recurs nou quan s'esgota
   },
@@ -80,6 +80,7 @@ function defaultMods() {
     elite: {}, unitRange: {}, unitHp: {}, towerArrows: 0, buildingHpMul: 1, buildingArmor: 0,
     lineKind: {}, buildSpeed: 1, towerLevel: 0, siegeBldMul: 1,
     monkSpeed: 1, monkHp: 0, faithRegen: 1, convRange: 0,
+    shipSpeed: 1, shipArmor: 0, shipGather: 1, transportCap: 0,
   };
 }
 for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }

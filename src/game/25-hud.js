@@ -347,8 +347,8 @@ function updateSelectionUI(panelOnly = false) {
       : first.alive
         ? `${first.icon} ${first.subtype === 'boar' ? 'Senglar: molt fort i envesteix. Caça\'l amb uns quants aldeans' : 'Cérvol: fuig quan t\'hi acostes. Els aldeans el cacen'} (<kbd>clic dret</kbd>).<br>Després en poden recollir la carn.`
         : 'Animal caçat: selecciona aldeans i fes <kbd>clic dret</kbd><br>per recollir-ne la carn.'}</div>`;
-  } else if (first.subtype === 'fish') {
-    actionsEl.innerHTML = `<div class="action-hint">🐟 Banc de peixos: ${first.amount} d'aliment.<br>Els aldeans hi pesquen des de la riba (<kbd>clic dret</kbd>).</div>`;
+  } else if (first.subtype === 'fish' || first.subtype === 'deepfish') {
+    actionsEl.innerHTML = `<div class="action-hint">🐟 ${first.name}: ${first.amount} d'aliment.<br>${first.subtype === 'fish' ? 'Els aldeans hi pesquen des de la riba i els vaixells pesquers, des de l\'aigua' : 'Només hi poden pescar els vaixells pesquers'} (<kbd>clic dret</kbd>).</div>`;
   } else if (first.kind === 'resource' && first.subtype === 'farm') {
     actionsEl.innerHTML = `<div class="action-hint">Granja: ${first.amount} d'aliment.<br>Un sol granger hi pot treballar.<br>Descarrega al Molí o al Centre.</div>`;
   } else if (first.kind === 'resource') {

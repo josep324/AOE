@@ -420,6 +420,26 @@ ARCH.western = {
     kBanner(g, team, -5.0, 5.2, 5.0); kBanner(g, team, 5.0, 5.2, 5.0);
     return 18.2;
   },
+  dock(g, { team }) {
+    // Embarcador de fusta sobre pilots, grua de càrrega i cobert de palla
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j += 2) kcyl(g, 0.12, 0.14, 1.3, 8, KM.bark, i * 1.05, 0.35, j * 1.05);
+    kbox(g, 4.9, 0.2, 4.9, KM.planks, 0, 0.9, 0);
+    for (const s of [-1, 1]) { kbox(g, 4.9, 0.14, 0.14, KM.timber, 0, 1.0, s * 2.42); kbox(g, 0.14, 0.14, 4.9, KM.timber, s * 2.42, 1.0, 0); }
+    // Cobert
+    for (const [x, z] of [[-2.1, -2.1], [-0.3, -2.1], [-2.1, -0.4], [-0.3, -0.4]]) kcyl(g, 0.08, 0.1, 2.0, 7, KM.timber, x, 2.0, z);
+    kbox(g, 1.9, 1.4, 0.1, KM.planks, -1.2, 1.7, -2.15);
+    gableRoof(g, { w: 2.1, d: 2.0, h: 0.9, over: 0.25, y0: 3.0, x: -1.2, z: -1.25, gableMat: KM.planks, frame: false });
+    // Grua amb corda i càrrega
+    kcyl(g, 0.12, 0.14, 3.4, 8, KM.timber, 1.6, 2.6, -1.6);
+    kbox(g, 0.12, 0.12, 2.6, KM.timber, 1.6, 4.2, -0.5, [-0.35, 0, 0]);
+    kcyl(g, 0.015, 0.015, 1.6, 4, KM.dark, 1.6, 3.3, 0.6);
+    kCrate(g, 1.6, 0.6, 0.8, 0.3, 1.9);
+    kBarrel(g, 0.8, 1.6, 0.9); kBarrel(g, 1.4, 1.9, 0.8);
+    for (const x of [-2.2, 2.2]) kcyl(g, 0.12, 0.12, 0.35, 8, KM.timber, x, 1.15, 2.2);
+    kbox(g, 1.1, 0.12, 0.8, mat(0x3a3a30, { roughness: 1 }), -1.4, 1.06, 1.4);     // xarxes esteses
+    kBanner(g, team, 2.2, 2.2, 3.6);
+    return 5.0;
+  },
   stonewall(g) {
     kbox(g, 1.0, 2.6, 1.0, KM.stone, 0, 1.3, 0);
     kbox(g, 1.04, 0.16, 1.04, KM.stone, 0, 2.62, 0);

@@ -19,6 +19,7 @@ function isAttackable(t) {
 function orderAttack(u, target, keepAttackMove = true) {
   if (!isAttackable(target) || target.team === u.team) return;
   if (u.onlyBuildings && target.kind === 'unit' && target.category !== 'siege') return;   // ariets i trabucs: només edificis
+  if (target.naval && !u.naval && !(u.range > 0)) return;                                    // el cos a cos no arriba als vaixells
   u.forcedTarget = false;
   if (!u.anchor || u.state === STATE.IDLE) u.anchor = u.position.clone();
   u.gatherNode = null;
@@ -74,12 +75,14 @@ function findTargetNear(u, radius) {
   for (const e of unitsNear(u.position.x, u.position.z, radius, targetBuf)) {
     if (e.team === u.team || e.team === 0 || e.dead || e.garrisoned) continue;
     if (u.onlyBuildings && e.category !== 'siege') continue;     // ariets i trabucs: només edificis i setge
+    if (e.naval && !u.naval && !(u.range > 0)) continue;          // el cos a cos no pot atacar vaixells
+    if (u.naval && !e.naval && u.range < 2 && !u.demolition) continue;
     const d = hDist(e.position, u.position) * (e.isMilitary ? 1 : 1.25);
     if (d < radius && d < bestD) { bestD = d; best = e; }
   }
   if (best) return best;
   // Els llops a prop també són un objectiu per a les tropes
-  if (!u.onlyBuildings) for (const w of wolvesNear(u.position.x, u.position.z, radius)) {
+  if (!u.onlyBuildings && !u.naval) for (const w of wolvesNear(u.position.x, u.position.z, radius)) {
     const d = hDist(w.position, u.position);
     if (d < bestD) { bestD = d; best = w; }
   }
@@ -93,6 +96,7 @@ function findTargetNear(u, radius) {
 }
 
 function performAttack(u, t) {
+  if (u.demolition) { explodeDemolition(u, t); return; }
   if (u.range > 0) {
     fireProjectile(u, t);
   } else if (!t.isGround) {
@@ -263,6 +267,11 @@ function enterGarrison(u, b) {
 }
 function ungarrison(b) {
   if (!b.garrison) return;
+  // Un transport només pot desembarcar tocant a la riba
+  if (b.naval && b.garrison.length && !nearestCellWhere(b.position, isDryLand, 5)) {
+    if (b.isOwn) toast('⛵ Acosta el transport a la riba per desembarcar (o fes clic dret a terra)');
+    return;
+  }
   for (const u of b.garrison) {
     if (u.dead) continue;
     const spot = findSpawnSpot(b);

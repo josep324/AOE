@@ -59,7 +59,7 @@ function separateUnits() {
   for (const a of state.units) {
     if (a.garrisoned || a.dead) continue;
     for (const b of unitsNear(a.position.x, a.position.z, 2, nearBuf)) {
-      if (b.id <= a.id || b.garrisoned || b.dead) continue;
+      if (b.id <= a.id || b.garrisoned || b.dead || a.naval !== b.naval) continue;
       if (a.target && b.target) continue;
       const dx = b.position.x - a.position.x, dz = b.position.z - a.position.z;
       const min = a.radius + b.radius;

@@ -20,7 +20,8 @@ function setUnitStats(e, kind) {
   e.unitKind = kind;
   e.category = cat;
   e.name = el ? el.name : d.name;
-  e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : cat === 'monk' ? M.monkSpeed : 1);
+  e.naval = cat === 'ship';
+  e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : cat === 'monk' ? M.monkSpeed : cat === 'ship' ? M.shipSpeed : 1);
   e.convRange = d.convRange ? d.convRange + M.convRange : 0;
   e.healRange = d.healRange || 0;
   e.attack = (el ? el.attack : d.attack) + (M.attack[cat] || 0);
@@ -30,7 +31,9 @@ function setUnitStats(e, kind) {
   e.reach = d.reach || 0.45;
   e.reload = d.reload * (M.reloadMul[cat] || 1);
   const ma = cat === 'villager' ? M.villagerArmor : (M.armor[cat] || [0, 0]);
-  e.armor = [d.armor[0] + ma[0], d.armor[1] + ma[1]];
+  e.armor = [d.armor[0] + ma[0], d.armor[1] + ma[1] + (cat === 'ship' ? M.shipArmor : 0)];
+  e.bonusShip = d.bonusShip || 0;
+  e.demolition = !!d.demolition;
   e.los = d.los;
   e.vsBuilding = (d.vsBuilding || 0) + (M.vsBuilding[cat] || 0);
   e.bonusCav = d.bonusCav || 0;
@@ -42,18 +45,18 @@ function setUnitStats(e, kind) {
   e.meleeShot = !!d.melee;
   e.pierceShot = !!d.pierce;
   e.canGround = !!d.ground;
-  e.garrisonCap = d.garrison || 0;
+  e.garrisonCap = (d.garrison || 0) + (kind === 'transport' ? M.transportCap : 0);
   e.mounted = cat === 'cavalry' || !!d.mounted;
   e.bonusArcher = d.bonusArcher || 0;
   if (cat === 'siege') e.vsBuilding = Math.round(e.vsBuilding * M.siegeBldMul);
   const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : cat === 'monk' ? M.monkHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
-  e.barH = e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
+  e.barH = cat === 'ship' ? (kind === 'cannongalleon' || kind === 'galleon' ? 5.2 : 3.8) : e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
 }
 function applyUnitStats(e, kind) {
   setUnitStats(e, kind);
-  e.isMilitary = ['infantry', 'archer', 'cavalry', 'siege'].includes(CONFIG.UNITS[kind].cat);
+  e.isMilitary = ['infantry', 'archer', 'cavalry', 'siege'].includes(CONFIG.UNITS[kind].cat) || (CONFIG.UNITS[kind].cat === 'ship' && CONFIG.UNITS[kind].attack > 0);
   e.attackTarget = null;
   e.attackCooldown = 0;
   e.scanTimer = rand() * 0.5;
@@ -113,7 +116,7 @@ const cavalryHitGeo = new THREE.CylinderGeometry(0.9, 0.9, 3.2, 8);
 function createSoldier(kind, x, z, team = PLAYER.id) {
   const d = CONFIG.UNITS[kind];
   const e = new Entity({ kind: 'unit', subtype: kind, name: d.name, icon: d.icon, team, radius: 0.45,
-    selRadius: d.cat === 'cavalry' || d.mounted ? 1.2 : 0.8, hp: d.hp, maxHp: d.hp });
+    selRadius: d.cat === 'ship' ? (SHIP_RADIUS[kind] || 1.3) * 1.3 : d.cat === 'cavalry' || d.mounted ? 1.2 : 0.8, hp: d.hp, maxHp: d.hp });
   applyUnitStats(e, kind);
   e.target = null;
   e.path = null;
@@ -128,7 +131,8 @@ function createSoldier(kind, x, z, team = PLAYER.id) {
   const model = buildUnitVisual(e, kind, team);
   if (d.cat === 'cavalry' || d.mounted) e.radius = 0.75;
   if (d.cat === 'siege') e.radius = kind === 'scorpion' ? 0.7 : 1.1;
-  const big = d.cat === 'cavalry' || d.cat === 'siege' || d.mounted;
+  if (d.cat === 'ship') e.radius = SHIP_RADIUS[kind] || 1.3;
+  const big = d.cat === 'cavalry' || d.cat === 'siege' || d.mounted || d.cat === 'ship';
   const hit = new THREE.Mesh(big ? cavalryHitGeo : villagerGeo.hit, hitMaterial);
   hit.position.y = big ? 1.6 : 1.2;
   hit.userData.noShadow = true;

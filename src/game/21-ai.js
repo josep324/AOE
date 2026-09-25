@@ -57,7 +57,7 @@ function nearestPlayerTarget(pos) {
     if (m) return m;
   }
   let best = null, bestD = Infinity;
-  for (const u of state.units) if (u.isOwn && !u.garrisoned) { const d = hDist(u.position, pos); if (d < bestD) { bestD = d; best = u; } }
+  for (const u of state.units) if (u.isOwn && !u.garrisoned && !u.naval) { const d = hDist(u.position, pos); if (d < bestD) { bestD = d; best = u; } }
   for (const b of state.buildings) if (b.isOwn) { const d = hDist(b.position, pos) * 0.8; if (d < bestD) { bestD = d; best = b; } }
   return best;
 }
@@ -85,7 +85,7 @@ function aiTick() {
   const blds = state.buildings.filter(b => b.team === T);
   const tc = blds.find(b => b.subtype === 'towncenter');
   const villagers = state.units.filter(u => u.team === T && u.subtype === 'villager');
-  const army = state.units.filter(u => u.team === T && u.isMilitary);
+  const army = state.units.filter(u => u.team === T && u.isMilitary && !u.naval);
   const monks = state.units.filter(u => u.team === T && u.category === 'monk' && !u.garrisoned);
   const has = (type, includeFoundations = true) => blds.some(b => b.subtype === type && (includeFoundations || !b.underConstruction));
   const count = (type) => blds.filter(b => b.subtype === type).length;
@@ -259,12 +259,46 @@ function aiTick() {
     AI.urgent = true;
   } else AI.urgent = false;
 
+  // 5e) Naval: moll, pesca i flota de guerra (només si el mapa té aigua)
+  if (WATER.any) {
+    const docks = blds.filter(b => b.subtype === 'dock');
+    if (!docks.length && villagers.length >= 10 && res.wood >= 170 && !AI.saving && now > (AI.dockSearchAt || 0)) {
+      AI.dockSearchAt = now + 30;
+      const spot = findDockSpot(tc.position, 85);
+      if (spot) {
+        const who = aiPickBuilders(2, spot);
+        if (who.length) { applyCost(costFor('dock', T), -1, T); commandBuild(who, createBuilding('dock', spot.x, spot.z, false, T)); }
+      }
+    }
+    const dock = docks.find(b => !b.underConstruction);
+    const ships = state.units.filter(u => u.team === T && u.naval);
+    const fishers = ships.filter(u => u.subtype === 'fishingship'), fleet = ships.filter(u => u.isMilitary);
+    if (dock && !AI.saving && dock.trainQueue.length < 2) {
+      const fishLeft = state.resourceNodes.some(n => n.subtype === 'fish' || n.subtype === 'deepfish');
+      if (fishLeft && fishers.length < (D === DIFFICULTY.hard ? 5 : 3)) queueUnit(dock, 'fishingship');
+      else if (E.age >= 1 && fleet.length < (D === DIFFICULTY.easy ? 2 : D === DIFFICULTY.hard ? 7 : 4)) {
+        queueUnit(dock, E.age >= 2 && fleet.length % 3 === 2 && !itemBlockReason('fireship', T) ? 'fireship' : 'galley');
+      }
+    }
+    if (dock && E.age >= 2 && res.gold > 300 && !AI.saving) for (const k of ['up_wargalley', 'gillnets', 'careening']) tryTech(k);
+    if (dock && E.age >= 3 && res.gold > 700 && !AI.saving) for (const k of ['up_galleon', 'drydock']) tryTech(k);
+    for (const f of fishers) if (f.state === STATE.IDLE) { const n = nearestResource('food', f.position, 220, f); if (n) orderGather(f, n, null); }
+    // Flota: quan n'hi ha prou, ataca els vaixells del jugador o el seu moll
+    if (fleet.length >= 3) for (const w of fleet) {
+      if (w.state !== STATE.IDLE) continue;
+      let tgt = null, bd = Infinity;
+      for (const u of state.units) if (u.isOwn && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd) { bd = d; tgt = u; } }
+      if (!tgt) for (const b of state.buildings) if (b.isOwn && (b.subtype === 'dock' || b.subtype === 'fishingship')) { const d = hDist(b.position, w.position); if (d < bd) { bd = d; tgt = b; } }
+      if (tgt) { orderAttack(w, tgt, false); w.forcedTarget = true; }
+    }
+  }
+
   // 6) Defensa: només contra intrusos a prop de la base (no contra torres o tropes llunyanes que disparen a l'onada)
   const home = tc.position;
   let intruder = null;
   if (AI.alert && !AI.alert.dead && now - AI.alertTime < 10 && hDist(AI.alert.position, home) < 40) intruder = AI.alert;
   if (!intruder) {
-    for (const u of state.units) if (u.isOwn && !u.garrisoned && hDist(u.position, home) < 32) { intruder = u; break; }
+    for (const u of state.units) if (u.isOwn && !u.garrisoned && !u.naval && hDist(u.position, home) < 32) { intruder = u; break; }
   }
   if (intruder) {
     const defenders = army.filter(u => !u.inWave && u.category !== 'siege' && (u.state === STATE.IDLE || u.state === STATE.MOVING));

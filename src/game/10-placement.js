@@ -28,6 +28,7 @@ function hasCompleted(subtype, team = PLAYER.id) {
 function buildBlockReason(type, team = PLAYER.id) {
   const def = CONFIG.BUILDINGS[type];
   if ((def.age || 0) > teamOf(team).age) return `Requereix: ${CONFIG.AGES[def.age].name}`;
+  if (def.dock && !WATER.any) return 'En aquest mapa no hi ha aigua per a un Moll';
   if (def.requires && !hasCompleted(def.requires, team)) return `Requereix: ${CONFIG.BUILDINGS[def.requires].name}`;
   if (!canAfford(costFor(type, team), team)) return `Recursos insuficients: cal ${costText(costFor(type, team))}`;
   return null;
@@ -177,6 +178,7 @@ function wallsIn(x, z, sw, sd, team = PLAYER.id) {
     && Math.abs(b.position.x - x) < sw / 2 && Math.abs(b.position.z - z) < sd / 2);
 }
 function canPlace(type, x, z, rot = 0) {
+  if (CONFIG.BUILDINGS[type].dock) return canPlaceDock(x, z, rot);
   const [sw, sd] = sizeOf(type, rot);
   const L = CONFIG.MAP_LIMIT;
   if (Math.abs(x) + sw / 2 > L - 1 || Math.abs(z) + sd / 2 > L - 1) return false;

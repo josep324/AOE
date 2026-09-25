@@ -33,7 +33,7 @@ function mmToWorld(px, py) {
   return new THREE.Vector3(r * ax.rx + f * ax.fx, 0, r * ax.rz + f * ax.fz);
 }
 const MM_COLORS = { tree: '#1f5a24', gold: '#ffd23a', stone: '#c8c8c8', berries: '#e0457f', sheep: '#ffffff', farm: '#b08a4a',
-  deer: '#e0a868', boar: '#9a6a44', wolf: '#a8aeb6', fish: '#9fe2ff' };
+  deer: '#e0a868', boar: '#9a6a44', wolf: '#a8aeb6', fish: '#9fe2ff', deepfish: '#c8f0ff' };
 function mmRect(ctx, e, ax, fill, stroke) {
   const { hw, hd } = e.footprint;
   const pts = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(([dx, dz]) => worldToMM(e.position.x + dx, e.position.z + dz, ax));
@@ -81,7 +81,7 @@ function drawMinimap() {
     if (n.footprint) { mmRect(ctx, n, ax, n.selected ? '#ffffff' : MM_COLORS.farm, null); continue; }
     const [x, y] = worldToMM(n.position.x, n.position.z, ax);
     ctx.fillStyle = MM_COLORS[n.subtype] || '#fff';
-    const r = n.subtype === 'tree' ? 1.8 : (n.subtype === 'sheep' || n.animal) ? 1.6 : (n.subtype === 'berries' || n.subtype === 'fish') ? 1.8 : 3;
+    const r = n.subtype === 'tree' ? 1.8 : (n.subtype === 'sheep' || n.animal) ? 1.6 : (n.subtype === 'berries' || n.subtype === 'fish' || n.subtype === 'deepfish') ? 1.8 : 3;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
   // Relíquies (quadrats blancs amb vora daurada)

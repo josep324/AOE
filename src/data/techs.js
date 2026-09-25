@@ -76,6 +76,12 @@ export const TECHS = {
                  desc: 'Tecnologia única dels Japonesos: torres i castells disparen +2 fletxes' },
   masonry:     { name: 'Maçoneria', icon: '🧱', cost: { wood: 175, stone: 150 }, time: 40, age: 2, at: 'university',
                  desc: 'Edificis i muralles: +10% vida i +1/+1 armadura' },
+  // --- Moll ---
+  gillnets:    { name: 'Xarxes', icon: '🕸️', cost: { food: 150, wood: 200 }, time: 40, age: 2, at: 'dock', desc: 'Vaixells pesquers: +25% de ritme de pesca' },
+  careening:   { name: 'Carenatge', icon: '🪛', cost: { food: 250, gold: 150 }, time: 50, age: 2, at: 'dock', desc: 'Vaixells: +1 d\'armadura contra projectils. Transports: +5 places' },
+  drydock:     { name: 'Dic sec', icon: '⚓', cost: { food: 600, gold: 400 }, time: 60, age: 3, at: 'dock', requires: 'careening', desc: 'Vaixells: +15% de velocitat' },
+  up_wargalley: { name: 'Galera de guerra', icon: '🚣', cost: { food: 230, gold: 100 }, time: 40, age: 2, at: 'dock', upgradeTo: 'wargalley', desc: 'Galera → Galera de guerra' },
+  up_galleon:  { name: 'Galió', icon: '🚢', cost: { food: 400, wood: 315 }, time: 55, age: 3, at: 'dock', upgradeTo: 'galleon', requires: 'up_wargalley', desc: 'Galera de guerra → Galió' },
   // --- Monestir ---
   redemption:  { name: 'Redempció', icon: '✨', cost: { gold: 475 }, time: 50, age: 2, at: 'monastery',
                  desc: 'Els monjos poden convertir edificis (menys Centre, Castell, Meravella i muralles) i màquines de setge' },

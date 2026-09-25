@@ -131,6 +131,27 @@ function placeFish(max, minGap = 9) {
   }
 }
 
+/* Peix d'altura: al mig de l'aigua, lluny de la riba (només per als vaixells) */
+function placeDeepFish(max) {
+  if (!WATER.any) return;
+  const L = CONFIG.MAP_LIMIT, N = WATER.N, cands = [];
+  for (let j = 3; j < N - 3; j += 2) for (let i = 3; i < N - 3; i += 2) {
+    const x = -L + i + 0.5, z = -L + j + 0.5;
+    if (x + z < 0 || WATER.mask[j * N + i] !== 1) continue;
+    let deep = true;
+    for (let dj = -3; dj <= 3 && deep; dj++) for (let di = -3; di <= 3; di++) if (WATER.mask[(j + dj) * N + i + di] !== 1) { deep = false; break; }
+    if (deep) cands.push([x, z]);
+  }
+  for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+  const placed = [];
+  for (const [x, z] of cands) {
+    if (placed.length >= max) break;
+    if (placed.some(([px, pz]) => Math.hypot(px - x, pz - z) < 8)) continue;
+    placed.push([x, z]);
+    createFish(x, z, true);
+    createFish(-x, -z, true);
+  }
+}
 /* ---------- Generadors de cada tipus de mapa ---------- */
 function neutralResources(extraForests = true) {
   // Or i pedra al centre (disputats) i als costats
@@ -168,6 +189,7 @@ const GENERATORS = {
     mirrored(createForest, -108, 44, 14, 10);
     mirrored(createForest, 44, -108, 14, 10);
     placeFish(10);
+    placeDeepFish(4);
     placeWolves(2);
   },
   rivers() {
@@ -179,6 +201,7 @@ const GENERATORS = {
     mirrored(createForest, -110, 30, 14, 10);
     mirrored(createForest, 30, -110, 14, 10);
     placeFish(8);
+    placeDeepFish(2);
     placeWolves(2);
   },
   blackforest() {

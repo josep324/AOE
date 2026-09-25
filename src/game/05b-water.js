@@ -27,6 +27,12 @@ function waterNear(x, z, m) {
 /* Les unitats no poden entrar a l'aigua fonda (per si les empenyen o hi llisquen) */
 function keepOnLand(e) {
   if (!WATER.any) return;
+  if (e.naval) {
+    // Els vaixells no poden sortir de l'aigua fonda
+    if (waterCell(e.position.x, e.position.z) !== 1) { if (e.lastWet) { e.position.x = e.lastWet.x; e.position.z = e.lastWet.z; } }
+    else (e.lastWet || (e.lastWet = new THREE.Vector3())).copy(e.position);
+    return;
+  }
   if (waterCell(e.position.x, e.position.z) === 1) {
     if (e.lastDry) { e.position.x = e.lastDry.x; e.position.z = e.lastDry.z; }
   } else (e.lastDry || (e.lastDry = new THREE.Vector3())).copy(e.position);
@@ -66,7 +72,7 @@ function genRiver(rng, set) {
   WATER.fords = [0, S1, -S1];
   set((x, z) => {
     const s = (x - z) / Math.SQRT2, p = (x + z) / Math.SQRT2;
-    const w = 4.2 + 1.1 * Math.cos(k3 * s);
+    const w = 5.6 + 1.2 * Math.cos(k3 * s);
     if (Math.abs(p - f(s)) >= w) return 0;
     return WATER.fords.some(sf => Math.abs(s - sf) < 5.5) ? 2 : 1;
   });

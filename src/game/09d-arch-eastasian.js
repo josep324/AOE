@@ -342,6 +342,21 @@ ARCH.eastasian = {
     for (const [x, z] of [[-5.3, -5.3], [5.3, -5.3], [-5.3, 5.3], [5.3, 5.6]]) kNobori(g, team, x, z, 5.0);
     return 13.6;
   },
+  dock(g, { team }) {
+    // Embarcador de fusta fosca, pavelló de teulada corba, llanternes de paper
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j += 2) kcyl(g, 0.11, 0.13, 1.3, 8, KM.darkwood, i * 1.05, 0.35, j * 1.05);
+    kbox(g, 4.9, 0.2, 4.9, KM.darkplanks, 0, 0.9, 0);
+    for (const s of [-1, 1]) kbox(g, 4.9, 0.12, 0.12, KM.darkwood, 0, 1.25, s * 2.4);
+    for (let i = -2; i <= 2; i++) for (const s of [-1, 1]) kbox(g, 0.08, 0.4, 0.08, KM.darkwood, i * 1.2, 1.1, s * 2.4);
+    eaBody(g, { w: 2.2, d: 1.8, h: 1.3, y0: 1.0, cx: -1.1, cz: -1.3, lower: false, door: { x: 0, w: 0.8, h: 1.0 } });
+    eaRoof(g, { w: 2.2, d: 1.8, h: 0.8, y0: 2.3, x: -1.1, z: -1.3, over: 0.45, lift: 0.25 });
+    kLantern(g, 1.8, 1.8); 
+    for (const x of [0.9, 1.9]) { kcyl(g, 0.02, 0.02, 0.5, 4, KM.dark, x, 2.0, -1.9); kcyl(g, 0.14, 0.14, 0.3, 10, KM.paper, x, 1.65, -1.9); }
+    kbox(g, 0.12, 1.8, 0.12, KM.darkwood, 1.4, 1.9, -1.9);
+    kbox(g, 1.2, 0.08, 0.08, KM.darkwood, 1.4, 2.8, -1.9);
+    kNobori(g, team, 2.2, 2.2, 3.4);
+    return 4.2;
+  },
   stonewall(g) {
     eaStoneBase(g, 1.04, 1.04, 1.1);
     kbox(g, 0.8, 1.4, 0.8, KM.whiteplaster, 0, 1.8, 0);

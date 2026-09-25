@@ -16,8 +16,8 @@ function garrisonCap(b) {
 function canGarrison(u, b) {
   if (!b || b.dead || b.team !== u.team || b === u || b.underConstruction || garrisonCap(b) <= 0) return false;
   const c = u.category;
-  if (b.kind === 'unit') return c === 'infantry';
-  if (c === 'siege' || c === 'trade') return false;
+  if (b.kind === 'unit') return b.subtype === 'transport' ? !u.naval : c === 'infantry';
+  if (c === 'siege' || c === 'trade' || c === 'ship') return false;
   if (b.subtype === 'castle') return true;
   return c === 'villager' || c === 'infantry' || c === 'archer' || c === 'monk' || c === 'king';
 }
@@ -96,11 +96,13 @@ function hitDamage(u, t, type) {
   if (t.mounted) d += u.bonusCav || 0;
   if (t.category === 'archer') d += u.bonusArcher || 0;
   if (t.isUnique) d += u.bonusUnique || 0;
+  if (t.naval) d += u.bonusShip || 0;
   return d;
 }
 /* Dispara el projectil propi de la unitat cap a l'objectiu (o al terra) */
 function fireProjectile(u, t) {
   const kind = u.projectile || 'arrow';
+  if (kind === 'fire') { fireSpray(u, t); return; }
   const heavy = kind === 'stone' || kind === 'bigstone';
   const from = new THREE.Vector3(u.position.x, kind === 'bigstone' ? 5.5 : heavy ? 2.4 : 1.6, u.position.z);
   if (u.fireAnim) u.fireT = 0.6;
