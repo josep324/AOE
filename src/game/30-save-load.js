@@ -41,7 +41,7 @@ function serializeGame() {
   let explored = '';
   for (let k = 0; k < FOG.explored.length; k++) explored += FOG.explored[k] ? '1' : '0';
   return {
-    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed,
+    v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: { 1: team(PLAYER), 2: team(ENEMY) },
     ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), waveCount: AI.waveCount, nextWaveAt: AI.nextWaveAt, armyCycle: AI.armyCycle },
@@ -78,6 +78,9 @@ function clearWorld() {
 }
 function loadGame(data) {
   if (!data || data.v !== 1) { toast('No hi ha cap partida desada vàlida'); return false; }
+  // Partida d'una altra mida de mapa: es recarrega la pàgina amb aquella mida i es continua
+  const size = MAP_SIZES[data.mapSize] ? data.mapSize : 'medium';
+  if (size !== MAP_SIZE) { reloadWithSize(size, { load: data }); return false; }
   clearWorld();
   // Mapa: terreny, aigua i decoració del tipus i la llavor desats
   removeDecorations();

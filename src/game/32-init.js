@@ -32,4 +32,24 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
   createTradeCart, marketTrade, orderTrade, exportGameCode, importGameCode, setStance, orderBuild, orderGather, depleteResource, simulate, createTownCenter, setTeamCiv, createVillager, createTradeCart, snapGateToWall, costFor, commandAttackGround, orderGarrison, ungarrison, togglePack, canGarrison, commandAttack, uniqueUnitOf,
   commandMove, setFormation, formationSlots, setSelection, updateSelectionUI,
   buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, canPlaceDock, findDockSpot, orderUnload, spawnUnit, orderAttack, orderGarrison, createAnimal, createFish, waterCell,
+  MAP_SIZE, MAP_SIZES,
   orderConvert, orderHeal, orderPickRelic, orderDepositRelic, createRelic, convertEntity, checkGameOver, createKings, victoryCheck, issueRightClick, unitDropRelic, pickEntity };
+
+// Acció pendent després de canviar la mida del mapa (recàrrega): començar o carregar la partida
+{
+  const pending = takePending();
+  if (pending && pending.start) {
+    const P = pending.start;
+    pickChoice('map-choices', 'map', P.map);
+    pickChoice('civ-choices', 'civ', P.civ);
+    pickChoice('enemy-civ-choices', 'civ', P.enemyCiv);
+    pickChoice('victory-choices', 'victory', P.victory);
+    pickChoice('diff-choices', 'diff', P.diff);
+    document.getElementById('fog-toggle').checked = P.fog !== false;
+    document.getElementById('start-btn').click();
+  } else if (pending && pending.load) {
+    startScreen.classList.add('hidden');
+    if (loadGame(pending.load)) { state.paused = false; canvas.focus(); }
+    else startScreen.classList.remove('hidden');
+  }
+}

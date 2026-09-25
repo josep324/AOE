@@ -32,8 +32,12 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 - ⚔️ **Conquesta**: només destruint l'enemic.
 - 👑 **Regicidi**: cada bàndol té un rei; si mor, perd.
 
-**Mapes** (es trien a l'inici; cada partida és diferent però justa, simètrica per als dos jugadors):
+**Mapes** (es trien a l'inici; cada partida és diferent però justa):
 🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb tres camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals).
+**Mides** com les de l'AoE II (1 casella ≈ 2,15 m): Minúscul 120×120 · Petit 144×144 · Mitjà 168×168 (per defecte) · Normal 200×200 · Gran 220×220.
+Com a l'AoE II, cada jugador té la mateixa sortida (línia de bosc, 5 arbres solts a prop del Centre, or, pedra i menjar);
+els boscos són taques compactes i irregulars repartides a l'atzar per tot el mapa, i les 5 relíquies queden escampades
+a més de 25 caselles de qualsevol base i a més de 20 l'una de l'altra.
 **Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba.
 
 **Naval** (mapes amb aigua): ⚓ **Moll** a l'aigua fonda tocant a la riba; vaixells pesquers (també peix d'altura),
@@ -68,7 +72,7 @@ src/
     09…09d           edificis: kit comú (textures, teulades, cúpules…) i arquitectura de cada regió
     10…12            col·locació, unitats (esquelet i vestits per regió), decoració
     13 navegació     graella, A*, portes per equip
-    14 món           generació simètrica del mapa
+    14 món           generació del mapa (sortides iguals, boscos i recursos a l'atzar)
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
     21 IA            economia, edats, exèrcit i atacs de l'enemic
     05b aigua        llacs, rius i guals (graella, shader i navegació)

@@ -315,33 +315,40 @@ function animateRelics(t) {
     r.halo.position.y = 1.35 + Math.sin(t * 2 + r.id) * 0.12;
   }
 }
-/* Col·locació: parelles simètriques (partida justa) ben repartides pel mapa, lluny de les bases
-   i separades entre elles; la cinquena, al mig, sobre la diagonal equidistant de les dues bases */
 function placeRelics() {
-  const L = CONFIG.MAP_LIMIT - 12, minGap = CONFIG.MAP_LIMIT * 0.3, baseGap = CONFIG.MAP_LIMIT * 0.38;
-  const placed = [];
-  const okAt = (x, z) => !isNearObstacle(x, z, 2.5)
-    && Object.values(BASES).every(B => Math.hypot(x - B.x, z - B.z) > baseGap)
-    && placed.every(([px, pz]) => Math.hypot(px - x, pz - z) > minGap);
-  // Relíquia central
-  for (let k = 0; k < 60; k++) {
-    const t = randRange(-0.25, 0.25) * CONFIG.MAP_LIMIT, px = t, pz = -t;
-    if (okAt(px, pz)) { createRelic(px, pz); placed.push([px, pz]); break; }
-  }
-  // Parelles simètriques
-  const pairs = Math.floor((RELIC_COUNT - placed.length) / 2);
-  for (let pair = 0; pair < pairs; pair++) {
-    for (let k = 0; k < 400; k++) {
-      const x = randRange(-L, L), z = randRange(-L, L);
-      if (Math.hypot(x + x, z + z) < minGap) continue;              // la parella no pot quedar enganxada
-      if (!okAt(x, z)) continue;
-      placed.push([x, z]);
-      if (!okAt(-x, -z)) { placed.pop(); continue; }
-      placed.push([-x, -z]);
-      createRelic(x, z); createRelic(-x, -z);
-      break;
+  // Com a l'AoE II: 5 relíquies per tot el mapa, com a mínim a 25 caselles (~54 m) de qualsevol
+  // jugador i a 20 caselles (~43 m) l'una de l'altra. Cada nova relíquia es tria entre uns quants
+  // llocs possibles el que queda més lluny de les altres, perquè quedin ben escampades.
+  // Perquè sigui just, cap jugador en pot tenir més de una de més a prop que l'altre.
+  const L = CONFIG.MAP_LIMIT - 8, bases = Object.values(BASES);
+  const baseGap = Math.min(54, CONFIG.MAP_LIMIT * 0.42), minGap = Math.min(43, CONFIG.MAP_LIMIT * 0.33);
+  const free = (x, z) => !isNearObstacle(x, z, 2.5) && bases.every(B => Math.hypot(x - B.x, z - B.z) > baseGap);
+  let best = null;
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const placed = [];
+    for (let i = 0; i < RELIC_COUNT; i++) {
+      let pick = null, pickD = -1;
+      for (let c = 0, k = 0; c < 10 && k < 300; k++) {
+        const x = randRange(-L, L), z = randRange(-L, L);
+        if (!free(x, z)) continue;
+        const d = placed.reduce((m, [px, pz]) => Math.min(m, Math.hypot(px - x, pz - z)), Infinity);
+        if (d < minGap) continue;
+        c++;
+        if (d > pickD) { pickD = d; pick = [x, z]; }
+      }
+      if (pick) placed.push(pick);
     }
+    // Equilibri: quantes en té més a prop cada jugador (les del mig no compten)
+    let diff = 0;
+    for (const [x, z] of placed) {
+      const d1 = Math.hypot(x - bases[0].x, z - bases[0].z), d2 = Math.hypot(x - bases[1].x, z - bases[1].z);
+      if (Math.abs(d1 - d2) > 20) diff += d1 < d2 ? 1 : -1;
+    }
+    const score = (RELIC_COUNT - placed.length) * 10 + Math.abs(diff);
+    if (!best || score < best.score) best = { placed, score };
+    if (placed.length === RELIC_COUNT && Math.abs(diff) <= 1) break;
   }
+  for (const [x, z] of best.placed) createRelic(x, z);
 }
 
 /* ---------- Espurnes (només visuals) ---------- */

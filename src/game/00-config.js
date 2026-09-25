@@ -10,9 +10,26 @@ import { CIVS } from '@data/civs.js';
 /* =====================================================================
    CONFIGURACIÓ GLOBAL
    ===================================================================== */
+/* Mides de mapa de l'AoE II (en caselles). Una casella de l'AoE II equival a uns 2,15 metres
+   del joc (una casa de 2×2 caselles fa 4×4, un castell de 4×4 en fa 10×10).
+   La mida es tria al menú d'inici; canviar-la recarrega la pàgina, perquè el terreny,
+   la navegació i la boira es dimensionen en arrencar. */
+const MAP_SIZES = {
+  tiny:   { name: 'Minúscul', tiles: 120, limit: 129 },
+  small:  { name: 'Petit', tiles: 144, limit: 155 },
+  medium: { name: 'Mitjà', tiles: 168, limit: 180 },
+  normal: { name: 'Normal', tiles: 200, limit: 215 },
+  large:  { name: 'Gran', tiles: 220, limit: 236 },
+};
+const MAP_SIZE_KEY = 'imperis.mapSize';
+function storedMapSize() {
+  try { const k = localStorage.getItem(MAP_SIZE_KEY); if (MAP_SIZES[k]) return k; } catch { /* sense emmagatzematge */ }
+  return 'medium';
+}
+const MAP_SIZE = storedMapSize();
 const CONFIG = {
   GROUND_SIZE: 1000,          // mida visual del terreny (les vores queden dins la boira)
-  MAP_LIMIT: 180,            // límit jugable (±): mapa de 360×360
+  MAP_LIMIT: MAP_SIZES[MAP_SIZE].limit,   // límit jugable (±): el mapa Mitjà fa 360×360
   CAM: {
     yaw: Math.PI / 4,        // angle isomètric
     pitch: 0.95,             // ~54° d'inclinació
