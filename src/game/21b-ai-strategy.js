@@ -93,6 +93,11 @@ function aiIntel(A, C) {
     mil++;
   }
   A.foeComp = { comp, mil };
+  // Força militar rival vista fa poc, comparada amb la pròpia (per decidir si cal defensar-se abans de pujar d'edat)
+  let fs = 0;
+  for (const { u, t } of A.seen.values()) if (u.isMilitary && C.now - t < 60 && hDist(u.position, C.home) < 70) fs += unitStrength(u);
+  A.foeStr = fs;
+  A.myStr = C.army.reduce((s, u) => s + unitStrength(u), 0);
 }
 
 /* ---------- Composició desitjada de l'exèrcit ---------- */
@@ -127,6 +132,8 @@ function aiComposition(A, C) {
 /* ---------- Edats i tecnologies ---------- */
 function aiTryTech(A, C, kind) {
   if (!CONFIG.TECHS[kind] || C.E.techs.has(kind) || techQueued(C.T, kind) || itemBlockReason(kind, C.T)) return false;
+  // Les tecnologies no toquen la reserva per a l'edat
+  if (!CONFIG.TECHS[kind].ageUp && !aiAffords(A, C, costFor(kind, C.T))) return false;
   // L'edat té prioritat: si el Centre té aldeans a la cua, se'n treu un (i se'n recupera el cost)
   if (CONFIG.TECHS[kind].ageUp) {
     const tc = C.tcs.find(b => b.trainQueue.length >= 2 && !b.trainQueue.some(it => isTech(it.kind)));
@@ -144,6 +151,7 @@ function aiAgesAndTechs(A, C) {
   // Edifici que falta per poder pujar d'edat (se'n fan quan ja s'hi acosta)
   const next = C.age + 1;
   A.saving = false;
+  A.reserve = null;
   if (next <= 3 && !techQueued(C.T, 'age' + next)) {
     const need = thr[C.age];
     const req = CONFIG.AGES[next].req;
@@ -158,11 +166,14 @@ function aiAgesAndTechs(A, C) {
     }
     // Les obertures agressives ataquen abans de pujar a Castells
     const rushWait = next === 2 && (A.strategy === 'scoutrush' || A.strategy === 'archers' || A.strategy === 'maa') && A.attackCount === 0 && vills < need + 6;
-    const ready = vills >= need && distinctBuilt(C.T, req) >= 2 && !rushWait && (next < 3 || D !== DIFFICULTY.easy || vills >= need + 5);
+    // Amb un exèrcit rival clarament més fort a prop de casa, primer tropes i després l'edat
+    const danger = (A.threatened || C.age === 0) && (A.foeStr || 0) > (A.myStr || 0) * 1.2 + 2;
+    const ready = vills >= need && distinctBuilt(C.T, req) >= 2 && !rushWait && !danger && (next < 3 || D !== DIFFICULTY.easy || vills >= need + 5);
     if (ready) {
       if (C.age === 0 && D.micro > 0) aiTryTech(A, C, 'loom');
       A.saving = true;
-      if (aiTryTech(A, C, 'age' + next)) A.saving = false;
+      A.reserve = costFor('age' + next, C.T);            // es guarda el cost de l'edat; la resta es pot gastar
+      if (aiTryTech(A, C, 'age' + next)) { A.saving = false; A.reserve = null; }
     }
   }
   if (A.saving) return;
@@ -214,6 +225,12 @@ function aiAgesAndTechs(A, C) {
   }
 }
 
+/* Hi ha prou recursos per a això sense tocar la reserva per a l'edat? */
+function aiAffords(A, C, cost) {
+  const r = A.reserve || {};
+  for (const [k, v] of Object.entries(cost)) if (C.res[k] < v + (r[k] || 0)) return false;
+  return true;
+}
 /* ---------- Producció militar ---------- */
 const AI_SIEGE_CAP = { ram: 5, mangonel: 3, scorpion: 3, trebuchet: 2 };
 function aiProduction(A, C) {
@@ -249,8 +266,7 @@ function aiProduction(A, C) {
       if (camp) aiBuild(A, 'watchtower', camp.position, 4, 9);
     }
   }
-  if (A.saving) return;
-  // Unitats: a cada edifici, la que més falta respecte a la composició
+  // Unitats: a cada edifici, la que més falta respecte a la composició (respectant la reserva per a l'edat)
   const count = {};
   let total = 0;
   for (const u of C.army) { const k = aiBaseKind(u, C.T); count[k] = (count[k] || 0) + 1; total++; }
@@ -267,34 +283,49 @@ function aiProduction(A, C) {
       if (AI_TRAINER[k] !== b.subtype) continue;
       const kind = k === '@unique' ? uniqueUnitOf(C.T) : currentKind(C.T, k);
       if (itemBlockReason(kind, C.T)) continue;
+      if (w < 0.03) continue;
       const v = w * (total + 6) - (count[k] || 0);
-      if (v > bestV) { bestV = v; best = k; }
+      if (v > 0 && v > bestV) { bestV = v; best = k; }
     }
     if (!best) continue;
     // Setge amb mesura (com la IA de l'AoE II): uns quants ariets i mangonells, i trabucs a l'Imperial
     if ((AI_SIEGE_CAP[best] ?? Infinity) <= (count[best] || 0) || (best === 'trebuchet' && C.age < 3)) continue;
-    if (queueUnit(b, best === '@unique' ? uniqueUnitOf(C.T) : best)) { count[best] = (count[best] || 0) + 1; total++; }
+    const kind = best === '@unique' ? uniqueUnitOf(C.T) : currentKind(C.T, best);
+    if (!aiAffords(A, C, costFor(kind, C.T))) continue;
+    if (queueUnit(b, kind)) { count[best] = (count[best] || 0) + 1; total++; }
   }
 }
 
-/* ---------- Exploració: l'explorador inicial fa una volta a casa i va a veure la base rival ---------- */
+/* ---------- Exploració: l'explorador fa una volta a casa, envolta la base rival per veure-hi
+   el Centre, els campaments i l'exèrcit, i hi torna de tant en tant (com a l'AoE II) ---------- */
+function aiScoutRoute(C, first) {
+  const pts = [];
+  if (first) for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + 0.4; pts.push(new THREE.Vector3(C.home.x + Math.cos(a) * 30, 0, C.home.z + Math.sin(a) * 30)); }
+  const f = C.foeHome, a0 = Math.atan2(C.home.z - f.z, C.home.x - f.x);
+  for (let i = 0; i <= 8; i++) { const a = a0 + (i / 8) * Math.PI * 2; pts.push(new THREE.Vector3(f.x + Math.cos(a) * 27, 0, f.z + Math.sin(a) * 27)); }
+  pts.push(C.home.clone());
+  return { pts: pts.map(p => clampToMap(p)), i: 0 };
+}
 function aiScout(A, C) {
   const s = C.army.find(u => u.aiRole === 'scout');
   if (!s) return;
   if (!C.D.scout) { s.aiRole = null; return; }
-  if (!A.scoutPlan) {
-    const pts = [];
-    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; pts.push(new THREE.Vector3(C.home.x + Math.cos(a) * 28, 0, C.home.z + Math.sin(a) * 28)); }
-    const f = C.foeHome;
-    for (let i = 0; i < 5; i++) { const a = Math.atan2(C.home.z - f.z, C.home.x - f.x) + (i - 2) * 0.9; pts.push(new THREE.Vector3(f.x + Math.cos(a) * 32, 0, f.z + Math.sin(a) * 32)); }
-    pts.push(C.home.clone());
-    A.scoutPlan = { pts: pts.map(p => clampToMap(p)), i: 0 };
-  }
+  if (!A.scoutPlan) A.scoutPlan = aiScoutRoute(C, true);
   const P = A.scoutPlan;
-  // Ferit: torna a casa i passa a l'exèrcit
-  if (s.hp < s.maxHp * 0.5 || P.i >= P.pts.length) { s.aiRole = null; orderMove(s, C.home.clone()); return; }
-  if (s.state === STATE.IDLE || (s.state === STATE.MOVING && hDist(s.position, P.pts[P.i]) < 4)) {
+  // Ferit: torna a casa (i es refà abans de tornar a sortir)
+  if (s.hp < s.maxHp * 0.45) { if (!P.hurt) { P.hurt = true; orderMove(s, C.home.clone()); } return; }
+  if (P.hurt) { if (s.state === STATE.IDLE && s.hp >= s.maxHp * 0.9) P.hurt = false; else return; }
+  if (P.i >= P.pts.length) {
+    // Descans a casa i una altra volta al cap d'uns minuts
+    if (!P.restUntil) P.restUntil = C.now + 150;
+    if (C.now >= P.restUntil) A.scoutPlan = aiScoutRoute(C, false);
+    return;
+  }
+  // Següent punt en arribar (o si no hi pot arribar en 25 s: bosc, aigua…)
+  if (s.state === STATE.IDLE || s.state === STATE.ATTACKING || (s.state === STATE.MOVING && hDist(s.position, P.pts[Math.max(0, P.i - 1)]) < 4)
+      || C.now - (P.t || 0) > 25) {
     orderMove(s, P.pts[P.i]);
     P.i++;
+    P.t = C.now;
   }
 }

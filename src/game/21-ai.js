@@ -110,7 +110,7 @@ function nearestFoeTarget(A, pos) {
     if (d < bestD) { bestD = d; best = u; }
   }
   for (const { b } of A.seenBld.values()) {
-    if (b.dead || b.team !== F) continue;
+    if (b.dead || b.team !== F || b.subtype === 'farm') continue;
     const d = hDist(b.position, pos) * 0.8;
     if (d < bestD) { bestD = d; best = b; }
   }

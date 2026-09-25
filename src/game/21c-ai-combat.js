@@ -87,24 +87,27 @@ function aiRetreat(A, C, group) {
   if (group === A.army) { A.army = null; A.nextAttackAt = C.now + 50; }
   if (group === A.raid) { A.raid = null; A.nextRaidAt = C.now + 70; }
 }
-/* Aldeans rivals vistos lluny de les seves defenses (objectiu de les incursions) */
+/* On atacar els aldeans rivals: on se n'han vist fa poc o als seus campaments (serradores, campaments
+   miners, molins), lluny de les torres, Centres i castells. Retorna { position } */
 function aiRaidTarget(A, C) {
   const defs = [...A.seenBld.values()].map(s => s.b).filter(b => !b.dead && buildingStrength(b) > 0);
+  const spots = [];
+  for (const { u, t } of A.seen.values()) if (!u.dead && u.subtype === 'villager' && C.now - t < 90) spots.push(u.position);
+  for (const { b } of A.seenBld.values()) if (!b.dead && (b.subtype === 'lumbercamp' || b.subtype === 'miningcamp' || b.subtype === 'mill')) spots.push(b.position);
   let best = null, bestScore = -Infinity;
-  for (const { u, t } of A.seen.values()) {
-    if (u.dead || u.subtype !== 'villager' || C.now - t > 60) continue;
+  for (const p of spots) {
     let danger = Infinity;
-    for (const b of defs) danger = Math.min(danger, hDist(b.position, u.position));
-    const score = Math.min(danger, 40) - hDist(u.position, C.home) * 0.05;
-    if (danger > 17 && score > bestScore) { bestScore = score; best = u; }
+    for (const b of defs) danger = Math.min(danger, hDist(b.position, p) - (b.subtype === 'castle' ? 6 : 0));
+    const score = Math.min(danger, 40) - hDist(p, C.home) * 0.05;
+    if (danger > 17 && score > bestScore) { bestScore = score; best = p; }
   }
-  return best;
+  return best ? { position: best.clone() } : null;
 }
 /* Objectiu de l'exèrcit: edificis militars, torres i Centres coneguts (els més a prop) */
 function aiObjective(A, C, from) {
   let best = null, bd = Infinity;
   for (const { b } of A.seenBld.values()) {
-    if (b.dead || b.team !== A.foe || b.isWall) continue;
+    if (b.dead || b.team !== A.foe || b.isWall || b.subtype === 'farm') continue;
     const pri = b.subtype === 'towncenter' ? 0.9 : (b.def && b.def.trains) ? 0.8 : buildingStrength(b) > 0 ? 0.85 : 1;
     const d = hDist(b.position, from) * pri;
     if (d < bd) { bd = d; best = b; }
@@ -287,8 +290,8 @@ function aiMonks(A, C) {
   const D = C.D;
   if (C.age >= 2 && D !== DIFFICULTY.easy && !C.has('monastery') && C.villagers.length >= 30 && C.res.wood >= 200 && !A.saving) aiBuild(A, 'monastery', C.home, 12, 32, 2);
   const mon = C.blds.find(b => b.subtype === 'monastery' && !b.underConstruction);
-  if (mon && !A.saving && mon.trainQueue.length < 1 && C.monks.length < (D.micro >= 2 ? 4 : 3) && C.res.gold > 200) queueUnit(mon, 'monk');
-  if (mon && C.res.gold > 500) for (const k of ['fervor', 'sanctity', 'redemption', 'atonement', 'illumination', 'blockprinting']) if (aiTryTech(A, C, k)) break;
+  if (mon && mon.trainQueue.length < 1 && C.monks.length < (D.micro >= 2 ? 4 : 3) && aiAffords(A, C, { gold: 200 })) queueUnit(mon, 'monk');
+  if (mon && aiAffords(A, C, { gold: 500 })) for (const k of ['fervor', 'sanctity', 'redemption', 'atonement', 'illumination', 'blockprinting']) if (aiTryTech(A, C, k)) break;
   const claimed = new Set(C.monks.map(m => m.relicTarget).filter(Boolean));
   for (const m of C.monks) {
     if (m.state !== STATE.IDLE) continue;

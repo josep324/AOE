@@ -22,13 +22,13 @@ function aiEconomy(A, C) {
 
 /* ---------- Aldeans sense parar ---------- */
 function aiVillagerProduction(A, C) {
-  // Estalviant per pujar d'edat: el Centre queda lliure per a l'edat (com quan el jugador la «clica»)
-  if (A.saving) return;
+  // Estalviant per pujar d'edat: només amb el menjar que sobra de la reserva, i deixant lloc a la cua
+  if (A.saving && !aiAffords(A, C, { food: 50 })) return;
   let total = C.villagers.length;
   for (const tc of C.tcs) total += tc.trainQueue.filter(q => q.kind === 'villager').length;
   for (const tc of C.tcs) {
     if (total >= C.D.villagers) break;
-    if (tc.trainQueue.some(it => isTech(it.kind)) || tc.trainQueue.length >= 2) continue;   // investigant una edat: ocupat
+    if (tc.trainQueue.some(it => isTech(it.kind)) || tc.trainQueue.length >= (A.saving ? 1 : 2)) continue;   // investigant una edat: ocupat
     if (queueUnit(tc, 'villager')) total++;
   }
 }
@@ -145,9 +145,10 @@ function aiVillagerWork(A, C) {
   const order = deficits();
   const need = order[0], extra = order[order.length - 1];
   if (!need || !extra || need === extra || want[need] - counts[need] < 1.5 || counts[extra] - want[extra] < 1.5) return;
-  const movers = workers.filter(u => aiVillagerRes(u) === extra && u.carry.amount < 4 && u.state === STATE.GATHERING
-    && !(u.gatherNode && u.gatherNode.subtype === 'farm' && extra !== 'food'));
-  for (const u of movers.slice(0, 2)) aiAssign(A, C, u, need);
+  const movers = workers.filter(u => aiVillagerRes(u) === extra && u.carry.amount < 4 && u.state === STATE.GATHERING);
+  // Com més en falten, més se'n mouen de cop
+  const n = Math.max(2, Math.min(6, Math.ceil(Math.min(want[need] - counts[need], counts[extra] - want[extra]) / 2)));
+  for (const u of movers.slice(0, n)) aiAssign(A, C, u, need);
 }
 
 /* ---------- Campaments on hi ha la feina ---------- */
