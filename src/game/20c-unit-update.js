@@ -1,6 +1,30 @@
 /* =====================================================================
    ACTUALITZACIÓ DE LES UNITATS: màquina d'estats de cada unitat a cada pas de simulació
    ===================================================================== */
+/* Kiting (tiradors de la IA en Difícil/Extrem): mentre recarrega, s'allunya del cos a cos que
+   se li acosta; quan torna a estar a punt, dispara. Retorna true si aquest pas s'ha mogut. */
+const kiteBuf = [];
+function kiteStep(u, dt) {
+  if (u.attackCooldown < 0.3 || u.range < 7) { u.kiteFrom = null; return false; }
+  u.kiteScan = (u.kiteScan || 0) - dt;
+  if (u.kiteScan <= 0) {
+    u.kiteScan = 0.15;
+    u.kiteFrom = null;
+    let ax = 0, az = 0, n = 0;
+    for (const o of unitsNear(u.position.x, u.position.z, 7, kiteBuf)) {
+      if (o.dead || o.garrisoned || !u.isEnemyOf(o) || o.range > 0 || !o.isMilitary || o.category === 'siege' || o.speed > u.speed * 1.1) continue;
+      if (hDist(o.position, u.position) - o.radius - u.radius > 4.5) continue;
+      ax += u.position.x - o.position.x; az += u.position.z - o.position.z; n++;
+    }
+    if (n) { const l = Math.hypot(ax, az) || 1; u.kiteFrom = { x: ax / l, z: az / l }; }
+  }
+  if (!u.kiteFrom) return false;
+  const step = u.speed * dt;
+  u.position.x += u.kiteFrom.x * step;
+  u.position.z += u.kiteFrom.z * step;
+  u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(u.kiteFrom.x, u.kiteFrom.z), 1 - Math.exp(-12 * dt));
+  return true;
+}
 function updateUnit(u, dt) {
   if (u.dead || u.garrisoned) return;
   // Velocitat real (inclou les empentes): la fan servir els tiradors amb Balística
@@ -96,6 +120,7 @@ function updateUnit(u, dt) {
         else setUnitState(u, STATE.IDLE);
         break;
       }
+      if (u.kite && kiteStep(u, dt)) { walking = true; break; }
       if (inAttackRange(u, t)) {
         // Massa a prop (abast mínim del setge): recula
         if (u.minRange && entSurfaceDist(t, u.position.x, u.position.z) - u.radius < u.minRange) {

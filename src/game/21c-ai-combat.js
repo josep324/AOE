@@ -243,34 +243,11 @@ function aiMicro(A, C) {
   }
   for (const u of C.army) if (u.aiRole === 'heal' && !u.garrisoned && !u.garrisonTarget && (u.state === STATE.IDLE || hDist(u.position, C.home) < 15)) { u.aiRole = null; u.aiHeal = false; }
   if (lvl < 2) return;
-  // Kiting: el tirador que acaba de disparar s'allunya del cos a cos que se li acosta
-  for (const u of C.army) {
-    if (u.garrisoned || u.range < 7 || u.category === 'siege') continue;
-    if (u.kiteBack) {
-      if (now - u.kiteT > 0.9 || u.state === STATE.IDLE) {
-        const t = u.kiteBack;
-        u.kiteBack = null;
-        if (t && !t.dead && isAttackable(t)) orderAttack(u, t, false);
-      }
-      continue;
-    }
-    if (u.state !== STATE.ATTACKING || u.attackCooldown < 0.25) continue;
-    let m = null, md = u.radius + 3.2;
-    for (const o of unitsNear(u.position.x, u.position.z, 5, aiNearBuf)) {
-      if (o.team !== A.foe || o.dead || o.range > 0 || !o.isMilitary || o.category === 'siege') continue;
-      const d = hDist(o.position, u.position) - o.radius;
-      if (d < md) { md = d; m = o; }
-    }
-    if (!m || u.speed < m.speed * 0.9) continue;
-    const away = new THREE.Vector3(u.position.x - m.position.x, 0, u.position.z - m.position.z);
-    if (away.lengthSq() < 1e-4) away.set(1, 0, 0);
-    const tgt = u.attackTarget;
-    orderMove(u, clampToMap(away.normalize().multiplyScalar(5).add(u.position)));
-    u.kiteBack = tgt; u.kiteT = now;
-  }
+  // Kiting: els tiradors de la IA s'allunyen del cos a cos mentre recarreguen (es fa a cada pas: kiteStep)
+  for (const u of C.army) if (u.range >= 7 && u.category !== 'siege') u.kite = true;
   // Foc concentrat: els tiradors de l'exèrcit disparen a l'enemic més tocat que tinguin a l'abast
   if (A.army && A.army.phase === 'attack') {
-    const shooters = A.army.units.filter(u => u.range >= 7 && u.category !== 'siege' && u.state === STATE.ATTACKING && !u.kiteBack);
+    const shooters = A.army.units.filter(u => u.range >= 7 && u.category !== 'siege' && u.state === STATE.ATTACKING);
     if (shooters.length >= 3) {
       const c = centroidOf(shooters);
       let best = null, bh = Infinity;

@@ -47,6 +47,14 @@ Brulot (foc, fort contra vaixells), Vaixell de demolició (explota) i Galió art
 **Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 
+**IA** com la de l'AoE II (Fàcil, Normal, Difícil sense trampes; Extrem amb avantatge de recursos):
+aldeans sense parar (fins a 35/70/100/120), cases amb marge, campaments on hi ha la feina, granges, dos o tres Centres
+de Ciutat a l'Edat dels Castells i mercat. Tria una obertura segons la civilització (exploradors, arquers, homes
+d'armes, Castells ràpid o boom), explora la teva base i fa l'exèrcit que contraresta el que ha vist. Fa incursions
+contra els aldeans, ataca amb l'exèrcit reunit (reforços, ariets, retirada si perd), toca la campana quan l'ataquen
+i, en Difícil, fa kiting amb els tiradors i concentra el foc. Tothom comença amb un explorador i a l'Edat dels
+Castells es poden construir més **Centres de Ciutat** (275 fusta, 100 pedra).
+
 **Ordres**: 🔁 **Patrullar** (<kbd>K</kbd>, Shift per afegir punts) · 🛡️ **Escortar** una unitat pròpia (<kbd>Y</kbd>) ·
 ⚔️ soldats inactius (<kbd>,</kbd>) · 🌱 **cua de granges** al Molí (es paguen ara i es resembren soles).
 **Arquers** com a l'AoE II: abast de 4-5 caselles (+1 per Plomes, Punta perforant i Braçal), +3 contra llancers, punteria
@@ -66,6 +74,7 @@ npm run build      # comprova el codi, genera el fitxer únic i actualitza index
 npm run check      # només les comprovacions (noms duplicats, atzar sense llavor, fitxers massa llargs)
 npm test           # compila i passa les proves al navegador (tests/*.test.mjs, amb Playwright)
 node tests/run.mjs ai   # només les proves que contenen «ai» al nom
+node tests/run.mjs --bench   # bancs de proves: la IA sola i IA contra IA durant 25 minuts
 ```
 
 La simulació és **reproduïble**: amb la mateixa llavor (`?seed=123` a l'adreça) i les mateixes ordres, la partida
@@ -89,7 +98,7 @@ src/
     13 navegació     graella, A*, portes per equip
     14 món           generació del mapa (sortides iguals, boscos i recursos a l'atzar)
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
-    21 IA            economia, edats, exèrcit i atacs de l'enemic
+    21 IA            nucli (21), economia (21a), estratègia i producció (21b), combat i micro (21c)
     05b aigua        llacs, rius i guals (graella, shader i navegació)
     20a naval        moll, vaixells, pesca, transport i combat a l'aigua
     08b fauna        cérvols, senglars, llops i peixos
