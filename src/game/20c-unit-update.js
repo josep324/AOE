@@ -25,6 +25,26 @@ function kiteStep(u, dt) {
   u.group.rotation.y = lerpAngle(u.group.rotation.y, Math.atan2(u.kiteFrom.x, u.kiteFrom.z), 1 - Math.exp(-12 * dt));
   return true;
 }
+/* Unitats encallades: si una unitat vol caminar però en 1,5 s gairebé no s'ha mogut (un obstacle,
+   la riba, un edifici al punt de destí…), primer torna a calcular el camí, després se salta el tram
+   i, si tot i així no avança, deixa l'ordre (i la IA o el jugador en donen una altra). */
+function unstick(u, dt, walking) {
+  if (!walking || !u.target) { u.stuckT = 0; u.stuckN = 0; u.stuckRef = null; return; }
+  if (!u.stuckRef) { u.stuckRef = { x: u.position.x, z: u.position.z }; u.stuckT = 0; return; }
+  u.stuckT += dt;
+  if (u.stuckT < 1.5) return;
+  const moved = Math.hypot(u.position.x - u.stuckRef.x, u.position.z - u.stuckRef.z);
+  u.stuckRef.x = u.position.x; u.stuckRef.z = u.position.z; u.stuckT = 0;
+  if (moved > 0.6) { u.stuckN = 0; return; }
+  u.stuckN = (u.stuckN || 0) + 1;
+  if (u.stuckN === 1) setMoveTarget(u, u.target);                        // camí nou
+  else if (u.stuckN === 2 && u.path && u.path.length > 1) u.path.shift();  // se salta el tram
+  else if (u.stuckN >= 3) {
+    u.stuckN = 0;
+    if (u.state === STATE.ATTACKING) { u.attackTarget = null; u.attackMove = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); }
+    else setMoveTarget(u, null);                                          // «ha arribat» tan a prop com podia
+  }
+}
 function updateUnit(u, dt) {
   if (u.dead || u.garrisoned) return;
   // Velocitat real (inclou les empentes): la fan servir els tiradors amb Balística
@@ -254,6 +274,7 @@ function updateUnit(u, dt) {
 
   resolveObstacleCollision(u, dt);
   clampToMap(u.position);
+  unstick(u, dt, walking);
   keepOnLand(u);
   u.position.y = u.naval ? 0 : groundY(u.position.x, u.position.z);
 

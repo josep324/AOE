@@ -82,7 +82,7 @@ function aiDefense(A, C) {
 
 /* ---------- Incursions i exèrcit principal ---------- */
 function aiRetreat(A, C, group) {
-  const home = C.home.clone();
+  const home = C.homeRally.clone();
   for (const u of group.units) if (!u.dead) { u.aiRole = 'return'; u.speedCap = null; orderMove(u, clampToMap(home.clone().add(new THREE.Vector3((u.id % 7) - 3, 0, ((u.id * 3) % 7) - 3)))); }
   if (group === A.army) { A.army = null; A.nextAttackAt = C.now + 50; }
   if (group === A.raid) { A.raid = null; A.nextRaidAt = C.now + 70; }
@@ -231,7 +231,7 @@ function aiMicro(A, C) {
     u.aiHeal = true;
     u.aiRole = 'heal';
     if (sh && hDist(sh.position, u.position) < 70) orderGarrison(u, sh);
-    else orderMove(u, C.home.clone());
+    else orderMove(u, C.homeRally.clone());
   }
   for (const b of C.blds) {
     if (!b.garrison || !b.garrison.length || A.threatened) continue;

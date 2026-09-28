@@ -34,7 +34,14 @@ function keepOnLand(e) {
     return;
   }
   if (waterCell(e.position.x, e.position.z) === 1) {
-    if (e.lastDry) { e.position.x = e.lastDry.x; e.position.z = e.lastDry.z; }
+    // Llisca per la riba: conserva el moviment en l'eix que no entra a l'aigua (si no, torna enrere)
+    if (e.lastDry) {
+      const x = e.position.x, z = e.position.z;
+      if (waterCell(x, e.lastDry.z) !== 1) e.position.z = e.lastDry.z;
+      else if (waterCell(e.lastDry.x, z) !== 1) e.position.x = e.lastDry.x;
+      else { e.position.x = e.lastDry.x; e.position.z = e.lastDry.z; }
+      e.lastDry.copy(e.position);
+    }
   } else (e.lastDry || (e.lastDry = new THREE.Vector3())).copy(e.position);
 }
 /* Direcció cap a la terra més propera (per pescar des de la riba) */

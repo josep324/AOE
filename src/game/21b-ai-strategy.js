@@ -303,7 +303,7 @@ function aiScoutRoute(C, first) {
   if (first) for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2 + 0.4; pts.push(new THREE.Vector3(C.home.x + Math.cos(a) * 30, 0, C.home.z + Math.sin(a) * 30)); }
   const f = C.foeHome, a0 = Math.atan2(C.home.z - f.z, C.home.x - f.x);
   for (let i = 0; i <= 8; i++) { const a = a0 + (i / 8) * Math.PI * 2; pts.push(new THREE.Vector3(f.x + Math.cos(a) * 27, 0, f.z + Math.sin(a) * 27)); }
-  pts.push(C.home.clone());
+  pts.push(C.homeRally.clone());
   return { pts: pts.map(p => clampToMap(p)), i: 0 };
 }
 function aiScout(A, C) {
@@ -313,7 +313,7 @@ function aiScout(A, C) {
   if (!A.scoutPlan) A.scoutPlan = aiScoutRoute(C, true);
   const P = A.scoutPlan;
   // Ferit: torna a casa (i es refà abans de tornar a sortir)
-  if (s.hp < s.maxHp * 0.45) { if (!P.hurt) { P.hurt = true; orderMove(s, C.home.clone()); } return; }
+  if (s.hp < s.maxHp * 0.45) { if (!P.hurt) { P.hurt = true; orderMove(s, C.homeRally.clone()); } return; }
   if (P.hurt) { if (s.state === STATE.IDLE && s.hp >= s.maxHp * 0.9) P.hurt = false; else return; }
   if (P.i >= P.pts.length) {
     // Descans a casa i una altra volta al cap d'uns minuts

@@ -14,7 +14,7 @@ export default async ({ open, assert, log }) => {
       const c = {}; for (const n of S.resourceNodes) c[n.subtype] = (c[n.subtype] || 0) + 1;
       const a = R.townCenter.position, b = R.enemyTC.position;
       const path = R.findPath(a.x + 10, a.z + 10, b.x - 10, b.z - 10);
-      return { m, relics: rel.length, minGap: Math.round(minGap), minBase: Math.round(minBase), c, path: path ? path.length : 0 };
+      return { m, relics: rel.length, minGap: Math.round(minGap), minBase: Math.round(minBase), c, path: path && !path.partial ? path.length : 0 };
     }, m);
     log(JSON.stringify(r));
     assert(r.path > 0, `${m}: no hi ha camí entre les bases`);

@@ -198,6 +198,12 @@ function aiContext(A) {
   const B = BASES[T];
   C.home = (tcs[0] || blds[0] || { position: new THREE.Vector3(B ? B.x : 0, 0, B ? B.z : 0) }).position;
   C.foeHome = aiFoeHome(A);
+  // Punt de retorn a casa: davant del Centre (cap al mig del mapa), mai a dins de l'edifici
+  const toMid = new THREE.Vector3(-C.home.x, 0, -C.home.z);
+  if (toMid.lengthSq() < 1) toMid.set(1, 0, 0);
+  const hr = clampToMap(C.home.clone().addScaledVector(toMid.normalize(), 15));
+  const fc = nearestFreeCell(navCell(hr.x), navCell(hr.z), 10);        // una cel·la lliure (no a sobre d'una casa)
+  C.homeRally = fc ? new THREE.Vector3(navCenter(fc[0]), 0, navCenter(fc[1])) : hr;
   C.age = C.E.age;
   return C;
 }

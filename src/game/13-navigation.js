@@ -132,8 +132,11 @@ function segmentWalkable(ax, az, bx, bz) {
   for (let s = 1; s < steps; s++) {
     const t = s / steps;
     const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
-    if (t * len < 0.8 || (1 - t) * len < 0.8) continue;
     const k = navCell(z) * N + navCell(x);
+    // L'aigua fonda es comprova sempre (una unitat a la riba no pot retallar-ne una cantonada);
+    // els obstacles, no als extrems (la unitat pot sortir de la vora d'un edifici)
+    if (WATER.any && WATER.mask[k] === 1 && !NAV.navalMode) return false;
+    if (t * len < 0.8 || (1 - t) * len < 0.8) continue;
     if (NAV.walk[k] || (NAV.gate[k] && NAV.gate[k] !== NAV.team)) return false;
   }
   return true;
@@ -186,12 +189,14 @@ function findPath(sx, sz, tx, tz) {
   };
   NAV.seen[si] = stamp; NAV.g[si] = 0; NAV.parent[si] = -1;
   push(si, H(si));
-  let found = false, iter = 0;
+  let found = false, iter = 0, best = si, bestH = H(si);
   while (heap.length && iter++ < 220000) {
     const cur = pop();
     if (cur === gi) { found = true; break; }
     if (NAV.closed[cur] === stamp) continue;
     NAV.closed[cur] = stamp;
+    const hc = H(cur);
+    if (hc < bestH) { bestH = hc; best = cur; }
     const ci = cur % N, cj = (cur / N) | 0;
     for (const [dx, dz, cost] of NAV_DIRS) {
       const ni = ci + dx, nj = cj + dz;
@@ -206,10 +211,14 @@ function findPath(sx, sz, tx, tz) {
       }
     }
   }
-  if (!found) return null;
+  // Destí inabastable (tancat per edificis, aigua…): com a l'AoE II, s'hi acosta tant com pot
+  const end = found ? gi : best;
+  if (!found && end === si) return null;
   const cells = [];
-  for (let c = gi; c !== si && c !== -1; c = NAV.parent[c]) cells.push([navCenter(c % N), navCenter((c / N) | 0)]);
-  return cells.reverse();
+  for (let c = end; c !== si && c !== -1; c = NAV.parent[c]) cells.push([navCenter(c % N), navCenter((c / N) | 0)]);
+  cells.reverse();
+  if (!found) cells.partial = true;
+  return cells;
 }
 
 /* Elimina punts intermedis innecessaris: el camí queda en trams rectes */
@@ -235,14 +244,14 @@ function setMoveTarget(u, p) {
   NAV.team = u.team;                  // les portes només deixen passar el seu equip
   // Els vaixells fan servir la graella naval (només aigua fonda)
   const landWalk = NAV.walk;
-  if (u.naval) NAV.walk = NAV.naval;
+  if (u.naval) { NAV.walk = NAV.naval; NAV.navalMode = true; }
   try {
     if (segmentWalkable(u.position.x, u.position.z, p.x, p.z) && (!u.naval || waterCell(p.x, p.z) === 1)) { u.path = [p]; return; }
     const cells = findPath(u.position.x, u.position.z, p.x, p.z);
     if (!cells) { u.path = u.naval ? [] : [p]; return; }
     const pts = cells.map(([x, z]) => new THREE.Vector3(x, 0, z));
     // Un vaixell no pot arribar a un punt de terra: s'atura a la darrera cel·la d'aigua
-    if (!u.naval || waterCell(p.x, p.z) === 1) pts.push(p);
+    if (!cells.partial && (!u.naval || waterCell(p.x, p.z) === 1)) pts.push(p);
     u.path = smoothPath(u.position, pts);
-  } finally { NAV.walk = landWalk; }
+  } finally { NAV.walk = landWalk; NAV.navalMode = false; }
 }
