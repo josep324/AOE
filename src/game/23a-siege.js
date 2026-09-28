@@ -81,11 +81,13 @@ const projGeo = {
   stone: new THREE.IcosahedronGeometry(0.28, 0),
   bigstone: new THREE.IcosahedronGeometry(0.5, 0),
   cannonball: new THREE.SphereGeometry(0.16, 8, 6),
+  bullet: new THREE.SphereGeometry(0.06, 6, 4),
 };
 function projectileMesh(kind) {
   const g = new THREE.Group();
   if (kind === 'axe') g.add(new THREE.Mesh(projGeo.axeHandle, mat(0x6b4423)), new THREE.Mesh(projGeo.axeHead, mat(0x9ca3ad, { metalness: 0.7, roughness: 0.4 })));
   else if (kind === 'scimitar') g.add(new THREE.Mesh(projGeo.blade, mat(0xc8ccd2, { metalness: 0.8, roughness: 0.3 })));
+  else if (kind === 'bullet') g.add(new THREE.Mesh(projGeo.bullet, mat(0x2a2a2c, { metalness: 0.7, roughness: 0.35 })));
   else if (kind === 'cannonball') g.add(new THREE.Mesh(projGeo.cannonball, mat(0x1c1c1e, { metalness: 0.6, roughness: 0.4 })));
   else if (kind === 'bolt') g.add(new THREE.Mesh(projGeo.bolt, mat(0x5a3a1e)), new THREE.Mesh(projGeo.boltTip, mat(0x777777)));
   else g.add(new THREE.Mesh(kind === 'bigstone' ? projGeo.bigstone : projGeo.stone, mat(0x8a857b, { flatShading: true })));
@@ -96,6 +98,7 @@ function hitDamage(u, t, type) {
   if (t.mounted) d += u.bonusCav || 0;
   if (t.category === 'archer') d += u.bonusArcher || 0;
   if (t.spearLine) d += u.bonusSpear || 0;
+  if (t.category === 'infantry') d += u.bonusInf || 0;
   if (t.isUnique) d += u.bonusUnique || 0;
   if (t.naval) d += u.bonusShip || 0;
   // Avantatge d'altura (com a l'AoE II): +25% contra unitats més baixes, −25% contra les més altes
@@ -125,6 +128,18 @@ function fireProjectile(u, t) {
   const type = u.meleeShot ? 0 : 1;
   const dmg = hitDamage(u, t, type);
   if (kind === 'arrow') { spawnArrow(from, t, dmg, u); return; }
+  if (kind === 'bullet') {
+    // Canoner: fumarada a la boca del canó i bala gairebé recta; pot fallar (poca precisió)
+    const ry = u.group.rotation.y;
+    from.set(u.position.x + Math.sin(ry) * 0.9, 1.45 + u.position.y, u.position.z + Math.cos(ry) * 0.9);
+    spawnParticles(from.clone(), 0xe4e0d8, 6, null);
+    const hit = t.kind !== 'unit' || rand() < (u.accuracy ?? 1);
+    const end = aimPoint(t);
+    if (!hit) { end.x += randRange(-1.6, 1.6); end.z += randRange(-1.6, 1.6); end.y = groundY(end.x, end.z) + 0.1; }
+    spawnProjectile({ mesh: projectileMesh('bullet'), from, end, target: hit ? t : null, shooter: u, arcK: 0.01, speed: 70, spin: 0,
+      onHit: () => { if (hit && t && !t.dead && !t.garrisoned) applyDamage(t, dmg, u); } });
+    return;
+  }
   if (kind === 'cannonball') {
     // Canó: fumarada i bala ràpida amb dany de cos a cos
     from.set(u.position.x + Math.sin(u.group.rotation.y) * 1.6, 1.1 + u.position.y, u.position.z + Math.cos(u.group.rotation.y) * 1.6);

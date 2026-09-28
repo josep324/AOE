@@ -210,6 +210,7 @@ function updateSelectionUI(panelOnly = false) {
       const b = makeActionButton(locked ? `<span class="lockwrap">${ic}<i class="lock">🔒</i></span>` : ic, shortLabel(kind), costHTML(cost),
         kind === 'villager' ? 'C' : '', () => queueUnit(first, kind), true);
       b.dataset.item = kind;
+      if (tech) b.classList.add(d.ageUp ? 'age' : 'tech');   // fons diferent del de les unitats
       if (tech && (d.upgradeTo || d.elite || d.ageUp)) b.insertAdjacentHTML('beforeend', '<span class="upg">⬆</span>');
       b.title = tech
         ? `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
@@ -373,7 +374,10 @@ function updateSelectionUI(panelOnly = false) {
 
 /* Mercat: 100 unitats de recurs per or; cada operació mou el preu */
 /* Part del preu que es cobra en vendre (els Sarraïns paguen menys comissió) */
-function sellRate(team) { return civOf(team).mods.marketFee || 0.7; }
+function sellRate(team) {
+  const r = civOf(team).mods.marketFee || 0.7;
+  return teamOf(team).mods.guilds ? 1 - (1 - r) / 2 : r;   // Gremis: meitat de comissió
+}
 function marketTrade(team, r, buy) {
   const T = teamOf(team), R = T.res, price = T.prices[r];
   if (buy) {

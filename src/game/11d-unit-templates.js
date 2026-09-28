@@ -61,7 +61,7 @@ function buildUnitVisual(e, kind, team) {
       model.add(carryMesh);
       e.carryMesh = carryMesh;
     }
-    if (kind === 'fireship') {
+    if ((SHIP_BASE[kind] || kind) === 'fireship') {
       // Braseres encesos a coberta (no es fusionen: brillen)
       for (const z of [0.9, -0.4]) {
         const f = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.4, 8), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.9 }));

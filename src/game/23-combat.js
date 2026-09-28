@@ -247,13 +247,16 @@ function updateProjectiles(dt) {
 function updateDefensiveBuildings(dt) {
   for (const b of state.buildings) {
     const isTC = b.subtype === 'towncenter';
-    if ((!isTC && !(b.def && b.def.arrows)) || b.dead || b.underConstruction) continue;
-    // Els refugiats es curen lentament
-    if (b.garrison) for (const u of b.garrison) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5);
+    if ((!isTC && !(b.def && (b.def.arrows || b.def.cannon))) || b.dead || b.underConstruction) continue;
+    const M = teamOf(b.team).mods;
+    // Els refugiats es curen lentament (Medicina herbal: 4 vegades més de pressa)
+    if (b.garrison) for (const u of b.garrison) u.hp = Math.min(u.maxHp, u.hp + dt * 0.5 * M.garrisonHeal);
     b.arrowCooldown = (b.arrowCooldown ?? 0) - dt;
     if (b.arrowCooldown > 0) continue;
-    const C0 = isTC ? CONFIG.TC_ARROWS : b.def.arrows;
-    const lvl = b.subtype === 'watchtower' ? teamOf(b.team).mods.towerLevel : 0;
+    const cannon = b.def && b.def.cannon;
+    const C0 = isTC ? CONFIG.TC_ARROWS : cannon || b.def.arrows;
+    const tower = b.subtype === 'watchtower';
+    const lvl = tower ? M.towerLevel : 0;
     const C = lvl ? { ...C0, damage: C0.damage + lvl, range: C0.range + (lvl >= 2 ? 1 : 0) } : C0;
     let target = null, bestD = Infinity;
     for (const u of unitsNear(b.position.x, b.position.z, C.range + (b.footprint ? b.footprint.hw : b.radius) + 1, targetBuf)) {
@@ -270,15 +273,28 @@ function updateDefensiveBuildings(dt) {
     }
     if (!target) { b.arrowCooldown = 0.3; continue; }
     b.arrowCooldown = C.reload / COMBAT_TEMPO;
-    const M = teamOf(b.team).mods;
-    const arrows = (C.count || 1) + (isTC ? 0 : M.towerArrows) + Math.min(b.subtype === 'castle' ? 20 : 10, b.garrison ? b.garrison.length : 0);
+    // Projectils roents: +125% contra vaixells
+    const vsShip = target.naval && M.heatedShot ? 2.25 : 1;
+    if (cannon) towerCannon(b, target, Math.round(computeDamage(C.damage, target, 0) * vsShip));
+    const arrows = (cannon ? 0 : (C.count || 1) + (isTC ? 0 : M.towerArrows)) + Math.min(b.subtype === 'castle' ? 20 : 10, b.garrison ? b.garrison.length : 0);
     const spread = isTC ? 3.5 : b.subtype === 'castle' ? 4 : 0.6;
-    const dmg = C.damage + teamOf(b.team).mods.buildingArrow;
+    const dmg = (cannon ? 5 : C.damage) + M.buildingArrow + (tower || cannon ? M.towerAttack : 0);
     for (let i = 0; i < arrows; i++) {
       const from = new THREE.Vector3(b.position.x + randRange(-spread, spread), (isTC ? 5.5 : (b.height || 7) - 1) + rand() + b.position.y, b.position.z + randRange(-spread, spread));
-      spawnArrow(from, target, computeDamage(dmg, target, 1), b, i * 0.12);
+      spawnArrow(from, target, Math.round(computeDamage(dmg, target, 1) * vsShip), b, i * 0.12);
     }
   }
+}
+/* Torre de bombarda: bala de canó (dany de cos a cos) amb fumarada */
+function towerCannon(b, t, dmg) {
+  const from = new THREE.Vector3(b.position.x, (b.height || 8) - 1.4 + b.position.y, b.position.z);
+  const dir = new THREE.Vector3(t.position.x - from.x, 0, t.position.z - from.z).normalize();
+  from.addScaledVector(dir, 1.6);
+  spawnParticles(from.clone(), 0xd8d4cc, 10, null);
+  const gun = b.model && b.model.userData.cannon;
+  if (gun) gun.rotation.y = Math.atan2(dir.x, dir.z) - b.model.rotation.y;
+  spawnProjectile({ mesh: projectileMesh('cannonball'), from, end: aimPoint(t), target: t, shooter: b, arcK: 0.04, speed: 40, spin: 0,
+    onHit: () => { if (t && !t.dead && !t.garrisoned) applyDamage(t, dmg, b); spawnParticles(aimPoint(t), 0x6a6258, 6, null); } });
 }
 
 function orderGarrison(u, b) {

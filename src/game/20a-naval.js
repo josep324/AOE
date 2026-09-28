@@ -3,7 +3,8 @@
    Els vaixells naveguen per una graella pròpia (només aigua fonda). El Moll es construeix
    sobre l'aigua tocant a la riba: els aldeans el fan des de terra i els vaixells hi arriben per mar.
    ===================================================================== */
-const SHIP_RADIUS = { fishingship: 1.0, transport: 1.45, galley: 1.3, wargalley: 1.35, galleon: 1.6, fireship: 1.2, demoship: 1.0, cannongalleon: 1.7 };
+const SHIP_RADIUS = { fishingship: 1.0, transport: 1.45, galley: 1.3, wargalley: 1.35, galleon: 1.6, fireship: 1.2, demoship: 1.0, cannongalleon: 1.7,
+  fastfireship: 1.2, heavydemo: 1.05, elitecannongalleon: 1.75 };
 
 /* Cel·la més propera (espiral) que compleix una condició */
 function nearestCellWhere(p, pred, maxR = 8) {
@@ -124,7 +125,7 @@ function explodeDemolition(u, t) {
   const p = t.position || u.position;
   spawnParticles(atGround(p.x, 1.2, p.z), 0xff7a1a, 26, null);
   spawnParticles(atGround(p.x, 1.6, p.z), 0x3a3430, 18, null);
-  const R = 3.4;
+  const R = u.demoRadius || 3.4;
   for (const e of unitsNear(p.x, p.z, R + 2, splashBuf)) {
     if (e === u || e.dead || e.garrisoned) continue;
     const d = hDist(e.position, p) - e.radius;
@@ -133,7 +134,7 @@ function explodeDemolition(u, t) {
   }
   for (const b of state.buildings.slice()) {
     if (b.team === u.team || b.dead) continue;
-    if (entSurfaceDist(b, p.x, p.z) <= R) applyDamage(b, computeDamage(u.attack, b, 0, 40), u);
+    if (entSurfaceDist(b, p.x, p.z) <= R) applyDamage(b, computeDamage(u.attack, b, 0, u.vsBuilding), u);
   }
   killEntity(u, null);
 }

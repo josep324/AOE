@@ -193,6 +193,19 @@ const WEAPONS = {
     piece(arm, UG.box, METAL, { y: tipY - 0.05, z: tipZ - 0.1, x: 0.1, sx: 0.2, sy: 0.02, sz: 0.3, rx, metal: true });
     piece(arm, UG.cone, METAL, { y: tipY + dy * 0.18, z: tipZ + dz * 0.18, rx, sx: 0.05, sy: 0.3, sz: 0.05, metal: true });
   },
+  handgun(arm) {
+    // Canó de mà: tub de ferro amb boca eixamplada sobre una culata de fusta
+    piece(arm, UG.box, WOOD, { y: -0.58, z: 0.12, sx: 0.07, sy: 0.08, sz: 0.5 });
+    piece(arm, taper(0.035, 0.04, 0.9, 8), DARK_METAL, { y: -0.52, z: 0.7, rx: Math.PI / 2, metal: true });
+    piece(arm, taper(0.05, 0.04, 0.08, 8), DARK_METAL, { y: -0.52, z: 1.14, rx: Math.PI / 2, metal: true });
+    piece(arm, taper(0.012, 0.012, 0.2, 5), 0x3a2e24, { y: -0.44, z: 0.36, rx: 0.4 });   // metxa
+  },
+  keg(torso) {
+    // Petard: barril d'explosius als braços amb la metxa
+    piece(torso, taper(0.2, 0.2, 0.36, 12), 0x5a3a22, { y: 1.0, z: 0.38, rx: Math.PI / 2 });
+    for (const dz of [-0.12, 0.12]) piece(torso, taper(0.206, 0.206, 0.03, 12), DARK_METAL, { y: 1.0, z: 0.38 + dz, rx: Math.PI / 2, metal: true });
+    piece(torso, taper(0.01, 0.01, 0.3, 4), 0x1a1410, { y: 1.26, z: 0.42, rx: 0.5 });
+  },
   crossbow(arm) {
     piece(arm, UG.box, WOOD, { y: -0.58, z: 0.3, sx: 0.07, sy: 0.07, sz: 0.7 });
     piece(arm, arcGeo(0.34, 0.022, Math.PI * 0.8), 0x3a2e24, { y: -0.58, z: 0.62, rx: Math.PI / 2, rz: Math.PI * 0.1 });
@@ -428,6 +441,22 @@ function buildSoldierRig(kind, team, arch) {
     piece(t, taper(0.02, 0.02, 1.4, 6), 0x2a2622, { y: 2.1, z: -0.3 });
     piece(t, UG.box, T.color, { x: 0.13, y: 2.45, z: -0.3, sx: 0.25, sy: 0.6, sz: 0.02 });
     piece(t, UG.sphere, 0xf2eee4, { x: 0.13, y: 2.5, z: -0.29, sx: 0.08, sy: 0.08, sz: 0.02 });
+    return { rig, parts: P };
+  }
+  // Pólvora: canoner (canó de mà, banya de pólvora i bandolera) i petard (barril d'explosius)
+  if (kind === 'handcannon' || kind === 'petard') {
+    const gun = kind === 'handcannon';
+    if (arch === 'western') gun ? HATS.kettle(t) : HATS.coif(t, 0x6a5a48);
+    else if (arch === 'middleeast') HATS.turban(t, gun ? 0xe8dcc0 : 0x8a7a5a);
+    else gun ? HATS.jingasa(t) : HATS.hachimaki(t, T.color);
+    if (gun) {
+      WEAPONS.handgun(P.armR);
+      piece(t, UG.box, LEATHER, { y: 1.2, z: 0.02, sx: 0.06, sy: 0.9, sz: 0.66, rz: 0.7 });
+      piece(t, taper(0.03, 0.07, 0.3, 8), 0xe8dcc0, { x: 0.3, y: 0.85, z: -0.1, rz: 1.2 });
+    } else {
+      WEAPONS.keg(t);
+      piece(t, UG.box, T.color, { y: 1.35, z: -0.28, sx: 0.4, sy: 0.3, sz: 0.1 });
+    }
     return { rig, parts: P };
   }
   // Cap (millor casc com més alt és el nivell)

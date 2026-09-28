@@ -66,6 +66,16 @@ Castells es poden construir més **Centres de Ciutat** (275 fusta, 100 pedra).
 Tecnologies: Anell del polze (no fallen i disparen més de pressa), Balística (apunten on anirà l'objectiu), Llinatges,
 Ramaderia, Escuders, Muralla fortificada i Heretgia.
 
+**Pólvora i unitats que faltaven** (Imperial, amb Química): 🔫 **Canoner** a la Galeria de tir (tret de 17, +10 contra
+infanteria, lent i imprecís; no el milloren les fletxes de la Ferreria), 💣 **Canó bombarda** al Taller de setge,
+🧨 **Petard** al Castell (esclata contra muralles i edificis, +500) i 💣 **Torre de bombarda** (tecnologia a la Universitat).
+Millores de vaixell: Brulot ràpid, Vaixell de demolició pesant i Galió artiller d'elit.
+Tecnologies noves: Tàctica part, Subministraments, Gambesons, Incendi, Bardissa de plaques, Espitlleres, Projectils roents,
+Cadafals, Sapadors, Lleva, Medicina herbal, Caravana, Gremis, Guàrdia i Patrulla urbana i Mestre d'aixa.
+Als botons, les tecnologies tenen el fons blavós i les edats daurat (a més de la fletxa ⬆ de les millores).
+Queden fora les unitats i tecnologies d'altres civilitzacions (elefants, missioners, àguiles…) i les que depenen de
+coses que el joc no té (tributs: Encunyació i Banca; Espies, Teocràcia i Matacans).
+
 ## Desenvolupar
 
 Cal [Node.js](https://nodejs.org) 18 o superior.

@@ -263,3 +263,20 @@ function kRamFrame(g, x, z, rotY = 0, material = null) {
   kcyl(f, 0.18, 0.18, 2.8, 8, KM.bark, 0, 0.95, 0.2, [Math.PI / 2, 0, 0]);
   g.add(f);
 }
+/* Torre de bombarda: torre de pedra massissa amb merlets i un canó giratori a dalt */
+COMMON_BUILDERS.bombardtower = (g, { team }) => {
+  kbox(g, 3.0, 0.4, 3.0, KM.stone, 0, 0.2, 0);
+  kcyl(g, 1.2 * Math.SQRT2, 1.45 * Math.SQRT2, 5.0, 4, KM.stone, 0, 2.9, 0, [0, Math.PI / 4, 0]);
+  kopening(g, 0.7, 1.2, 0, 0.4, 1.4, 0, 'round', KM.timber);
+  kopening(g, 0.22, 0.55, 0, 3.2, 1.3, 0, 'flat');
+  kbox(g, 3.2, 0.3, 3.2, KM.stone, 0, 5.55, 0);
+  battlements(g, 3.2, 3.2, 5.7, KM.stone, { size: 0.36, gap: 0.3, h: 0.45, thick: 0.25 });
+  // Canó sobre una cureta de fusta (peça animada: apunta a l'objectiu)
+  const gun = animPart(g, 'cannon', 0, 5.7, 0);
+  kbox(gun, 0.9, 0.35, 1.1, KM.timber, 0, 0.18, 0);
+  for (const sx of [-1, 1]) kcyl(gun, 0.22, 0.22, 0.08, 10, KM.darkwood, sx * 0.5, 0.2, 0.3, [0, 0, Math.PI / 2]);
+  kcyl(gun, 0.17, 0.22, 1.7, 10, KM.iron, 0, 0.55, 0.45, [Math.PI / 2 - 0.12, 0, 0]);
+  kcyl(gun, 0.2, 0.2, 0.12, 10, KM.iron, 0, 0.62, 1.25, [Math.PI / 2 - 0.12, 0, 0]);
+  kBanner(g, team, 1.3, 1.56, 2.6);
+  return 7.0;
+};

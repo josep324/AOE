@@ -30,6 +30,7 @@ function buildBlockReason(type, team = PLAYER.id) {
   if ((def.age || 0) > teamOf(team).age) return `Requereix: ${CONFIG.AGES[def.age].name}`;
   if (def.dock && !WATER.any) return 'En aquest mapa no hi ha aigua per a un Moll';
   if (def.requires && !hasCompleted(def.requires, team)) return `Requereix: ${CONFIG.BUILDINGS[def.requires].name}`;
+  if (def.requiresTech && !teamOf(team).techs.has(def.requiresTech)) return `Cal investigar abans: ${CONFIG.TECHS[def.requiresTech].name}`;
   if (!canAfford(costFor(type, team), team)) return `Recursos insuficients: cal ${costText(costFor(type, team))}`;
   return null;
 }

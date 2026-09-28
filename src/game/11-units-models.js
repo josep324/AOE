@@ -24,19 +24,21 @@ function setUnitStats(e, kind) {
   const mounted = cat === 'cavalry' || !!d.mounted;
   e.speed = d.speed * (cat === 'villager' ? M.villagerSpeed : cat === 'monk' ? M.monkSpeed : cat === 'ship' ? M.shipSpeed : 1)
     * (M.speedMul[cat] || 1) * (mounted ? M.mountedSpeed : 1);
-  e.accuracy = M.perfectAim[cat] ? 1 : (d.accuracy || 1);
+  const gun = !!d.gunpowder, line = d.line || kind;   // pólvora: sense les millores de fletxa ni l'Anell del polze
+  e.accuracy = M.perfectAim[cat] && !gun ? 1 : (d.accuracy || 1);
   e.convRange = d.convRange ? d.convRange + M.convRange : 0;
   e.healRange = d.healRange || 0;
-  e.attack = (el ? el.attack : d.attack) + (M.attack[cat] || 0);
+  e.attack = (el ? el.attack : d.attack) + (gun ? 0 : (M.attack[cat] || 0));
   const baseRange = el && el.range ? el.range : (d.range || 0);
-  e.range = baseRange + (baseRange ? (M.range[cat] || 0) + (M.unitRange[kind] || 0) : 0);
+  e.range = baseRange + (baseRange ? (gun ? 0 : (M.range[cat] || 0)) + (M.unitRange[kind] || 0) : 0);
   e.minRange = d.minRange || 0;
   e.reach = d.reach || 0.45;
-  e.reload = d.reload * (M.reloadMul[cat] || 1) / COMBAT_TEMPO;
-  const ma = cat === 'villager' ? M.villagerArmor : (M.armor[cat] || [0, 0]);
-  e.armor = [d.armor[0] + ma[0], d.armor[1] + ma[1] + (cat === 'ship' ? M.shipArmor : 0)];
+  e.reload = d.reload * (gun ? 1 : (M.reloadMul[cat] || 1)) / COMBAT_TEMPO;
+  const ma = cat === 'villager' ? M.villagerArmor : (M.armor[cat] || [0, 0]), la = M.lineArmor[line] || [0, 0];
+  e.armor = [d.armor[0] + ma[0] + la[0], d.armor[1] + ma[1] + la[1] + (cat === 'ship' ? M.shipArmor : 0)];
   e.bonusShip = d.bonusShip || 0;
   e.demolition = !!d.demolition;
+  e.demoRadius = d.demoRadius || 3.4;
   e.los = d.los;
   e.vsBuilding = (d.vsBuilding || 0) + (M.vsBuilding[cat] || 0);
   e.bonusCav = d.bonusCav || 0;
@@ -51,13 +53,14 @@ function setUnitStats(e, kind) {
   e.garrisonCap = (d.garrison || 0) + (kind === 'transport' ? M.transportCap : 0);
   e.mounted = mounted;
   e.bonusArcher = d.bonusArcher || 0;
-  e.bonusSpear = d.bonusSpear || 0;
+  e.bonusSpear = (d.bonusSpear || 0) + (M.lineBonusSpear[line] || 0);
+  e.bonusInf = d.bonusInf || 0;
   e.spearLine = kind === 'spearman' || d.line === 'spearman';
   if (cat === 'siege') e.vsBuilding = Math.round(e.vsBuilding * M.siegeBldMul);
   const newMax = Math.round(((el ? el.hp : d.hp) + (M.unitHp[kind] || 0)) * (M.hpMul[cat] || 1)) + (cat === 'villager' ? M.villagerHp : cat === 'monk' ? M.monkHp : 0) + (mounted ? M.mountedHp : 0);
   if (e.maxHp) e.hp += newMax - e.maxHp;
   e.maxHp = newMax;
-  e.barH = cat === 'ship' ? (kind === 'cannongalleon' || kind === 'galleon' ? 5.2 : 3.8) : e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
+  e.barH = cat === 'ship' ? (line === 'cannongalleon' || kind === 'galleon' ? 5.2 : 3.8) : e.mounted ? 3.4 : cat === 'trade' ? 2.9 : cat === 'siege' ? (kind === 'trebuchet' ? 4.5 : 3.0) : 2.75;
 }
 function applyUnitStats(e, kind) {
   setUnitStats(e, kind);

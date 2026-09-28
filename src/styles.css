@@ -288,6 +288,8 @@
 .cc{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
 .rd{display:inline-block;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 .rd.food{background:#e0604a}.rd.wood{background:#b07a44}.rd.gold{background:#ffd23a}.rd.stone{background:#b8b8bc}
+.action-btn.tech{background:linear-gradient(180deg,#2e3d4a,#19222b)}
+.action-btn.age{background:linear-gradient(180deg,#54431f,#2c2210)}
 .action-btn .upg{position:absolute;top:2px;left:3px;font-size:9px;color:#8dff6a;font-weight:800}
 .mini.grp{width:46px}
 .mini.grp .st{font-size:10px;font-weight:700;color:var(--gold);top:auto;bottom:6px;right:2px;text-shadow:0 1px 2px #000}

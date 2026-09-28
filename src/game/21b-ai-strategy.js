@@ -18,15 +18,16 @@ function aiPickStrategy(A) {
 const AI_AGE_VILLS = { scoutrush: [21, 30, 55], archers: [22, 31, 55], maa: [20, 30, 55], fastcastle: [24, 27, 55], boom: [26, 34, 60] };
 /* Edifici que entrena cada tipus d'unitat (línia base) */
 const AI_TRAINER = { militia: 'barracks', spearman: 'barracks', archer: 'archeryrange', skirmisher: 'archeryrange', cavarcher: 'archeryrange',
-  scout: 'stable', knight: 'stable', camel: 'stable', ram: 'siegeworkshop', mangonel: 'siegeworkshop', scorpion: 'siegeworkshop',
+  handcannon: 'archeryrange', scout: 'stable', knight: 'stable', camel: 'stable', ram: 'siegeworkshop', mangonel: 'siegeworkshop', scorpion: 'siegeworkshop',
+  bombard: 'siegeworkshop',
   trebuchet: 'castle', '@unique': 'castle' };
 /* Composició de cada obertura per edat (Feudal, Castells, Imperial) */
 const AI_CORE = {
-  scoutrush: [{ scout: 0.7, spearman: 0.3 }, { knight: 0.5, archer: 0.25, spearman: 0.1, ram: 0.15 }, { knight: 0.4, archer: 0.2, '@unique': 0.15, ram: 0.1, trebuchet: 0.05, spearman: 0.1 }],
-  archers: [{ archer: 0.65, skirmisher: 0.15, spearman: 0.2 }, { archer: 0.45, knight: 0.2, skirmisher: 0.1, ram: 0.15, '@unique': 0.1 }, { archer: 0.35, knight: 0.2, '@unique': 0.2, ram: 0.1, trebuchet: 0.05, skirmisher: 0.1 }],
-  maa: [{ militia: 0.6, archer: 0.3, spearman: 0.1 }, { militia: 0.35, archer: 0.25, '@unique': 0.2, ram: 0.15, spearman: 0.05 }, { militia: 0.3, archer: 0.2, '@unique': 0.3, ram: 0.1, trebuchet: 0.05, spearman: 0.05 }],
-  fastcastle: [{ spearman: 0.5, skirmisher: 0.5 }, { knight: 0.45, archer: 0.2, '@unique': 0.2, ram: 0.15 }, { knight: 0.35, archer: 0.2, '@unique': 0.25, ram: 0.1, trebuchet: 0.05, spearman: 0.05 }],
-  boom: [{ spearman: 0.5, archer: 0.5 }, { '@unique': 0.35, archer: 0.3, spearman: 0.15, ram: 0.2 }, { '@unique': 0.35, archer: 0.25, spearman: 0.1, ram: 0.15, mangonel: 0.1, trebuchet: 0.05 }],
+  scoutrush: [{ scout: 0.7, spearman: 0.3 }, { knight: 0.5, archer: 0.25, spearman: 0.1, ram: 0.15 }, { knight: 0.4, archer: 0.15, '@unique': 0.15, ram: 0.1, bombard: 0.05, trebuchet: 0.05, spearman: 0.1 }],
+  archers: [{ archer: 0.65, skirmisher: 0.15, spearman: 0.2 }, { archer: 0.45, knight: 0.2, skirmisher: 0.1, ram: 0.15, '@unique': 0.1 }, { archer: 0.3, knight: 0.2, '@unique': 0.2, handcannon: 0.1, ram: 0.05, trebuchet: 0.05, skirmisher: 0.1 }],
+  maa: [{ militia: 0.6, archer: 0.3, spearman: 0.1 }, { militia: 0.35, archer: 0.25, '@unique': 0.2, ram: 0.15, spearman: 0.05 }, { militia: 0.3, archer: 0.1, handcannon: 0.1, '@unique': 0.3, ram: 0.1, trebuchet: 0.05, spearman: 0.05 }],
+  fastcastle: [{ spearman: 0.5, skirmisher: 0.5 }, { knight: 0.45, archer: 0.2, '@unique': 0.2, ram: 0.15 }, { knight: 0.35, archer: 0.15, '@unique': 0.25, ram: 0.05, bombard: 0.1, trebuchet: 0.05, spearman: 0.05 }],
+  boom: [{ spearman: 0.5, archer: 0.5 }, { '@unique': 0.35, archer: 0.3, spearman: 0.15, ram: 0.2 }, { '@unique': 0.35, archer: 0.2, handcannon: 0.05, spearman: 0.1, ram: 0.1, mangonel: 0.1, bombard: 0.05, trebuchet: 0.05 }],
 };
 /* Què contraresta cada tipus d'unitat rival (el triangle de l'AoE II) */
 const AI_COUNTER = {
@@ -34,8 +35,8 @@ const AI_COUNTER = {
   skirm: { militia: 1, knight: 0.6, scout: 0.4 },
   cavalry: { spearman: 1, camel: 0.8 },
   camel: { militia: 0.8, spearman: 0.4, archer: 0.5 },
-  spear: { archer: 1, militia: 0.5, scorpion: 0.2 },
-  infantry: { archer: 1, knight: 0.5, scorpion: 0.2 },
+  spear: { archer: 1, militia: 0.5, scorpion: 0.2, handcannon: 0.3 },
+  infantry: { archer: 1, knight: 0.5, scorpion: 0.2, handcannon: 0.5 },
   siege: { knight: 1, scout: 0.5 },
   monk: { scout: 1, knight: 0.4 },
 };
@@ -122,7 +123,8 @@ function aiComposition(A, C) {
   for (const u of Object.keys(w)) {
     const kind = u === '@unique' ? uniqueUnitOf(C.T) : currentKind(C.T, u);
     const d = CONFIG.UNITS[kind];
-    if (!d || (d.age || 0) > C.age || ((d.civ || d.unique) && (d.civ || d.unique) !== C.E.civ)) delete w[u];
+    if (!d || (d.age || 0) > C.age || ((d.civ || d.unique) && (d.civ || d.unique) !== C.E.civ)
+        || (d.requiresTech && !C.E.techs.has(d.requiresTech))) delete w[u];
   }
   const sum = Object.values(w).reduce((a, b) => a + b, 0) || 1;
   for (const u of Object.keys(w)) w[u] /= sum;
@@ -204,16 +206,20 @@ function aiAgesAndTechs(A, C) {
   const comp = aiComposition(A, C);
   const has = (...kinds) => kinds.some(k => (comp[k] || 0) > 0.08);
   const mil = [];
-  if (has('militia', 'spearman', '@unique')) mil.push('forging', 'scalearmor', 'ironcasting', 'chainmail', 'squires', 'blastfurnace', 'platemail');
-  if (has('archer', 'skirmisher', 'cavarcher')) mil.push('fletching', 'paddedarcher', 'bodkin', 'leatherarcher', 'thumbring', 'ballistics', 'bracer', 'ringarcher');
-  if (has('scout', 'knight', 'camel', 'cavarcher')) mil.push('forging', 'barding', 'bloodlines', 'ironcasting', 'husbandry', 'chainbarding', 'blastfurnace');
+  if (has('militia', 'spearman', '@unique')) mil.push('forging', 'scalearmor', 'ironcasting', 'chainmail', 'squires', 'blastfurnace', 'platemail', 'arson');
+  if (has('militia')) mil.push('supplies', 'gambesons');
+  if (has('archer', 'skirmisher', 'cavarcher', 'handcannon')) mil.push('fletching', 'paddedarcher', 'bodkin', 'leatherarcher', 'thumbring', 'ballistics', 'bracer', 'ringarcher');
+  if (has('cavarcher')) mil.push('parthian');
+  if (has('scout', 'knight', 'camel', 'cavarcher')) mil.push('forging', 'barding', 'bloodlines', 'ironcasting', 'husbandry', 'chainbarding', 'blastfurnace', 'platebarding');
   for (const [k, d] of Object.entries(CONFIG.TECHS)) {
     if (!d.upgradeTo) continue;
     const line = CONFIG.UNITS[d.upgradeTo].line;
     if (line && has(line)) mil.push(k);
   }
   if (hasCompleted('castle', C.T)) { mil.push('elite_' + uniqueUnitOf(C.T)); for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.civ === C.E.civ && !d.elite) mil.push(k); }
-  if (C.age >= 2) mil.push('chemistry', 'guardtower', 'siegeengineers', 'keep');
+  if (C.age >= 2) mil.push('chemistry', 'guardtower', 'arrowslits', 'siegeengineers', 'keep', 'conscription');
+  if (C.age >= 3 && C.D.towers) mil.push('bombardtowertech');
+  if (hasCompleted('castle', C.T) && C.age >= 3) mil.push('hoardings');
   n = 0;
   const R = C.res;
   for (const k of mil) {
@@ -232,7 +238,7 @@ function aiAffords(A, C, cost) {
   return true;
 }
 /* ---------- Producció militar ---------- */
-const AI_SIEGE_CAP = { ram: 5, mangonel: 3, scorpion: 3, trebuchet: 2 };
+const AI_SIEGE_CAP = { ram: 5, mangonel: 3, scorpion: 3, trebuchet: 2, bombard: 3 };
 function aiProduction(A, C) {
   const D = C.D;
   // Edat Fosca: només economia (si l'ataquen, milícia)
@@ -259,11 +265,15 @@ function aiProduction(A, C) {
       aiBuild(A, 'castle', aiHighSpot(C.home.clone().addScaledVector(dir, 22), 14), 0, 18, 4);
     }
     // Torres de defensa als campaments més exposats
-    if (C.age >= 1 && !A.wantTC && C.count('watchtower') < D.towers && C.res.stone >= 150 && C.villagers.length >= 20) {
+    // (a l'Imperial, torres de bombarda si en té la tecnologia)
+    const tower = C.E.techs.has('bombardtowertech') ? 'bombardtower' : 'watchtower';
+    const isTower = (t) => t.subtype === 'watchtower' || t.subtype === 'bombardtower';
+    if (C.age >= 1 && !A.wantTC && C.count('watchtower') + C.count('bombardtower') < D.towers + (tower === 'bombardtower' ? 1 : 0)
+        && C.res.stone >= 150 && C.villagers.length >= 20 && canAfford(costFor(tower, C.T), C.T)) {
       const camps = C.blds.filter(b => (b.subtype === 'miningcamp' || b.subtype === 'lumbercamp') && !b.underConstruction)
         .sort((a, b) => hDist(a.position, C.foeHome) - hDist(b.position, C.foeHome));
-      const camp = camps.find(c => !C.blds.some(t => t.subtype === 'watchtower' && hDist(t.position, c.position) < 14));
-      if (camp) aiBuild(A, 'watchtower', aiHighSpot(camp.position, 8), 0, 9);
+      const camp = camps.find(c => !C.blds.some(t => isTower(t) && hDist(t.position, c.position) < 14));
+      if (camp) aiBuild(A, tower, aiHighSpot(camp.position, 8), 0, 9);
     }
   }
   // Unitats: a cada edifici, la que més falta respecte a la composició (respectant la reserva per a l'edat)

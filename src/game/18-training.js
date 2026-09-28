@@ -43,9 +43,17 @@ function costFor(kind, team = PLAYER.id) {
   const base = (def && def.cost) || {};
   const C = CIVS[teamOf(team).civ];
   const m = C && C.mods.cost ? C.mods.cost[kind] : undefined;
-  if (m === undefined) return base;
-  if (typeof m === 'number') return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.round(v * m)]));
-  return Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.max(0, v + (m[k] || 0))]));
+  let out = base;
+  if (typeof m === 'number') out = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.round(v * m)]));
+  else if (m) out = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.max(0, v + (m[k] || 0))]));
+  // Tecnologies de l'equip que abarateixen unitats (Subministraments, Mestre d'aixa)
+  const u = CONFIG.UNITS[kind];
+  if (u) {
+    const M = teamOf(team).mods, delta = M.lineCost[u.line || kind];
+    if (delta) out = Object.fromEntries(Object.entries(out).map(([k, v]) => [k, Math.max(0, v + (delta[k] || 0))]));
+    if (u.cat === 'ship' && M.shipWoodMul !== 1 && out.wood) out = { ...out, wood: Math.round(out.wood * M.shipWoodMul) };
+  }
+  return out;
 }
 /* Unitat única de la civilització d'un equip */
 function uniqueUnitOf(team) { return (CIVS[teamOf(team).civ] || CIVS.franks).unique; }
@@ -216,6 +224,22 @@ function applyTechEffect(team, kind) {
     case 'squires': M.speedMul.infantry = (M.speedMul.infantry || 1) * 1.1; break;
     case 'fortifiedwall': M.wallHpMul *= 1.6; break;
     case 'heresy': break;
+    case 'parthian': M.lineArmor.cavarcher = [1, 2]; M.lineBonusSpear.cavarcher = 4; break;
+    case 'supplies': M.lineCost.militia = { food: -15 }; break;
+    case 'gambesons': { const a = M.lineArmor.militia || [0, 0]; M.lineArmor.militia = [a[0], a[1] + 1]; break; }
+    case 'arson': M.vsBuilding.infantry = (M.vsBuilding.infantry || 0) + 2; break;
+    case 'platebarding': M.armor.cavalry = [M.armor.cavalry[0] + 1, M.armor.cavalry[1] + 2]; break;
+    case 'arrowslits': M.towerAttack += 1; break;
+    case 'heatedshot': M.heatedShot = true; break;
+    case 'bombardtowertech': break;
+    case 'hoardings': M.castleHpMul *= 1.21; break;
+    case 'sappers': M.vsBuilding.villager = (M.vsBuilding.villager || 0) + 15; break;
+    case 'conscription': M.trainSpeed = 1.33; break;
+    case 'herbalmedicine': M.garrisonHeal = 4; break;
+    case 'caravan': M.speedMul.trade = (M.speedMul.trade || 1) * 1.5; break;
+    case 'guilds': M.guilds = true; break;
+    case 'townwatch': case 'townpatrol': M.buildingLos += 4; break;
+    case 'shipwright': M.shipWoodMul = 0.8; break;
     default:
       if (d.elite) M.elite[d.elite] = true;
       if (d.upgradeTo) M.lineKind[CONFIG.UNITS[d.upgradeTo].line] = d.upgradeTo;
@@ -226,6 +250,8 @@ function completeTech(team, kind) {
   applyTechEffect(team, kind);
   for (const u of state.units) if (u.team === team) { setUnitStats(u, u.unitKind); if (u.garrison && u.garrison.length) refreshContainer(u); }
   if (kind === 'masonry' || kind === 'architecture') for (const b of state.buildings) if (b.team === team) applyBuildingMods(b, 1.1);
+  if (kind === 'hoardings') for (const b of state.buildings) if (b.team === team && b.subtype === 'castle') { b.maxHp = Math.round(b.maxHp * 1.21); b.hp = Math.round(b.hp * 1.21); }
+  if (kind === 'townwatch' || kind === 'townpatrol') for (const b of state.buildings) if (b.team === team) b.los = (b.los || 8) + 4;
   if (kind === 'fortifiedwall') for (const b of state.buildings) if (b.team === team && isStoneWall(b)) applyBuildingMods(b, 1.6);
   if (kind === 'guardtower' || kind === 'keep') for (const b of state.buildings) if (b.team === team && b.subtype === 'watchtower') upgradeTower(b);
   // Millora de línia: les unitats existents passen al nou nivell (estadístiques i aspecte)
@@ -259,6 +285,7 @@ function cancelQueued(building, idx) {
   if (state.selected.includes(building)) updateSelectionUI(true);
 }
 
+const CONSCRIPTION_AT = new Set(['barracks', 'archeryrange', 'stable', 'castle']);
 function updateTraining(dt) {
   for (const b of state.buildings) {
     if (!b.trainQueue || !b.trainQueue.length) continue;
@@ -270,7 +297,7 @@ function updateTraining(dt) {
       if (!item.warned && b.isOwn) { item.warned = true; toast('🏠 Població plena: construeix més cases'); }
       continue;
     }
-    item.t += dt;
+    item.t += dt * (!isTech(item.kind) && CONSCRIPTION_AT.has(b.subtype) ? teamOf(b.team).mods.trainSpeed : 1);
     if (item.t >= def.time) {
       b.trainQueue.shift();
       if (isTech(item.kind)) completeTech(b.team, item.kind);

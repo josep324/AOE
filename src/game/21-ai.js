@@ -149,6 +149,7 @@ function buildingStrength(b) {
   if (b.subtype === 'towncenter') return 3 + g * 0.5;
   if (b.subtype === 'castle') return 14 + g * 0.5;
   if (b.subtype === 'watchtower') return 2.5 + g * 0.5;
+  if (b.subtype === 'bombardtower') return 5 + g * 0.5;
   return 0;
 }
 

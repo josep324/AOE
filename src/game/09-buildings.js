@@ -107,10 +107,10 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
   });
   e.def = def;
   const M = teamOf(team).mods;
-  e.maxHp = Math.round(def.hp * M.buildingHpMul * (type === 'watchtower' ? TOWER_LEVELS[M.towerLevel].hp : 1) * (type === 'stonewall' || type === 'gate' ? M.wallHpMul : 1));
+  e.maxHp = Math.round(def.hp * M.buildingHpMul * (type === 'watchtower' ? TOWER_LEVELS[M.towerLevel].hp : 1) * (type === 'stonewall' || type === 'gate' ? M.wallHpMul : 1) * (type === 'castle' ? M.castleHpMul : 1));
   if (type === 'watchtower') e.name = TOWER_LEVELS[M.towerLevel].name;
   e.armor = (def.armor || [2, 6]).map(a => a + M.buildingArmor + ((type === 'stonewall' || type === 'gate') && M.wallHpMul > 1 ? 1 : 0));
-  e.los = (def.los || 8) + (def.arrows ? (civOf(team).mods.towerLos || 0) : 0);
+  e.los = (def.los || 8) + (def.arrows || def.cannon ? (civOf(team).mods.towerLos || 0) : 0) + M.buildingLos;
   if (def.trains || Object.values(CONFIG.TECHS).some(t => t.at === type)) e.trainQueue = [];
   if (def.trains) e.rally = null;
   e.footprint = (def.walkable || def.wall || def.gate) ? { hw: sw / 2, hd: sd / 2 } : { hw: sw / 2 - 0.15, hd: sd / 2 - 0.15 };

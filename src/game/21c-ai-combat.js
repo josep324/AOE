@@ -60,7 +60,7 @@ function aiDefense(A, C) {
   if (A.army && A.army.phase === 'attack' && threatStr >= 4 && threatStr > defStr * 1.2) aiRetreat(A, C, A.army);
   // Campana: els aldeans a prop es refugien al Centre, al castell o a les torres
   if (threatStr >= 3 && threatStr > defStr * 1.3) {
-    const shelters = C.blds.filter(b => !b.underConstruction && (b.subtype === 'towncenter' || b.subtype === 'castle' || b.subtype === 'watchtower'));
+    const shelters = C.blds.filter(b => !b.underConstruction && (b.subtype === 'towncenter' || b.subtype === 'castle' || b.subtype === 'watchtower' || b.subtype === 'bombardtower'));
     let sent = 0;
     for (const v of C.villagers) {
       if (v.garrisoned || v.garrisonTarget || hDist(v.position, center) > 24) continue;
@@ -308,7 +308,7 @@ function aiNaval(A, C) {
     }
   }
   if (dock && C.age >= 2 && C.res.gold > 300 && !A.saving) for (const k of ['up_wargalley', 'gillnets', 'careening']) aiTryTech(A, C, k);
-  if (dock && C.age >= 3 && C.res.gold > 700 && !A.saving) for (const k of ['up_galleon', 'drydock']) aiTryTech(A, C, k);
+  if (dock && C.age >= 3 && C.res.gold > 700 && !A.saving) for (const k of ['up_galleon', 'drydock', 'up_fastfireship', 'heatedshot']) aiTryTech(A, C, k);
   for (const f of fishers) if (f.state === STATE.IDLE) { const n = nearestResource('food', f.position, 220, f); if (n) orderGather(f, n, null); }
   // Flota: quan n'hi ha prou, ataca els vaixells rivals o el seu moll
   if (fleet.length >= 3) for (const w of fleet) {

@@ -106,7 +106,10 @@ function sternCastle(hull, arch, team, L, W, H, big = false) {
   piece(hull, UG.box, T.color, { y: H + h + 0.5, z: z - L * 0.08, sx: 0.02, sy: 0.3, sz: 0.5 });
   piece(hull, taper(0.02, 0.02, 0.9, 5), 0x3a2a1c, { y: H + h + 0.3, z: z - L * 0.08 - 0.25 });
 }
+/* Millores de vaixell que fan servir el model del vaixell base (una mica més gran) */
+const SHIP_BASE = { fastfireship: 'fireship', heavydemo: 'demoship', elitecannongalleon: 'cannongalleon' };
 function buildShip(kind, rig, team, arch) {
+  if (SHIP_BASE[kind]) { rig.scale.setScalar(1.08); kind = SHIP_BASE[kind]; }
   const T = teamOf(team), S = SHIP_LOOK[arch];
   const D = {
     fishingship: { L: 3.2, W: 1.15, H: 0.55 }, transport: { L: 4.8, W: 1.9, H: 0.8, bluff: 0.3 }, galley: { L: 5.2, W: 1.3, H: 0.6 },
