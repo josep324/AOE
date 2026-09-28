@@ -84,6 +84,11 @@ i la IA no ho fa servir. `npm run check` comprova que cap unitat o tecnologia de
 Queden fora les unitats i tecnologies d'altres civilitzacions (elefants, missioners, àguiles…) i les que depenen de
 coses que el joc no té (tributs: Encunyació i Banca; Espies, Teocràcia i Matacans).
 
+**Desar i carregar** conserva també la memòria de les IA (el que han vist de tu, l'exèrcit reunit, les incursions,
+la ruta de l'explorador, la reserva per a l'edat), de manera que una partida carregada continua com l'original.
+Les unitats grans (setge, galions) només passen per on hi caben, i els recollidors no insisteixen en recursos
+on no poden arribar (un peix d'un altre llac, un cérvol mort dins del bosc).
+
 ## Desenvolupar
 
 Cal [Node.js](https://nodejs.org) 18 o superior.
@@ -96,6 +101,7 @@ npm run check      # només les comprovacions (noms duplicats, atzar sense llavo
 npm test           # compila i passa les proves al navegador (tests/*.test.mjs, amb Playwright)
 node tests/run.mjs ai   # només les proves que contenen «ai» al nom
 node tests/run.mjs --bench   # bancs de proves: la IA sola i IA contra IA durant 25 minuts
+node tests/run.mjs --bench soak   # cerca d'errors: IA contra IA 15 min a cada mapa comprovant que no passa res impossible
 ```
 
 La simulació és **reproduïble**: amb la mateixa llavor (`?seed=123` a l'adreça) i les mateixes ordres, la partida

@@ -107,6 +107,8 @@ function flattenArea(x, z, hw, hd, apply = true) {
     T.h[k] = T.h[k] * (1 - w) + level * w;
   }
   updateTerrainMesh(i0 - ring, j0 - ring, i1 + ring, j1 + ring);
+  // (una cel·la més: l'alçada s'interpola, i un punt just fora també canvia)
+  settleOnGround(T.x0 + (i0 - ring - 1) * T.hs, T.x0 + (j0 - ring - 1) * T.hs, T.x0 + (i1 + ring + 1) * T.hs, T.x0 + (j1 + ring + 1) * T.hs);
   return level;
 }
 /* Desnivell dins d'una planta (per no construir en pendents massa forts) */

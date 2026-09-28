@@ -24,7 +24,7 @@ function serializeGame() {
   for (const u of state.units) {
     add(u, { k: 'unit', sub: u.subtype, team: u.team, x: r2(u.position.x), z: r2(u.position.z), ry: r2(u.group.rotation.y),
              hp: r2(u.hp), carry: u.carry.amount ? { ...u.carry } : null, aiRole: u.aiRole || undefined, faith: u.category === 'monk' ? r2(u.faith) : undefined,
-             arch: u.visArch, formation: u.formation });
+             arch: u.visArch, formation: u.formation, stance: u.stance !== 'aggressive' ? u.stance : undefined, aiHeal: u.aiHeal || undefined, kite: u.kite || undefined });
   }
   for (const r of state.relics) {
     add(r, { k: 'relic', x: r2(r.position.x), z: r2(r.position.z), carrier: r.carrier ? idx.get(r.carrier) : undefined, holder: r.holder ? idx.get(r.holder) : undefined });
@@ -44,7 +44,8 @@ function serializeGame() {
     v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE, rng: RNG.s,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: { 1: team(PLAYER), 2: team(ENEMY) },
-    ai: { diff: Object.keys(DIFFICULTY).find(k => DIFFICULTY[k] === AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
+    ai: { diff: diffKey(AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
+    ais: serializeAIs(idx),
     fog: { enabled: FOG.enabled, explored },
     cam: { x: camState.target.x, z: camState.target.z, yaw: camState.yaw, dist: camState.targetDist },
     ents,
@@ -149,6 +150,9 @@ function loadGame(data) {
       e.aiRole = d.aiRole || null;
       if (d.faith !== undefined) e.faith = d.faith;
       if (d.formation) e.formation = d.formation;
+      if (d.stance) e.stance = d.stance;
+      if (d.aiHeal) e.aiHeal = true;
+      if (d.kite) e.kite = true;
       if (d.carry) { e.carry = { ...d.carry }; updateCarryVisual(e); }
     } else if (d.k === 'relic') {
       e = createRelic(d.x, d.z);
@@ -177,10 +181,14 @@ function loadGame(data) {
     else if (d.trade !== undefined && made[d.trade]) orderTrade(u, made[d.trade]);
   });
   // IA, boira, temps i càmera
-  aiReset(AI, DIFFICULTY[data.ai.diff] || DIFFICULTY.normal);
-  AI.strategy = data.ai.strategy || null;
-  AI.attackCount = data.ai.attackCount || 0;
-  AI.nextAttackAt = data.ai.nextAttackAt ?? AI.nextAttackAt;
+  if (data.ais) restoreAIs(data.ais, made);
+  else {
+    // Partides desades abans que es desés la memòria de la IA
+    aiReset(AI, DIFFICULTY[data.ai.diff] || DIFFICULTY.normal);
+    AI.strategy = data.ai.strategy || null;
+    AI.attackCount = data.ai.attackCount || 0;
+    AI.nextAttackAt = data.ai.nextAttackAt ?? AI.nextAttackAt;
+  }
   FOG.enabled = data.fog.enabled;
   for (let k = 0; k < FOG.explored.length; k++) FOG.explored[k] = data.fog.explored.charCodeAt(k) === 49 ? 1 : 0;
   state.elapsed = data.elapsed;

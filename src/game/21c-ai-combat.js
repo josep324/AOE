@@ -314,8 +314,9 @@ function aiNaval(A, C) {
   if (fleet.length >= 3) for (const w of fleet) {
     if (w.state !== STATE.IDLE) continue;
     let tgt = null, bd = Infinity;
-    for (const u of state.units) if (u.team === A.foe && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd) { bd = d; tgt = u; } }
-    if (!tgt) for (const b of state.buildings) if (b.team === A.foe && b.subtype === 'dock') { const d = hDist(b.position, w.position); if (d < bd) { bd = d; tgt = b; } }
+    // (només el que pot atacar des de la seva aigua: un vaixell d'un altre llac no)
+    for (const u of state.units) if (u.team === A.foe && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd && canReach(w, u, w.range)) { bd = d; tgt = u; } }
+    if (!tgt) for (const b of state.buildings) if (b.team === A.foe && b.subtype === 'dock') { const d = hDist(b.position, w.position); if (d < bd && canReach(w, b, w.range)) { bd = d; tgt = b; } }
     if (tgt) { orderAttack(w, tgt, false); w.forcedTarget = true; }
   }
 }

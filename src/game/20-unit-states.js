@@ -91,9 +91,10 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
     if (n.subtype === 'boar' && n.alive) continue;          // els senglars només si l'ordena el jugador
     if (forUnit && forUnit.naval ? !(n.subtype === 'fish' || n.subtype === 'deepfish') : n.subtype === 'deepfish') continue;
     if (farmTaken(n, forUnit)) continue;
+    if (forUnit && forUnit.avoidNode === n && state.elapsed < forUnit.avoidUntil) continue;   // no hi ha pogut arribar fa poc
     if (n.subtype === 'farm' && forUnit && n.team !== forUnit.team) continue;
     const d = hDist(n.position, pos);
-    if (d < bestD) { bestD = d; best = n; }
+    if (d < bestD && (!forUnit || canReach(forUnit, n))) { bestD = d; best = n; }   // (no, si és en un altre llac o dins d'un bosc tancat)
   }
   return best;
 }
@@ -161,6 +162,8 @@ function afterBuild(u, b) {
 function retryApproach(u) {
   u.approachTries++;
   if (u.approachTries > 6) {
+    // No hi arriba: no hi torna a anar durant un minut (si no, la IA li tornaria a manar)
+    if (u.gatherNode) { u.avoidNode = u.gatherNode; u.avoidUntil = state.elapsed + 60; }
     u.buildTarget = null;
     u.gatherNode = null;
     setUnitState(u, STATE.IDLE);

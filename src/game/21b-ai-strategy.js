@@ -82,7 +82,7 @@ function aiIntel(A, C) {
     if (aiSees(A, C, b.position.x, b.position.z, b.radius || 2)) A.seenBld.set(b.id, { b, t: C.now });
   }
   for (const [id, s] of A.seen) if (s.u.dead || s.u.team !== A.foe || C.now - s.t > 120) A.seen.delete(id);
-  for (const [id, s] of A.seenBld) if (s.b.dead || s.b.team !== A.foe) A.seenBld.delete(id);
+  for (const [id, s] of A.seenBld) if (s.b.dead || s.b.depleted || s.b.team !== A.foe) A.seenBld.delete(id);
   // Composició de l'exèrcit rival que ha vist (els últims 2 minuts)
   const comp = {};
   let mil = 0;

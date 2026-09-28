@@ -324,7 +324,11 @@ function placeRelics() {
   // Perquè sigui just, cap jugador en pot tenir més de una de més a prop que l'altre.
   const L = CONFIG.MAP_LIMIT - 8, bases = Object.values(BASES);
   const baseGap = Math.min(54, CONFIG.MAP_LIMIT * 0.42), minGap = Math.min(43, CONFIG.MAP_LIMIT * 0.33);
-  const free = (x, z) => !isNearObstacle(x, z, 2.5) && bases.every(B => Math.hypot(x - B.x, z - B.z) > baseGap);
+  // Zona de terra de les bases: una relíquia dins d'un racó tancat del bosc no la podria recollir ningú
+  const N = NAV.N, homeCell = nearestFreeCellIn(NAV.label, navCell(bases[0].x), navCell(bases[0].z + 12));
+  const home = homeCell !== null ? NAV.label[homeCell] : 0;
+  const reachable = (x, z) => !home || NAV.label[navCell(z) * N + navCell(x)] === home;
+  const free = (x, z) => !isNearObstacle(x, z, 2.5) && bases.every(B => Math.hypot(x - B.x, z - B.z) > baseGap) && reachable(x, z);
   let best = null;
   for (let attempt = 0; attempt < 25; attempt++) {
     const placed = [];

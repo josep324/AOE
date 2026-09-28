@@ -67,6 +67,22 @@ function treeBatchShow(e, shown) {
   for (const m of I.b.meshes) m.setMatrixAt(I.slot, treeSlotMatrix(e, shown));
   TREE_BATCH.dirty.add(I.b);
 }
+/* Torna a posar a terra els recursos i relíquies d'una zona on ha canviat el terreny (un edifici l'ha anivellat) */
+function settleOnGround(x0, z0, x1, z1) {
+  for (const n of state.resourceNodes.concat(state.relics)) {
+    const p = n.position;
+    if (n.mobile || n.animal || n.depleted || n.subtype === 'fish' || n.subtype === 'deepfish' || p.x < x0 || p.x > x1 || p.z < z0 || p.z > z1) continue;
+    const y = groundY(p.x, p.z);
+    if (Math.abs(n.group.position.y - y) < 0.005) continue;
+    n.group.position.y = y;
+    const I = n.inst;
+    if (I) { for (const m of I.b.meshes) m.setMatrixAt(I.slot, treeSlotMatrix(n, I.shown)); TREE_BATCH.dirty.add(I.b); }
+  }
+  for (const u of state.units) {
+    const p = u.position;
+    if (!u.naval && p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1) p.y = groundY(p.x, p.z);
+  }
+}
 /* Treu l'arbre del lot i li dona el seu propi model (per tremolar o caure) */
 function treeDetach(e) {
   const I = e.inst;

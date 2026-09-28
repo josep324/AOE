@@ -3,7 +3,7 @@
    walk[]  → cel·les no transitables per les unitats
    build[] → cel·les ocupades (no s'hi pot construir)
    ===================================================================== */
-const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, gate: null, team: 0, version: 0, stampId: 0 };
+const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, gate: null, team: 0, version: 0, stampId: 0, need: 1, clr: null };
 function navInit() {
   const N = Math.ceil((CONFIG.MAP_LIMIT * 2) / NAV.cell);
   NAV.N = N;
@@ -21,6 +21,7 @@ function navCenter(i) { return NAV.x0 + (i + 0.5) * NAV.cell; }
 function navFree(i, j) {
   if (i < 0 || j < 0 || i >= NAV.N || j >= NAV.N) return false;
   const k = j * NAV.N + i;
+  if (NAV.need > 1 && NAV.clr[k] < NAV.need) return false;       // unitat gran: no hi cap
   return !NAV.walk[k] && (!NAV.gate[k] || NAV.gate[k] === NAV.team);
 }
 
@@ -88,9 +89,43 @@ function stampArea(ci0, ci1, cj0, cj1) {
 /* Zones connectades de la graella de terra (les portes compten com a pas): si l'origen i el destí
    són en zones diferents, l'A* no ha de recórrer tota la zona per descobrir-ho */
 function labelRegions() {
-  const N = NAV.N, W = NAV.walk;
-  if (!NAV.label || NAV.label.length !== N * N) { NAV.label = new Int32Array(N * N); NAV.stack = new Int32Array(N * N); }
-  const lab = NAV.label, st = NAV.stack;
+  const N = NAV.N;
+  if (!NAV.label || NAV.label.length !== N * N) { NAV.label = new Int32Array(N * N); NAV.nlabel = new Int32Array(N * N); NAV.stack = new Int32Array(N * N); }
+  floodLabels(NAV.walk, NAV.label);
+  floodLabels(NAV.naval, NAV.nlabel);          // zones d'aigua navegable (cada llac, el riu…)
+  if (!NAV.clear || NAV.clear.length !== N * N) { NAV.clear = new Uint8Array(N * N); NAV.nclear = new Uint8Array(N * N); }
+  clearance(NAV.walk, NAV.clear);
+  clearance(NAV.naval, NAV.nclear);
+}
+/* Amplada del pas: per a cada cel·la lliure, a quantes cel·les (fins a 3) queda la bloquejada més propera.
+   Les unitats grans (setge, galions) només passen per cel·les amb prou marge */
+function clearance(W, out) {
+  const N = NAV.N;
+  if (!NAV.cstack || NAV.cstack.length < N * N * 3) NAV.cstack = new Int32Array(N * N * 3);   // (una cel·la pot entrar-hi fins a 3 vegades)
+  const st = NAV.cstack;
+  let top = 0;
+  for (let k = 0; k < N * N; k++) {
+    if (W[k]) { out[k] = 0; continue; }
+    const i = k % N, j = (k - i) / N;
+    let edge = i === 0 || j === 0 || i === N - 1 || j === N - 1;
+    for (let dj = -1; dj <= 1 && !edge; dj++) for (let di = -1; di <= 1; di++) if (W[k + dj * N + di]) { edge = true; break; }
+    out[k] = edge ? 1 : 255;
+    if (edge) st[top++] = k;
+  }
+  for (let q = 0; q < top; q++) {
+    const k = st[q], v = out[k];
+    if (v >= 3) continue;
+    const i = k % N, j = (k - i) / N;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const ni = i + di, nj = j + dj;
+      if (ni < 0 || nj < 0 || ni >= N || nj >= N) continue;
+      const n = nj * N + ni;
+      if (out[n] > v + 1) { out[n] = v + 1; st[top++] = n; }
+    }
+  }
+}
+function floodLabels(W, lab) {
+  const N = NAV.N, st = NAV.stack;
   lab.fill(0);
   let id = 0;
   for (let k0 = 0; k0 < N * N; k0++) {
@@ -106,6 +141,25 @@ function labelRegions() {
       if (j < N - 1 && !W[k + N] && !lab[k + N]) { lab[k + N] = id; st[top++] = k + N; }
     }
   }
+}
+/* Una unitat pot arribar a tocar aquesta entitat? (alguna cel·la lliure del voltant és de la seva zona) */
+function canReach(u, e, extra = 1.6) {
+  if (!NAV.label) return true;
+  const N = NAV.N, lab = u.naval ? NAV.nlabel : NAV.label;
+  const s = nearestFreeCellIn(lab, navCell(u.position.x), navCell(u.position.z));
+  if (!s) return true;
+  const id = lab[s], r = (e.footprint ? Math.max(e.footprint.hw, e.footprint.hd) : (e.radius || 0.5)) + extra;
+  const i0 = navCell(e.position.x - r), i1 = navCell(e.position.x + r), j0 = navCell(e.position.z - r), j1 = navCell(e.position.z + r);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (lab[j * N + i] === id) return true;
+  return false;
+}
+function nearestFreeCellIn(lab, ci, cj) {
+  const N = NAV.N;
+  for (let r = 0; r <= 3; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+    const i = ci + di, j = cj + dj;
+    if (i >= 0 && j >= 0 && i < N && j < N && lab[j * N + i]) return j * N + i;
+  }
+  return null;
 }
 /* Cel·la de la zona «id» més propera a (gi, gj) */
 function nearestCellInRegion(gi, gj, id, maxR = 60) {
@@ -194,6 +248,7 @@ function segmentWalkable(ax, az, bx, bz) {
     if (WATER.any && WATER.mask[k] === 1 && !NAV.navalMode) return false;
     if (t * len < 0.8 || (1 - t) * len < 0.8) continue;
     if (NAV.walk[k] || (NAV.gate[k] && NAV.gate[k] !== NAV.team)) return false;
+    if (NAV.need > 1 && NAV.clr[k] < NAV.need) return false;
   }
   return true;
 }
@@ -211,8 +266,9 @@ function findPath(sx, sz, tx, tz) {
   if (!NAV.navalMode && NAV.label) {
     const ls = NAV.label[s[1] * N + s[0]];
     if (ls && (!g || NAV.label[g[1] * N + g[0]] !== ls)) {
-      g = nearestCellInRegion(navCell(tx), navCell(tz), ls);
-      unreachable = true;
+      // (si la zona pròpia queda molt lluny del destí, A* parcial com sempre: s'hi acosta tant com pot)
+      const near = nearestCellInRegion(navCell(tx), navCell(tz), ls);
+      if (near) { g = near; unreachable = true; }
     }
   }
   if (!g) return null;
@@ -312,6 +368,9 @@ function setMoveTarget(u, p) {
   // Els vaixells fan servir la graella naval (només aigua fonda)
   const landWalk = NAV.walk;
   if (u.naval) { NAV.walk = NAV.naval; NAV.navalMode = true; }
+  // Unitats grans (setge, galions): només per passos prou amples
+  NAV.clr = u.naval ? NAV.nclear : NAV.clear;
+  NAV.need = u.radius > (u.naval ? 1.25 : 0.9) && NAV.clr ? 2 : 1;
   try {
     if (segmentWalkable(u.position.x, u.position.z, p.x, p.z) && (!u.naval || waterCell(p.x, p.z) === 1)) { u.path = [p]; return; }
     const cells = findPath(u.position.x, u.position.z, p.x, p.z);
@@ -320,5 +379,5 @@ function setMoveTarget(u, p) {
     // Un vaixell no pot arribar a un punt de terra: s'atura a la darrera cel·la d'aigua
     if (!cells.partial && (!u.naval || waterCell(p.x, p.z) === 1)) pts.push(p);
     u.path = smoothPath(u.position, pts);
-  } finally { NAV.walk = landWalk; NAV.navalMode = false; }
+  } finally { NAV.walk = landWalk; NAV.navalMode = false; NAV.need = 1; }
 }

@@ -347,6 +347,7 @@ function buildWorld(type, seed = MAP_SEED) {
   townCenter = createStartingBase(PLAYER.id);
   enemyTC = createStartingBase(ENEMY.id);
   GENERATORS[type]();
+  rebuildNav();                // (les relíquies han de quedar on s'hi pugui arribar)
   placeRelics();
   createDecorations();
   // Tres aldeans inicials per jugador (com als RTS clàssics)

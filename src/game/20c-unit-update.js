@@ -30,18 +30,29 @@ function kiteStep(u, dt) {
    i, si tot i així no avança, deixa l'ordre (i la IA o el jugador en donen una altra). */
 function unstick(u, dt, walking) {
   if (!walking || !u.target) { u.stuckT = 0; u.stuckN = 0; u.stuckRef = null; return; }
-  if (!u.stuckRef) { u.stuckRef = { x: u.position.x, z: u.position.z }; u.stuckT = 0; return; }
+  // Progrés: s'ha acostat al destí o s'ha desplaçat de debò (una unitat que tremola endavant i
+  // enrere contra un obstacle no fa ni una cosa ni l'altra)
+  const x = u.position.x, z = u.position.z, dNow = Math.hypot(u.target.x - x, u.target.z - z);
+  if (!u.stuckRef) { u.stuckRef = { x, z, d: dNow }; u.stuckT = 0; return; }
   u.stuckT += dt;
   if (u.stuckT < 1.5) return;
-  const moved = Math.hypot(u.position.x - u.stuckRef.x, u.position.z - u.stuckRef.z);
-  u.stuckRef.x = u.position.x; u.stuckRef.z = u.position.z; u.stuckT = 0;
-  if (moved > 0.6) { u.stuckN = 0; return; }
+  const ref = u.stuckRef;
+  u.stuckRef = { x, z, d: dNow }; u.stuckT = 0;
+  if (ref.d - dNow > 0.4 || Math.hypot(x - ref.x, z - ref.z) > 1.2) { u.stuckN = 0; return; }
   u.stuckN = (u.stuckN || 0) + 1;
   if (u.stuckN === 1) setMoveTarget(u, u.target);                        // camí nou
   else if (u.stuckN === 2 && u.path && u.path.length > 1) u.path.shift();  // se salta el tram
   else if (u.stuckN >= 3) {
     u.stuckN = 0;
     if (u.state === STATE.ATTACKING) { u.attackTarget = null; u.attackMove = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); }
+    else if (u.gatherNode && u.state === STATE.MOVING) {
+      // No arriba al recurs (p. ex. un banc de peixos arran del moll): el deixa estar un minut i en busca un altre
+      const node = u.gatherNode;
+      u.avoidNode = node; u.avoidUntil = state.elapsed + 60;
+      const next = nearestResource(node.resourceType, u.position, 60, u);
+      if (next) orderGather(u, next, null);
+      else { u.gatherNode = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); }
+    }
     else setMoveTarget(u, null);                                          // «ha arribat» tan a prop com podia
   }
 }
