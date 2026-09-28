@@ -226,10 +226,13 @@ function aiExpand(A, C) {
 
 /* ---------- Mercat: ven el que sobra i compra el que falta ---------- */
 function aiMarket(A, C) {
-  if (C.age < 2 || !hasCompleted('market', C.T) || C.now - A.lastTrade < 3) return;
+  if (C.age < 2) return;
   const R = C.res;
+  // Sense mercat i amb un recurs que sobra i l'or esgotat (p. ex. les mines de casa s'han acabat): en fa un
+  if (!C.has('market') && C.villagers.length >= 40 && R.gold < 150 && Math.max(R.food, R.wood) > 900) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
+  if (!hasCompleted('market', C.T) || C.now - A.lastTrade < 3) return;
   for (const r of ['food', 'wood', 'stone']) {
-    if (R[r] > 1600) { marketTrade(C.T, r, false); A.lastTrade = C.now; return; }
+    if (R[r] > 1600 || (R[r] > 1000 && R.gold < 300)) { marketTrade(C.T, r, false); A.lastTrade = C.now; return; }
   }
   if (R.gold > 1300) for (const r of ['food', 'wood']) {
     if (R[r] < 200) { marketTrade(C.T, r, true); A.lastTrade = C.now; return; }

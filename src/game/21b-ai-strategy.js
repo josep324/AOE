@@ -182,14 +182,19 @@ function aiAgesAndTechs(A, C) {
   }
   if (A.saving) return;
   // Tecnologia única (amb Castell): es reserven els recursos, com per a l'edat, perquè l'exèrcit no ho gasti tot
-  if (hasCompleted('castle', C.T) && vills >= 30) {
+  // (només amb un exèrcit que aguanti i sense perill, i si en 2 minuts no ho aconsegueix, ho deixa estar 3 minuts:
+  //  una reserva massa llarga deixa l'exèrcit sense reforços)
+  const calm = C.army.length >= 12 && !A.threatened && (A.foeStr || 0) <= (A.myStr || 0);
+  if (hasCompleted('castle', C.T) && vills >= 30 && C.now >= (A.uniqPause || 0)) {
     const uniq = Object.keys(CONFIG.TECHS).find(k => { const d = CONFIG.TECHS[k];
       return d.civ === C.E.civ && !d.elite && !C.E.techs.has(k) && !techQueued(C.T, k) && (d.age || 0) <= C.age; });
-    if (uniq) {
-      const cost = costFor(uniq, C.T);
-      if (canAfford(cost, C.T) && aiTryTech(A, C, uniq, true)) A.reserve = null;
+    const cost = uniq && costFor(uniq, C.T);
+    if (uniq && canAfford(cost, C.T) && aiTryTech(A, C, uniq, true)) A.uniqSince = null;
+    else if (uniq && calm) {
+      A.uniqSince = A.uniqSince ?? C.now;
+      if (C.now - A.uniqSince > 120) { A.uniqSince = null; A.uniqPause = C.now + 180; }
       else A.reserve = cost;
-    }
+    } else A.uniqSince = null;
   }
   // Economia (a temps, com la IA de l'AoE II)
   const g = C.gath || {};

@@ -21,7 +21,13 @@ function toast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1900);
 }
 
-function updateResourcesUI() {
+/* Els recursos canvien moltes vegades per segon: només es marca que cal refer-los, i es refan un cop per fotograma
+   (cada refresc força el navegador a recalcular la pàgina) */
+let resUIDirty = true;
+function updateResourcesUI() { resUIDirty = true; }
+function flushResourcesUI() {
+  if (!resUIDirty) return;
+  resUIDirty = false;
   for (const k of Object.keys(resEls)) {
     const el = resEls[k];
     const val = String(Math.floor(state.resources[k]));

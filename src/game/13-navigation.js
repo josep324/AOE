@@ -37,10 +37,10 @@ function rebuildNavArea(x, z, r) {
   const i0 = navCell(x - r), i1 = navCell(x + r), j0 = navCell(z - r), j1 = navCell(z + r), N = NAV.N;
   for (let j = j0; j <= j1; j++) { const k0 = j * N; NAV.walk.fill(0, k0 + i0, k0 + i1 + 1); NAV.build.fill(0, k0 + i0, k0 + i1 + 1); NAV.gate.fill(0, k0 + i0, k0 + i1 + 1); }
   refreshLinks();
-  stampArea(i0, i1, j0, j1);
+  stampArea(i0, i1, j0, j1, true);
 }
 /* Marca a la graella els obstacles, l'aigua i les granges dins del rectangle de cel·les [i0..i1]×[j0..j1] */
-function stampArea(ci0, ci1, cj0, cj1) {
+function stampArea(ci0, ci1, cj0, cj1, local = false) {
   const N = NAV.N;
   const x0 = navCenter(ci0) - 0.5, x1 = navCenter(ci1) + 0.5, z0 = navCenter(cj0) - 0.5, z1 = navCenter(cj1) + 0.5;
   for (const o of state.obstacles) {
@@ -82,7 +82,7 @@ function stampArea(ci0, ci1, cj0, cj1) {
       for (let i = Math.max(ci0, navCell(e.position.x - fp.hw + 0.01)); i <= Math.min(ci1, navCell(e.position.x + fp.hw - 0.01)); i++)
         NAV.build[j * N + i] = 1;
   }
-  labelRegions();
+  if (local && NAV.label) regionsLocal(ci0, ci1, cj0, cj1); else labelRegions();
   NAV.version++;
   rebuildObstacleGrid();
 }
@@ -91,8 +91,8 @@ function stampArea(ci0, ci1, cj0, cj1) {
 function labelRegions() {
   const N = NAV.N;
   if (!NAV.label || NAV.label.length !== N * N) { NAV.label = new Int32Array(N * N); NAV.nlabel = new Int32Array(N * N); NAV.stack = new Int32Array(N * N); }
-  floodLabels(NAV.walk, NAV.label);
-  floodLabels(NAV.naval, NAV.nlabel);          // zones d'aigua navegable (cada llac, el riu…)
+  NAV.maxLabel = floodLabels(NAV.walk, NAV.label);
+  NAV.maxNLabel = floodLabels(NAV.naval, NAV.nlabel);          // zones d'aigua navegable (cada llac, el riu…)
   if (!NAV.clear || NAV.clear.length !== N * N) { NAV.clear = new Uint8Array(N * N); NAV.nclear = new Uint8Array(N * N); }
   clearance(NAV.walk, NAV.clear);
   clearance(NAV.naval, NAV.nclear);
@@ -124,6 +124,71 @@ function clearance(W, out) {
     }
   }
 }
+/* Després d'un canvi local que només pot obrir pas (talar un arbre, esgotar un recurs): si la zona tocada
+   i el seu voltant són d'una sola zona, n'hi ha prou d'estendre-la; si en toca dues, cal refer-ho tot */
+function regionsLocal(i0, i1, j0, j1) {
+  const N = NAV.N, st = NAV.stack;
+  i0 = Math.max(0, i0); j0 = Math.max(0, j0); i1 = Math.min(N - 1, i1); j1 = Math.min(N - 1, j1);
+  const inBox = (i, j) => i >= i0 && i <= i1 && j >= j0 && j <= j1;
+  for (const [W, lab, key] of [[NAV.walk, NAV.label, 'maxLabel'], [NAV.naval, NAV.nlabel, 'maxNLabel']]) {
+    // Zones del voltant (cel·les lliures just fora del rectangle): si n'hi ha més d'una, es refà tot
+    let id = 0, many = false;
+    for (let j = j0 - 1; j <= j1 + 1 && !many; j++) for (let i = i0 - 1; i <= i1 + 1; i++) {
+      if (inBox(i, j) || i < 0 || j < 0 || i >= N || j >= N) continue;
+      const l = lab[j * N + i];
+      if (!l) continue;
+      if (!id) id = l; else if (l !== id) { many = true; break; }
+    }
+    if (many) { NAV[key] = floodLabels(W, lab); continue; }
+    // Dins del rectangle: s'esborra i s'inunda des de les vores que toquen la zona del voltant
+    let top = 0;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const k = j * N + i;
+      lab[k] = 0;
+      if (W[k] || !id) continue;
+      if ((i > 0 && !inBox(i - 1, j) && lab[k - 1] === id) || (i < N - 1 && !inBox(i + 1, j) && lab[k + 1] === id)
+        || (j > 0 && !inBox(i, j - 1) && lab[k - N] === id) || (j < N - 1 && !inBox(i, j + 1) && lab[k + N] === id)) st[top++] = k;
+    }
+    const fill = (label) => {
+      for (let q = 0; q < top; q++) lab[st[q]] = label;
+      while (top) {
+        const k = st[--top], i = k % N, j = (k - i) / N;
+        for (const [ni, nj] of [[i - 1, j], [i + 1, j], [i, j - 1], [i, j + 1]]) {
+          if (!inBox(ni, nj)) continue;
+          const n = nj * N + ni;
+          if (!W[n] && !lab[n]) { lab[n] = label; st[top++] = n; }
+        }
+      }
+    };
+    if (top) fill(id);
+    // Forats tancats dins del rectangle: zones noves
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      const k = j * N + i;
+      if (W[k] || lab[k]) continue;
+      st[top++] = k; fill(++NAV[key]);
+    }
+  }
+  // Amplada del pas: només canvia a prop (fins a 3 cel·les)
+  clearanceLocal(NAV.walk, NAV.clear, i0 - 3, i1 + 3, j0 - 3, j1 + 3);
+  clearanceLocal(NAV.naval, NAV.nclear, i0 - 3, i1 + 3, j0 - 3, j1 + 3);
+}
+function clearanceLocal(W, out, i0, i1, j0, j1) {
+  const N = NAV.N;
+  i0 = Math.max(0, i0); j0 = Math.max(0, j0); i1 = Math.min(N - 1, i1); j1 = Math.min(N - 1, j1);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const k = j * N + i;
+    if (W[k]) { out[k] = 0; continue; }
+    let best = 255;
+    for (let r = 1; r <= 3 && best === 255; r++) {
+      for (let dj = -r; dj <= r && best === 255; dj++) for (let di = -r; di <= r; di++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+        const ni = i + di, nj = j + dj;
+        if (ni < 0 || nj < 0 || ni >= N || nj >= N || W[nj * N + ni]) { best = r; break; }
+      }
+    }
+    out[k] = best;
+  }
+}
 function floodLabels(W, lab) {
   const N = NAV.N, st = NAV.stack;
   lab.fill(0);
@@ -141,6 +206,7 @@ function floodLabels(W, lab) {
       if (j < N - 1 && !W[k + N] && !lab[k + N]) { lab[k + N] = id; st[top++] = k + N; }
     }
   }
+  return id;
 }
 /* Una unitat pot arribar a tocar aquesta entitat? (alguna cel·la lliure del voltant és de la seva zona) */
 function canReach(u, e, extra = 1.6) {
@@ -253,7 +319,9 @@ function segmentWalkable(ax, az, bx, bz) {
   return true;
 }
 
-/* A* sobre la graella (8 direccions, sense tallar cantonades) */
+/* A* sobre la graella (8 direccions, sense tallar cantonades). ASTAR_W > 1 (A* ponderat) seria més ràpid,
+   però amb 1,15 els camins subòptims deixaven unitats encallades vora els llacs: es manté l'A* exacte */
+const ASTAR_W = 1;
 const NAV_DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
 function findPath(sx, sz, tx, tz) {
   const N = NAV.N;
@@ -330,7 +398,7 @@ function findPath(sx, sz, tx, tz) {
       const ng = NAV.g[cur] + cost;
       if (NAV.seen[n] !== stamp || ng < NAV.g[n]) {
         NAV.seen[n] = stamp; NAV.g[n] = ng; NAV.parent[n] = cur;
-        push(n, ng + H(n));
+        push(n, ng + H(n) * ASTAR_W);
       }
     }
   }

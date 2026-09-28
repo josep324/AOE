@@ -58,6 +58,7 @@ function animate() {
   const t = state.elapsed;
 
   if (!fogReady) { fogReady = true; updateFog(); }
+  flushResourcesUI();
   updateCameraControls(realDt);
   updateMarkers(dt);
   updateParticles(dt);

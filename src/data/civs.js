@@ -13,7 +13,7 @@ export const CIVS = {
     name: 'Sarraïns', icon: '🌙', arch: 'middleeast', unique: 'mameluke',
     desc: 'Orient Mitjà: tova i pedra arenisca, terrats, arcs i cúpules. Civilització de camells i arquers.',
     bonuses: ['Arquers +2 d\'atac contra edificis', 'Els carros de comerç guanyen +20% d\'or', 'El Mercat costa 75 de fusta menys', 'Els mercaders cobren menys comissió'],
-    mods: { vsBuilding: { archer: 2 }, tradeMul: 1.2, marketFee: 0.85, cost: { market: { wood: -75 } } },
+    mods: { vsBuilding: { archer: 2 }, tradeMul: 1.2, marketFee: 0.8, cost: { market: { wood: -75 } } },
     disabled: [],
   },
   japanese: {
@@ -26,16 +26,16 @@ export const CIVS = {
   britons: {
     name: 'Britons', icon: '🏹', arch: 'western', unique: 'longbowman',
     desc: 'Illes Britàniques: pedra, entramat i palla. Civilització d\'arquers.',
-    bonuses: ['Arquers a peu +1 casella d\'abast a Castells i +1 a Imperial', 'Galeria de tir un 20% més ràpida', 'Pastors +25%', 'Centre de Ciutat a meitat de fusta'],
-    mods: { gather: { sheep: 1.25 }, trainAt: { archeryrange: 1.2 }, ageRange: { archer: [0, 0, 1, 2], longbowman: [0, 0, 1, 2] },
-            cost: { towncenter: { wood: -137 } } },
+    bonuses: ['Arquers a peu +1 casella d\'abast a Castells i +1 a Imperial', 'Galeria de tir un 20% més ràpida, arquers un 10% més barats', 'Pastors +30%', 'Centre de Ciutat a meitat de fusta'],
+    mods: { gather: { sheep: 1.3 }, trainAt: { archeryrange: 1.2 }, ageRange: { archer: [0, 0, 1, 2], longbowman: [0, 0, 1, 2] },
+            cost: { towncenter: { wood: -137 }, archer: 0.9 } },
     disabled: ['camel', 'parthian', 'handcannon'],
   },
   byzantines: {
     name: 'Bizantins', icon: '☦️', arch: 'middleeast', unique: 'cataphract',
     desc: 'Imperi Romà d\'Orient: pedra, maó, arcs i cúpules. Civilització defensiva.',
-    bonuses: ['Edificis +20% de vida', 'Llancers, escaramussadors i camells un 25% més barats', 'Edat Imperial un 33% més barata', 'Guàrdia urbana gratuïta'],
-    mods: { buildingHpMul: 1.2, cost: { spearman: 0.75, skirmisher: 0.75, camel: 0.75, age3: 0.67, townwatch: 0 } },
+    bonuses: ['Edificis +20% de vida', 'Llancers, escaramussadors i camells un 25% més barats', 'Edat Imperial un 33% més barata, Guàrdia urbana gratuïta', 'Tecnologies de la Ferreria −20% i de la Universitat −25%, Monestir −20%'],
+    mods: { buildingHpMul: 1.2, techCostAt: { university: 0.75, blacksmith: 0.8 }, cost: { spearman: 0.75, skirmisher: 0.75, camel: 0.75, age3: 0.67, townwatch: 0, monastery: 0.8 } },
     disabled: [],
   },
   mongols: {

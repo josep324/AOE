@@ -12,31 +12,36 @@ export default async ({ open, log }) => {
   }
   const [k, n] = (process.env.SHARD || '0/1').split('/').map(Number);
   const MIN = +(process.env.BALANCE_MIN || 30);
+  const DT = +(process.env.BALANCE_DT || 0.05);          // pas de simulació (0,25 = 5 vegades més ràpid)
+  const ONLY = process.env.BALANCE_GAMES ? process.env.BALANCE_GAMES.split(',').map(Number) : null;
   const out = process.env.BALANCE_OUT || 'balance-results.jsonl';
   for (let g = k; g < games.length; g += n) {
+    if (ONLY && !ONLY.includes(g)) continue;
     const [civ, enemyCiv, seed] = games[g];
     const page = await open({ seed, civ, enemyCiv, diff: 'hard', map: 'arabia' });
-    const r = await page.evaluate((MIN) => {
+    const t0 = Date.now();
+    const r = await page.evaluate(([MIN, DT]) => {
       const R = window.RTS, S = R.state, P = R.PLAYER.id, E = R.ENEMY.id;
       R.enableAIFor(P, R.DIFFICULTY.hard);
+      R.FOG.enabled = false; R.updateFog();          // (les dues IA hi veuen igual; amb boira, la del jugador perdia objectius)
       const value = (c) => Object.values(c || {}).reduce((a, b) => a + b, 0);
       const worth = (t) => S.units.filter(u => u.team === t && !u.dead).reduce((s, u) => s + value(R.CONFIG.UNITS[u.unitKind].cost), 0)
         + S.buildings.filter(b => b.team === t && !b.dead && !b.underConstruction && !b.isWall).reduce((s, b) => s + value((R.CONFIG.BUILDINGS[b.subtype] || {}).cost) * b.hp / b.maxHp, 0);
       const ages = { [P]: [], [E]: [] };
       for (let s = 0; s < MIN * 60 && !S.over; s++) {
-        for (let i = 0; i < 20; i++) R.simulate(0.05);
+        for (let i = 0, n = Math.round(1 / DT); i < n; i++) R.simulate(DT);
         for (const t of [P, E]) if (R.teamOf(t).age > ages[t].length) ages[t].push(Math.round(S.elapsed));
       }
       const alive = (t) => S.units.some(u => u.team === t) || S.buildings.some(b => b.team === t && !b.underConstruction);
       const res = (t) => ({ civ: R.teamOf(t).civ, worth: Math.round(worth(t)), v: S.units.filter(u => u.team === t && u.subtype === 'villager').length,
         army: S.units.filter(u => u.team === t && u.isMilitary).length, ages: ages[t], resigned: !!(R.AIS.find(a => a.team === t) || {}).resigned, alive: alive(t) });
       return { t: Math.round(S.elapsed), over: S.over, a: res(P), b: res(E) };
-    }, MIN);
+    }, [MIN, DT]);
     let winner = null;
     if (r.over || !r.a.alive || !r.b.alive || r.a.resigned || r.b.resigned) winner = (!r.a.alive || r.a.resigned) ? r.b.civ : r.a.civ;
     else if (r.a.worth > r.b.worth * 1.15) winner = r.a.civ;
     else if (r.b.worth > r.a.worth * 1.15) winner = r.b.civ;
-    const line = { game: g, seed, ...r, winner, decided: r.over ? 'victòria' : winner ? 'valor' : 'empat' };
+    const line = { game: g, seed, dt: DT, secs: Math.round((Date.now() - t0) / 1000), ...r, winner, decided: r.over ? 'victòria' : winner ? 'valor' : 'empat' };
     appendFileSync(out, JSON.stringify(line) + '\n');
     log(`${civ} contra ${enemyCiv}: ${winner || 'empat'} (${line.decided}, ${r.t}s, valor ${r.a.worth}/${r.b.worth})`);
     await page.close();

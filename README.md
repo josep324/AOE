@@ -13,11 +13,15 @@ Vuit civilitzacions (es trien al menú d'inici), cadascuna amb arquitectura, ves
 | ⚜️ Francs | Europa occidental: entramat de fusta, palla i pedra | Llançador de destrals | Castells −25% · Cavalleria +20% vida · Baies +15% · Collar de cavall gratuït · *Destral barbuda* |
 | 🌙 Sarraïns | Orient Mitjà: tova, arenisca, terrats, arcs i cúpules | Mameluc (camell) | Arquers +2 contra edificis · Comerç +20% · Mercat −75 fusta · Menys comissió · *Zelotisme* |
 | ⛩️ Japonesos | Àsia oriental: fusta fosca, parets blanques, teulades corbes | Samurai | Infanteria +25% velocitat d'atac · Magatzems a meitat de preu · Fusta +10% · Torres +2 visió · *Yasama* |
-| 🏹 Britons | Europa occidental | Arquer de tir llarg (abast molt llarg) | Arquers a peu +1 casella a Castells i Imperial · Galeria +20% ràpida · Pastors +25% · Centre a meitat de fusta · *Yeomen* |
-| ☦️ Bizantins | Mediterrània oriental | Catafracta (cavalleria pesant, +9 contra infanteria) | Edificis +20% vida · Llancers, escaramussadors i camells −25% · Imperial −33% · Guàrdia urbana gratuïta · *Logistica* |
+| 🏹 Britons | Europa occidental | Arquer de tir llarg (abast molt llarg) | Arquers a peu +1 casella a Castells i Imperial · Galeria +20% ràpida · Arquers −10% · Pastors +30% · Centre a meitat de fusta · *Yeomen* |
+| ☦️ Bizantins | Mediterrània oriental | Catafracta (cavalleria pesant, +9 contra infanteria) | Edificis +20% vida · Llancers, escaramussadors i camells −25% · Imperial −33% · Ferreria −20% i Universitat −25% · Monestir −20% · *Logistica* |
 | 🐎 Mongols | Estepa | Mangudai (arquer a cavall ràpid, +3 contra setge) | Arquers a cavall +25% ritme · Genets lleugers +30% vida · Caçadors +40% · Exploradors +2 visió · *Instrucció* |
 | 🏮 Xinesos | Àsia oriental | Chu Ko Nu (ballesta de repetició) | +3 aldeans a l'inici · Tecnologies −15% · Centre +10 població · Demolició +50% vida · *Coets* |
 | ⚓ Catalans | Europa occidental (gòtic català) | Almogàver (infanteria ràpida que llança azcones, +4 contra cavalleria) | Infanteria +10% velocitat · Vaixells +15% vida · Granges +15% · Mercat i Moll −25% · *Consolat de Mar* i *Venjança Catalana* |
+
+**Equilibri**: comprovat amb tornejos IA contra IA de totes les parelles (`node tests/run.mjs --bench balance`,
+56 partides, es pot repartir en processos amb `SHARD=0/4`) i amb combats d'unitats úniques del mateix valor
+(`--bench uu`). Al darrer torneig totes queden entre el 36% i el 61% de punts, dins del marge d'error de 14 partides.
 
 Els Catalans no són a l'AoE II: estan dissenyats a partir de la història de la Corona d'Aragó (els almogàvers,
 la flota mediterrània i el Consolat de Mar). Els Bizantins i els Mongols fan servir l'arquitectura de l'Orient Mitjà,

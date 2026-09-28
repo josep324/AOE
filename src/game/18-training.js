@@ -56,7 +56,7 @@ function costFor(kind, team = PLAYER.id) {
     if (u.cat === 'ship' && M.shipWoodMul !== 1 && out.wood) out = { ...out, wood: Math.round(out.wood * M.shipWoodMul) };
   }
   // Xinesos: tecnologies més barates (les edats no)
-  const t = CONFIG.TECHS[kind], tm = teamOf(team).mods.techCost;
+  const t = CONFIG.TECHS[kind], tm = teamOf(team).mods.techCost * (t && C && C.mods.techCostAt ? C.mods.techCostAt[t.at] || 1 : 1);
   if (t && !t.ageUp && tm !== 1) out = Object.fromEntries(Object.entries(out).map(([k, v]) => [k, Math.round(v * tm)]));
   return out;
 }
