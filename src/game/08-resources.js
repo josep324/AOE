@@ -27,6 +27,7 @@ function createTree(x, z, scale = 1) {
   state.resourceNodes.push(e);
   e.obstacle = { x, z, r: 0.8 * scale, entity: e };
   state.obstacles.push(e.obstacle);
+  LINKS.trees = true;
   return e;
 }
 
@@ -208,7 +209,7 @@ function updateSheep(n, dt) {
     }
     // Col·lisió amb els obstacles (excepte ella mateixa)
     for (const o of obstaclesNear(n.position.x, n.position.z, sheepObsBuf)) {
-      if (o.entity === n) continue;
+      if (o.entity === n || o.entity2 === n) continue;
       if (pushOutOf(n.position, o, n.radius)) n.wanderTarget = null;
     }
     clampToMap(n.position);

@@ -148,7 +148,7 @@ function killEntity(e, killer) {
     e.depleted = true;
     state.buildings = state.buildings.filter(b => b !== e);
     state.resourceNodes = state.resourceNodes.filter(n => n !== e);
-    state.obstacles = state.obstacles.filter(o => o.entity !== e);
+    dropObstaclesOf(e); LINKS.walls = true;
     rebuildNav();
     e.deathKind = 'building';
     spawnParticles(atGround(e.position.x, 2, e.position.z), 0x8a8378, 20, null);

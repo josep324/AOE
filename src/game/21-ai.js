@@ -47,7 +47,7 @@ function canPlaceRect(x, z, w, d) {
   if (Math.abs(x) + w / 2 > L - 1 || Math.abs(z) + d / 2 > L - 1) return false;
   for (let j = navCell(z - d / 2 + 0.01); j <= navCell(z + d / 2 - 0.01); j++)
     for (let i = navCell(x - w / 2 + 0.01); i <= navCell(x + w / 2 - 0.01); i++)
-      if (NAV.build[j * N + i]) return false;
+      if (NAV.build[j * N + i] === 1) return false;     // (2 = sota la copa d'un arbre: s'hi pot passar)
   return true;
 }
 /* Busca un lloc lliure en anells al voltant d'un punt (deixant un passadís al voltant de l'edifici) */

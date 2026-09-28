@@ -39,7 +39,7 @@ function depleteResource(node) {
   if (node.inst) treeDetach(node);
   state.resourceNodes = state.resourceNodes.filter(n => n !== node);
   if (node.animal) state.animals = state.animals.filter(n => n !== node);
-  state.obstacles = state.obstacles.filter(o => o.entity !== node);
+  dropObstaclesOf(node); LINKS.walls = true;
   state.pickables = state.pickables.filter(m => m.userData.entity !== node);
   if (node.selected) { removeFromSelection(node); onSelectionChanged(); }
   node.dieT = 0;

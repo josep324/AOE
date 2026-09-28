@@ -94,9 +94,22 @@ function currentKind(team, kind) {
   if (!d) return kind;
   return teamOf(team).mods.lineKind[d.line || kind] || kind;
 }
+/* Arbre tecnològic: la civilització de l'equip té aquesta unitat o tecnologia?
+   Una unitat desactivada treu tota la seva línia (p. ex. camell → camell pesant) i la millora que hi porta */
+function civAllows(team, kind) {
+  const off = civOf(team).disabled;
+  if (!off || !off.length) return true;
+  if (off.includes(kind)) return false;
+  const u = CONFIG.UNITS[kind];
+  if (u) return !off.includes(u.line || kind);
+  const t = CONFIG.TECHS[kind];
+  if (t && t.upgradeTo) return civAllows(team, t.upgradeTo);
+  return true;
+}
 /* Motiu pel qual no es pot encuar (o null) */
 function itemBlockReason(kind, team = PLAYER.id) {
   const d = itemDef(kind), T = teamOf(team);
+  if (!civAllows(team, kind)) return `Els ${civOf(team).name} no la tenen (arbre tecnològic)`;
   if ((d.age || 0) > T.age) return `Requereix: ${CONFIG.AGES[d.age].name}`;
   const onlyFor = d.civ || d.unique;
   if (onlyFor && onlyFor !== T.civ) return `Només per als ${CIVS[onlyFor].name}`;

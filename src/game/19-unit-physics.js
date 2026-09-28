@@ -9,7 +9,24 @@ const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math
 
 const obsBuf = [];
 function resolveObstacleCollision(u, dt) {
-  for (const o of obstaclesNear(u.position.x, u.position.z, obsBuf)) {
+  const list = obstaclesNear(u.position.x, u.position.z, obsBuf);
+  // Una unitat empesa (per les altres o per la separació) no pot acabar dins d'una muralla, un edifici
+  // o el farciment d'un bosc venint de fora: torna on era. Així no es travessen muralles ni boscos.
+  if (u.safeX !== undefined) {
+    const sx = u.safeX, sz = u.safeZ, px = u.position.x, pz = u.position.z;
+    const jump = Math.hypot(px - sx, pz - sz);
+    if (jump > 0.02 && jump < 4) {
+      const mx = (px + sx) / 2, mz = (pz + sz) / 2;
+      for (const o of list) {
+        if (o.gateTeam === u.team) continue;
+        if ((obstacleSurface(o, px, pz).d < 0 || (jump > 0.5 && obstacleSurface(o, mx, mz).d < 0)) && obstacleSurface(o, sx, sz).d >= 0) {
+          u.position.x = sx; u.position.z = sz;
+          break;
+        }
+      }
+    }
+  }
+  for (const o of list) {
     if (o.gateTeam === u.team) continue;
     const s = pushOutOf(u.position, o, u.radius);
     if (s && u.target) {
@@ -22,6 +39,7 @@ function resolveObstacleCollision(u, dt) {
       u.position.z += tz * u.speed * dt * 0.4;
     }
   }
+  u.safeX = u.position.x; u.safeZ = u.position.z;
 }
 
 /* ---------- Índex espacial: graella de cel·les de 8 unitats amb les unitats de cada cel·la ----------
@@ -55,7 +73,9 @@ function unitsNear(x, z, r, out = []) {
 }
 
 const nearBuf = [];
+const SEP_MAX = 0.35;             // desplaçament màxim per separació en un pas (evita catapultar unitats)
 function separateUnits() {
+  for (const a of state.units) { a.sepX = a.position.x; a.sepZ = a.position.z; }
   for (const a of state.units) {
     if (a.garrisoned || a.dead) continue;
     for (const b of unitsNear(a.position.x, a.position.z, 2, nearBuf)) {
@@ -77,5 +97,9 @@ function separateUnits() {
         b.position.x += nx * overlap; b.position.z += nz * overlap;
       }
     }
+  }
+  for (const a of state.units) {
+    const dx = a.position.x - a.sepX, dz = a.position.z - a.sepZ, l = Math.hypot(dx, dz);
+    if (l > SEP_MAX) { a.position.x = a.sepX + dx / l * SEP_MAX; a.position.z = a.sepZ + dz / l * SEP_MAX; }
   }
 }

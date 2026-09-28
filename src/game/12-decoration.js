@@ -4,6 +4,7 @@
 /* ---------- Geometria d'obstacles: cercles (recursos, Centre) i rectangles (edificis) ---------- */
 function obstacleSurface(o, x, z) {
   // Retorna la distància amb signe a la superfície de l'obstacle i la normal cap a fora
+  if (o.seg) return segmentSurface(o, x, z);
   const dx = x - o.x, dz = z - o.z;
   if (o.rect) {
     const qx = Math.abs(dx) - o.hw, qz = Math.abs(dz) - o.hd;

@@ -400,7 +400,8 @@ function buildingItems(b) {
   if (b.subtype === 'towncenter') out.push('villager');
   if (b.def && b.def.trains) for (const k of b.def.trains) out.push(k === '@unique' ? uniqueUnitOf(b.team) : currentKind(b.team, k));
   for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.at === b.subtype && (!d.civ || d.civ === civ)) out.push(k);
-  return out;
+  // Arbre tecnològic: el que la civilització no té no es mostra
+  return out.filter(k => civAllows(b.team, k));
 }
 
 /* Cost compacte per als botons petits: punt de color del recurs + quantitat */

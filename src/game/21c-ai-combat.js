@@ -71,7 +71,7 @@ function aiDefense(A, C) {
   } else if (threatStr < 3 && defStr < threatStr + 0.5) {
     // Un explorador o un parell d'arquers: els aldeans del voltant s'hi enfronten
     const t = threats[0];
-    const fighters = C.villagers.filter(v => !v.garrisoned && v.aiRole !== 'fight' && hDist(v.position, t.position) < 16)
+    const fighters = C.villagers.filter(v => !v.garrisoned && v.aiRole !== 'fight' && !v.buildTarget && v.state !== STATE.BUILDING && hDist(v.position, t.position) < 16)
       .sort((a, b) => hDist(a.position, t.position) - hDist(b.position, t.position)).slice(0, 5);
     const already = C.villagers.filter(v => v.aiRole === 'fight').length;
     for (const v of fighters.slice(0, Math.max(0, 6 - already))) { v.aiRole = 'fight'; orderAttack(v, t, false); }

@@ -124,7 +124,7 @@ function aiComposition(A, C) {
     const kind = u === '@unique' ? uniqueUnitOf(C.T) : currentKind(C.T, u);
     const d = CONFIG.UNITS[kind];
     if (!d || (d.age || 0) > C.age || ((d.civ || d.unique) && (d.civ || d.unique) !== C.E.civ)
-        || (d.requiresTech && !C.E.techs.has(d.requiresTech))) delete w[u];
+        || (d.requiresTech && !C.E.techs.has(d.requiresTech)) || !civAllows(C.T, kind)) delete w[u];
   }
   const sum = Object.values(w).reduce((a, b) => a + b, 0) || 1;
   for (const u of Object.keys(w)) w[u] /= sum;

@@ -136,6 +136,7 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
   if (!def.walkable) {
     e.obstacle = { x, z, hw: e.footprint.hw, hd: e.footprint.hd, rect: true, entity: e, gateTeam: def.gate ? team : 0 };
     state.obstacles.push(e.obstacle);
+    LINKS.walls = true;
   }
   hideDecorIn(x, z, sw / 2 + (def.wall || def.gate ? 0.3 : 2.5), sd / 2 + (def.wall || def.gate ? 0.3 : 2.5));
   if (def.dock) { /* sobre l'aigua: no es pinta el terreny */ }
@@ -208,7 +209,7 @@ function demolishBuilding(b) {
   b.depleted = true;
   state.buildings = state.buildings.filter(x => x !== b);
   state.resourceNodes = state.resourceNodes.filter(x => x !== b);
-  state.obstacles = state.obstacles.filter(o => o.entity !== b);
+  dropObstaclesOf(b); LINKS.walls = true;
   state.pickables = state.pickables.filter(m => m.userData.entity !== b);
   if (b.selected) { removeFromSelection(b); onSelectionChanged(); }
   b.dieT = 0;

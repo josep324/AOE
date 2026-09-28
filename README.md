@@ -38,6 +38,10 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 Com a l'AoE II, cada jugador té la mateixa sortida (línia de bosc, 5 arbres solts a prop del Centre, or, pedra i menjar);
 els boscos són taques compactes i irregulars repartides a l'atzar per tot el mapa, i les 5 relíquies queden escampades
 a més de 25 caselles de qualsevol base i a més de 20 l'una de l'altra.
+**Boscos i muralles** com a l'AoE II: un bosc dens és una paret (entre troncs propers hi ha un farciment invisible que
+desapareix quan se'n talla un), les muralles es poden construir enganxades als arbres per tancar una zona aprofitant
+el bosc, i les unitats empeses pels companys no travessen muralles ni boscos. No es pot construir a la riba (on
+l'edifici quedaria dins de l'aigua) ni a sobre de les relíquies.
 **Relleu** com a l'AoE II: turons (Aràbia el més accidentat) i penya-segats de roca que no es poden travessar
 (als extrems s'hi pot pujar). Des de dalt es fa +25% de dany i des de baix −25%. Els edificis anivellen el terreny
 i no es poden fer en pendents massa forts. La IA reuneix l'exèrcit i fa torres i castells en terreny alt.
@@ -73,6 +77,9 @@ Millores de vaixell: Brulot ràpid, Vaixell de demolició pesant i Galió artill
 Tecnologies noves: Tàctica part, Subministraments, Gambesons, Incendi, Bardissa de plaques, Espitlleres, Projectils roents,
 Cadafals, Sapadors, Lleva, Medicina herbal, Caravana, Gremis, Guàrdia i Patrulla urbana i Mestre d'aixa.
 Als botons, les tecnologies tenen el fons blavós i les edats daurat (a més de la fletxa ⬆ de les millores).
+**Arbre tecnològic** per civilització (src/data/civs.js, «disabled»): els Francs no tenen camells, Anell del polze ni
+Tàctica part; els Japonesos no tenen camells, Hússar, Paladí ni Canó bombarda. El que una civilització no té no surt als botons
+i la IA no ho fa servir. `npm run check` comprova que cap unitat o tecnologia depengui d'una civilització que no existeix.
 Queden fora les unitats i tecnologies d'altres civilitzacions (elefants, missioners, àguiles…) i les que depenen de
 coses que el joc no té (tributs: Encunyació i Banca; Espies, Teocràcia i Matacans).
 
@@ -108,7 +115,7 @@ src/
     07…08a           entitats, biblioteca de models .glb, recursos i models de la natura
     09…09d           edificis: kit comú (textures, teulades, cúpules…) i arquitectura de cada regió
     10…12            col·locació, unitats (esquelet i vestits per regió), decoració
-    13 navegació     graella, A*, portes per equip
+    13 navegació     graella, A*, portes per equip; farciment entre troncs i entre muralla i bosc (13b)
     14 món           generació del mapa (sortides iguals, boscos i recursos a l'atzar)
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
     21 IA            nucli (21), economia (21a), estratègia i producció (21b), combat i micro (21c)

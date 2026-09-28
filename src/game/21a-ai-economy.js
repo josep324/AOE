@@ -13,6 +13,7 @@ function aiEconomy(A, C) {
   aiHouses(A, C);
   aiVillagerWork(A, C);
   aiDropsites(A, C);
+  aiFinishFoundations(A, C);
   aiExpand(A, C);
   aiMarket(A, C);
   // Amb moltes granges, en deixa unes quantes pagades a la cua del Molí perquè es resembrin soles
@@ -33,6 +34,15 @@ function aiVillagerProduction(A, C) {
   }
 }
 
+/* ---------- Fonaments abandonats (el constructor ha mort o l'han enviat a lluitar): algú els acaba ---------- */
+function aiFinishFoundations(A, C) {
+  for (const b of C.blds) {
+    if (!b.underConstruction || b.dead || b.isWall) continue;
+    if (state.units.some(u => u.team === C.T && !u.dead && (u.buildTarget === b || u.orderQueue.some(o => o.building === b)))) continue;
+    const who = aiPickBuilders(A, b.subtype === 'house' || b.subtype === 'farm' ? 1 : 2, b.position);
+    if (who.length) commandBuild(who, b);
+  }
+}
 /* ---------- Cases amb marge (més marge com més edificis produeixen) ---------- */
 function aiHouses(A, C) {
   const cap = popCap(C.T), used = popUsed(C.T);
@@ -160,7 +170,7 @@ function aiDropsites(A, C) {
   if (!C.has('mill') && C.villagers.length >= 7) {
     const berries = nearestResource('food', C.home, 45);
     const near = berries && berries.subtype === 'berries' ? berries.position : C.home;
-    if (aiBuild(A, 'mill', near, near === C.home ? 11 : 3.5, near === C.home ? 22 : 9)) return;
+    if (aiBuild(A, 'mill', near, near === C.home ? 11 : 3.5, near === C.home ? 22 : 13)) return;
   }
   // Serradores: una per cada 7 llenyataires, sempre al costat d'un bosc que no en tingui
   const lumber = C.count('lumbercamp');
@@ -176,7 +186,7 @@ function aiDropsites(A, C) {
       for (const o of obstaclesNear(n.position.x, n.position.z, aiObsBuf)) if (o.entity && o.entity.subtype === 'tree' && hDist(o.entity.position, n.position) < 7) k++;
       if (k >= 6) { bd = d; best = n; }
     }
-    if (best && aiBuild(A, 'lumbercamp', best.position, 3.5, 10)) return;
+    if (best && aiBuild(A, 'lumbercamp', best.position, 3.5, 12)) return;
   }
   // Campaments miners: a l'or (i a la pedra) quan s'hi ha de treballar
   for (const r of ['gold', 'stone']) {

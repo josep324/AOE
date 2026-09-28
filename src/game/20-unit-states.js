@@ -62,7 +62,7 @@ function approachPointAt(ent, angle, naval = false) {
   }
   // Evitem que el punt quedi dins d'un altre obstacle (p. ex. un arbre veí)
   for (const o of obstaclesNear(p.x, p.z, approachObsBuf)) {
-    if (o.entity === ent) continue;
+    if (o.entity === ent && !o.link) continue;         // el propi tronc no, però sí el farciment cap als veïns
     pushOutOf(p, o, CONFIG.VILLAGER.radius + 0.1);
   }
   return fitToMedium(clampToMap(p), naval);

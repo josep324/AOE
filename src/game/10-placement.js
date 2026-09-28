@@ -178,6 +178,12 @@ function wallsIn(x, z, sw, sd, team = PLAYER.id) {
   return state.buildings.filter(b => b.isWall && b.team === team && !b.dead
     && Math.abs(b.position.x - x) < sw / 2 && Math.abs(b.position.z - z) < sd / 2);
 }
+const WATER_BUILD_MIN = 0.1;      // el pla de l'aigua és a 0,07 m
+/* Alguna part de la cel·la (centre o cantonades) queda sota el pla de l'aigua? */
+function belowWater(cx, cz) {
+  for (const [dx, dz] of [[0, 0], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) if (groundY(cx + dx, cz + dz) < WATER_BUILD_MIN) return true;
+  return false;
+}
 function canPlace(type, x, z, rot = 0) {
   if (CONFIG.BUILDINGS[type].dock) return canPlaceDock(x, z, rot);
   const [sw, sd] = sizeOf(type, rot);
@@ -187,17 +193,24 @@ function canPlace(type, x, z, rot = 0) {
   if (slopeIn(x, z, sw / 2, sd / 2) > MAX_BUILD_SLOPE) return false;
   const N = NAV.N;
   const walls = CONFIG.BUILDINGS[type].gate ? wallsIn(x, z, sw, sd) : [];
+  const wallLike = !!(CONFIG.BUILDINGS[type].wall || CONFIG.BUILDINGS[type].gate);
   for (let j = navCell(z - sd / 2 + 0.01); j <= navCell(z + sd / 2 - 0.01); j++)
     for (let i = navCell(x - sw / 2 + 0.01); i <= navCell(x + sw / 2 - 0.01); i++) {
-      if (!NAV.build[j * N + i]) continue;
+      const bv = NAV.build[j * N + i];
+      // A la riba el terreny queda per sota del pla de l'aigua: l'edifici semblaria dins del mar
+      if (WATER.any && belowWater(navCenter(i), navCenter(j))) return false;
+      if (!bv || (bv === 2 && wallLike)) continue;
       // Porta: la cel·la pot estar ocupada per un tram de muralla propi
       const cx = navCenter(i), cz = navCenter(j);
       if (walls.some(w => Math.abs(w.position.x - cx) < 0.6 && Math.abs(w.position.z - cz) < 0.6)) continue;
       return false;
     }
-  // Tampoc a sobre de les ovelles
+  // Tampoc a sobre de les ovelles ni de les relíquies (quedarien atrapades sota l'edifici)
   for (const n of state.resourceNodes) {
     if (n.subtype === 'sheep' && Math.abs(n.position.x - x) < sw / 2 + 0.6 && Math.abs(n.position.z - z) < sd / 2 + 0.6) return false;
+  }
+  for (const r of state.relics) {
+    if (!r.carrier && !r.holder && Math.abs(r.position.x - x) < sw / 2 + 0.7 && Math.abs(r.position.z - z) < sd / 2 + 0.7) return false;
   }
   return true;
 }
@@ -253,7 +266,7 @@ function confirmPlacement(shift) {
     for (const w of wallsIn(placing.x, placing.z, gw, gd)) {
       w.dead = true; w.depleted = true;
       state.buildings = state.buildings.filter(x => x !== w);
-      state.obstacles = state.obstacles.filter(o => o.entity !== w);
+      dropObstaclesOf(w); LINKS.walls = true;
       state.pickables = state.pickables.filter(m => m.userData.entity !== w);
       scene.remove(w.group);
     }
