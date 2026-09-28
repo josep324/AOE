@@ -7,6 +7,7 @@
    ===================================================================== */
 const LINKS = { trees: false, walls: false };
 const TREE_LINK_DIST = 3.5;     // troncs a menys d'aquesta distància (centre a centre): no s'hi passa
+const TREE_HOLE_DIST = 6.6;     // fins aquí, si el forat és a dins del bosc (Bosc Negre: arbres més separats)
 const WALL_LINK_GAP = 1.4;      // forat màxim entre una muralla i el que té al costat que es tanca
 
 function linkObstacle(ax, az, bx, bz, r, e1, e2, kind) {
@@ -24,11 +25,25 @@ const isWallObs = (o) => !o.link && o.entity && o.entity.kind === 'building' && 
 function rebuildTreeLinks() {
   state.obstacles = state.obstacles.filter(o => o.link !== 'tree');
   const trees = state.obstacles.filter(isTreeObs);
-  const C = 4, grid = new Map();
+  const C = 6, grid = new Map();
   for (const o of trees) {
     const k = spatialKey(Math.floor(o.x / C), Math.floor(o.z / C));
     let a = grid.get(k); if (!a) grid.set(k, a = []); a.push(o);
   }
+  const near = (x, z, r, skipA, skipB) => {
+    let n = 0, minD = Infinity;
+    const ci = Math.floor(x / C), cj = Math.floor(z / C);
+    for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
+      const arr = grid.get(spatialKey(i, j));
+      if (arr) for (const t of arr) {
+        if (t === skipA || t === skipB) continue;
+        const d = Math.hypot(t.x - x, t.z - z);
+        if (d < r) n++;
+        if (d < minD) minD = d;
+      }
+    }
+    return { n, minD };
+  };
   const out = [];
   for (const o of trees) {
     const ci = Math.floor(o.x / C), cj = Math.floor(o.z / C);
@@ -38,9 +53,28 @@ function rebuildTreeLinks() {
         if (q.entity.id <= o.entity.id) continue;
         const d = Math.hypot(q.x - o.x, q.z - o.z);
         // Si els troncs ja es toquen gairebé, no cal: cap unitat hi cap
-        if (d > TREE_LINK_DIST || d - o.r - q.r < 0.5) continue;
+        if (d > TREE_HOLE_DIST || d - o.r - q.r < 0.5) continue;
+        if (d > TREE_LINK_DIST) {
+          // Forat més gran. Si cap altre tronc ja no el tapa, es tanca quan és a dins del bosc: entre dos
+          // arbres del Bosc Negre (dense) sempre; entre d'altres, si hi ha més arbres al voltant del mig
+          // (així no es fan parets entre arbres solts ni a la vora dels camins)
+          const s = near((o.x + q.x) / 2, (o.z + q.z) / 2, 4.2, o, q);
+          if (s.minD < 1.7) continue;
+          if (!(o.entity.dense && q.entity.dense) && s.n < 1) continue;
+        }
         out.push(linkObstacle(o.x, o.z, q.x, q.z, 0.3, o.entity, q.entity, 'tree'));
       }
+    }
+  }
+  // Bosc Negre: tampoc no es pot vorejar el bosc per la vora del mapa
+  const M = CONFIG.MAP_LIMIT;
+  for (const o of trees) {
+    if (!o.entity.dense) continue;
+    for (const [ax, sgn] of [['x', 1], ['x', -1], ['z', 1], ['z', -1]]) {
+      const v = ax === 'x' ? o.x : o.z, gapToEdge = M - sgn * v - o.r;
+      if (gapToEdge < 0.4 || gapToEdge > 3.2) continue;
+      const ex = ax === 'x' ? sgn * (M + 0.5) : o.x, ez = ax === 'z' ? sgn * (M + 0.5) : o.z;
+      out.push(linkObstacle(o.x, o.z, ex, ez, 0.3, o.entity, null, 'tree'));
     }
   }
   for (const l of out) state.obstacles.push(l);

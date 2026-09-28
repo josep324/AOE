@@ -40,8 +40,9 @@ els boscos són taques compactes i irregulars repartides a l'atzar per tot el ma
 a més de 25 caselles de qualsevol base i a més de 20 l'una de l'altra.
 **Boscos i muralles** com a l'AoE II: un bosc dens és una paret (entre troncs propers hi ha un farciment invisible que
 desapareix quan se'n talla un), les muralles es poden construir enganxades als arbres per tancar una zona aprofitant
-el bosc, i les unitats empeses pels companys no travessen muralles ni boscos. No es pot construir a la riba (on
-l'edifici quedaria dins de l'aigua) ni a sobre de les relíquies.
+el bosc, i les unitats empeses pels companys no travessen muralles ni boscos. Al Bosc Negre el bosc és ple (sense
+clarianes amagades) i no s'hi pot entrar pel mig ni vorejar-lo per la vora del mapa. No es pot construir just a la riba
+(on l'edifici quedaria dins de l'aigua) ni a sobre de les relíquies.
 **Relleu** com a l'AoE II: turons (Aràbia el més accidentat) i penya-segats de roca que no es poden travessar
 (als extrems s'hi pot pujar). Des de dalt es fa +25% de dany i des de baix −25%. Els edificis anivellen el terreny
 i no es poden fer en pendents massa forts. La IA reuneix l'exèrcit i fa torres i castells en terreny alt.

@@ -25,52 +25,103 @@ function navFree(i, j) {
 }
 
 function rebuildNav() {
-  const N = NAV.N;
   NAV.walk.fill(0);
   NAV.build.fill(0);
   NAV.gate.fill(0);
   refreshLinks();
+  stampArea(0, NAV.N - 1, 0, NAV.N - 1);
+}
+/* Refà només un rectangle de la graella (en talar un arbre o esgotar un recurs: molt més ràpid) */
+function rebuildNavArea(x, z, r) {
+  const i0 = navCell(x - r), i1 = navCell(x + r), j0 = navCell(z - r), j1 = navCell(z + r), N = NAV.N;
+  for (let j = j0; j <= j1; j++) { const k0 = j * N; NAV.walk.fill(0, k0 + i0, k0 + i1 + 1); NAV.build.fill(0, k0 + i0, k0 + i1 + 1); NAV.gate.fill(0, k0 + i0, k0 + i1 + 1); }
+  refreshLinks();
+  stampArea(i0, i1, j0, j1);
+}
+/* Marca a la graella els obstacles, l'aigua i les granges dins del rectangle de cel·les [i0..i1]×[j0..j1] */
+function stampArea(ci0, ci1, cj0, cj1) {
+  const N = NAV.N;
+  const x0 = navCenter(ci0) - 0.5, x1 = navCenter(ci1) + 0.5, z0 = navCenter(cj0) - 0.5, z1 = navCenter(cj1) + 0.5;
   for (const o of state.obstacles) {
     if (o.entity && o.entity.mobile) continue;          // les ovelles es mouen: no bloquegen la graella
     const ex = (o.rect ? o.hw : o.ext || o.r) + 1.2, ez = (o.rect ? o.hd : o.ext || o.r) + 1.2;
+    if (o.x + ex < x0 || o.x - ex > x1 || o.z + ez < z0 || o.z - ez > z1) continue;
     // Arbres i penya-segats: marge més ample, perquè els forats entre troncs (més estrets que una
     // unitat) no semblin passos; com a l'AoE II, un bosc dens no es pot travessar
     const tree = (o.entity && o.entity.subtype === 'tree') || o.link === 'tree';
     const wm = tree || o.cliff ? 0.72 : 0.35;
-    const i0 = navCell(o.x - ex), i1 = navCell(o.x + ex), j0 = navCell(o.z - ez), j1 = navCell(o.z + ez);
+    const i0 = Math.max(ci0, navCell(o.x - ex)), i1 = Math.min(ci1, navCell(o.x + ex));
+    const j0 = Math.max(cj0, navCell(o.z - ez)), j1 = Math.min(cj1, navCell(o.z + ez));
     for (let j = j0; j <= j1; j++) {
       for (let i = i0; i <= i1; i++) {
         const k = j * N + i, d = obstacleSurface(o, navCenter(i), navCenter(j)).d;
         if (o.gateTeam) { if (d < 0) NAV.gate[k] = o.gateTeam; else if (d < 0.35) NAV.walk[k] = 1; }
         else if (d < wm) NAV.walk[k] = 1;
-        // Construcció: 1 = ocupat; 2 = sota la copa d'un arbre (no s'hi fan edificis, però sí
-        // muralles enganxades al bosc per tancar-lo)
-        if (tree) { if (d < 0.05) NAV.build[k] = 1; else if (d < 1.0 && !NAV.build[k]) NAV.build[k] = 2; }
+        // Construcció: 1 = ocupat; 2 = tocant un tronc (no s'hi fan edificis, però sí muralles
+        // enganxades al bosc per tancar-lo)
+        if (tree) { if (d < 0.05) NAV.build[k] = 1; else if (d < 0.5 && !NAV.build[k]) NAV.build[k] = 2; }
         else if (d < 0.5) NAV.build[k] = 1;
       }
     }
   }
   // Graella naval: només l'aigua fonda lliure d'obstacles (molls…) és navegable
   if (!NAV.naval || NAV.naval.length !== N * N) NAV.naval = new Uint8Array(N * N);
-  if (WATER.any && WATER.N === N) for (let k = 0; k < N * N; k++) NAV.naval[k] = (WATER.mask[k] !== 1 || NAV.walk[k]) ? 1 : 0;
-  else NAV.naval.fill(1);
-  // Aigua: la fonda bloqueja el pas; els guals es travessen però no s'hi construeix
-  if (WATER.any && WATER.N === N) {
-    for (let k = 0; k < N * N; k++) {
-      const w = WATER.mask[k];
-      if (w === 1) { NAV.walk[k] = 1; NAV.build[k] = 1; } else if (w === 2) NAV.build[k] = 1;
-    }
+  const water = WATER.any && WATER.N === N;
+  for (let j = cj0; j <= cj1; j++) for (let i = ci0; i <= ci1; i++) {
+    const k = j * N + i;
+    NAV.naval[k] = !water || WATER.mask[k] !== 1 || NAV.walk[k] ? 1 : 0;
+    // Aigua: la fonda bloqueja el pas; els guals es travessen però no s'hi construeix
+    if (water) { const w = WATER.mask[k]; if (w === 1) { NAV.walk[k] = 1; NAV.build[k] = 1; } else if (w === 2) NAV.build[k] = 1; }
   }
   // Les granges es poden trepitjar però ocupen terreny
   for (const e of state.buildings.concat(state.resourceNodes)) {
     if (e.subtype !== 'farm' || e.dead || e.depleted) continue;
     const fp = e.footprint;
-    for (let j = navCell(e.position.z - fp.hd + 0.01); j <= navCell(e.position.z + fp.hd - 0.01); j++)
-      for (let i = navCell(e.position.x - fp.hw + 0.01); i <= navCell(e.position.x + fp.hw - 0.01); i++)
+    for (let j = Math.max(cj0, navCell(e.position.z - fp.hd + 0.01)); j <= Math.min(cj1, navCell(e.position.z + fp.hd - 0.01)); j++)
+      for (let i = Math.max(ci0, navCell(e.position.x - fp.hw + 0.01)); i <= Math.min(ci1, navCell(e.position.x + fp.hw - 0.01)); i++)
         NAV.build[j * N + i] = 1;
   }
+  labelRegions();
   NAV.version++;
   rebuildObstacleGrid();
+}
+/* Zones connectades de la graella de terra (les portes compten com a pas): si l'origen i el destí
+   són en zones diferents, l'A* no ha de recórrer tota la zona per descobrir-ho */
+function labelRegions() {
+  const N = NAV.N, W = NAV.walk;
+  if (!NAV.label || NAV.label.length !== N * N) { NAV.label = new Int32Array(N * N); NAV.stack = new Int32Array(N * N); }
+  const lab = NAV.label, st = NAV.stack;
+  lab.fill(0);
+  let id = 0;
+  for (let k0 = 0; k0 < N * N; k0++) {
+    if (W[k0] || lab[k0]) continue;
+    id++;
+    let top = 0;
+    st[top++] = k0; lab[k0] = id;
+    while (top) {
+      const k = st[--top], i = k % N, j = (k - i) / N;
+      if (i > 0 && !W[k - 1] && !lab[k - 1]) { lab[k - 1] = id; st[top++] = k - 1; }
+      if (i < N - 1 && !W[k + 1] && !lab[k + 1]) { lab[k + 1] = id; st[top++] = k + 1; }
+      if (j > 0 && !W[k - N] && !lab[k - N]) { lab[k - N] = id; st[top++] = k - N; }
+      if (j < N - 1 && !W[k + N] && !lab[k + N]) { lab[k + N] = id; st[top++] = k + N; }
+    }
+  }
+}
+/* Cel·la de la zona «id» més propera a (gi, gj) */
+function nearestCellInRegion(gi, gj, id, maxR = 60) {
+  const N = NAV.N;
+  for (let r = 1; r <= maxR; r++) {
+    let best = null, bestD = Infinity;
+    for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+      if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+      const i = gi + di, j = gj + dj;
+      if (i < 0 || j < 0 || i >= N || j >= N || NAV.label[j * N + i] !== id || !navFree(i, j)) continue;
+      const d = di * di + dj * dj;
+      if (d < bestD) { bestD = d; best = [i, j]; }
+    }
+    if (best) return best;
+  }
+  return null;
 }
 /* Índex espacial dels obstacles (cel·les de 8 unitats): la col·lisió només mira els propers.
    Els obstacles grans (edificis) van en una llista a part que es comprova sempre. */
@@ -152,10 +203,21 @@ const NAV_DIRS = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT
 function findPath(sx, sz, tx, tz) {
   const N = NAV.N;
   const s = nearestFreeCell(navCell(sx), navCell(sz), 4);
-  const g = nearestFreeCell(navCell(tx), navCell(tz), 12);
-  if (!s || !g) return null;
+  let g = nearestFreeCell(navCell(tx), navCell(tz), 12);
+  if (!s) return null;
+  // Destí en una altra zona (dins d'un bosc tancat, a l'altra banda d'una muralla…): com a l'AoE II,
+  // s'hi acosta tant com pot; es busca directament la cel·la més propera de la zona pròpia
+  let unreachable = false;
+  if (!NAV.navalMode && NAV.label) {
+    const ls = NAV.label[s[1] * N + s[0]];
+    if (ls && (!g || NAV.label[g[1] * N + g[0]] !== ls)) {
+      g = nearestCellInRegion(navCell(tx), navCell(tz), ls);
+      unreachable = true;
+    }
+  }
+  if (!g) return null;
   const si = s[1] * N + s[0], gi = g[1] * N + g[0];
-  if (si === gi) return [];
+  if (si === gi) { const out = []; if (unreachable) out.partial = true; return out; }
   const stamp = ++NAV.stampId;
   const gx = g[0], gz = g[1];
   const H = (idx) => {
@@ -222,7 +284,7 @@ function findPath(sx, sz, tx, tz) {
   const cells = [];
   for (let c = end; c !== si && c !== -1; c = NAV.parent[c]) cells.push([navCenter(c % N), navCenter((c / N) | 0)]);
   cells.reverse();
-  if (!found) cells.partial = true;
+  if (!found || unreachable) cells.partial = true;
   return cells;
 }
 

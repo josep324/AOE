@@ -8,7 +8,7 @@ function serializeGame() {
   const add = (e, data) => { idx.set(e, ents.length); ents.push(data); };
   for (const n of state.resourceNodes) {
     if (n.subtype === 'farm') continue;
-    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, scale: r2(n.group.scale.x), killed: !!n.killed,
+    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, scale: r2(n.group.scale.x), killed: !!n.killed, dense: n.dense || undefined,
              hp: n.animal ? r2(n.hp) : undefined, alive: n.animal ? n.alive : undefined });
   }
   const farms = state.resourceNodes.filter(n => n.subtype === 'farm');
@@ -110,7 +110,7 @@ function loadGame(data) {
   for (const d of data.ents) {
     let e = null;
     if (d.k === 'res') {
-      if (d.sub === 'tree') e = createTree(d.x, d.z, d.scale);
+      if (d.sub === 'tree') { e = createTree(d.x, d.z, d.scale); if (d.dense) e.dense = true; }
       else if (d.sub === 'gold') e = createGoldMine(d.x, d.z);
       else if (d.sub === 'stone') e = createStoneMine(d.x, d.z);
       else if (d.sub === 'berries') e = createBerryBush(d.x, d.z);

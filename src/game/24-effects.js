@@ -12,7 +12,7 @@ function onBuildStrike(u, b) {
 function onToolStrike(u, node) {
   if (!node || node.depleted) return;
   if (node.inst) treeDetach(node);
-  if (node.subtype !== 'farm') node.shakeT = 0.25;
+  if (node.subtype !== 'farm') { node.shakeT = 0.25; SHAKING.add(node); }
   // Punt d'impacte entre l'aldeà i el recurs
   const dir = new THREE.Vector3(node.position.x - u.position.x, 0, node.position.z - u.position.z).normalize();
   const hitY = node.subtype === 'tree' ? 1.2 : node.subtype === 'sheep' ? 0.4 : 0.8;
@@ -47,7 +47,8 @@ function depleteResource(node) {
   state.dying.push(node);
   if (node.subtype === 'gold') toast("⛏️ Una Veta d'Or s'ha esgotat");
   if (node.subtype === 'stone') toast('🪨 Una Mina de Pedra s\'ha esgotat');
-  rebuildNav();
+  // Només cal refer la graella al voltant (un arbre té farciment fins a uns 7 m)
+  if (node.subtype === 'tree' || node.subtype === 'berries') rebuildNavArea(node.position.x, node.position.z, 9); else rebuildNav();
   if (node.subtype === 'farm') {
     const T = teamOf(node.team);
     const farmers = state.units.filter(u => u.gatherNode === node && !u.dead);
@@ -65,17 +66,23 @@ function depleteResource(node) {
   spawnParticles(atGround(node.position.x, 1.5, node.position.z), node.particleColor, 14, null);
 }
 
+/* Recursos que es sacsegen en recollir-los (els altres arbres no cal mirar-los a cada pas) */
+const SHAKING = new Set();
 function updateResourceNodes(dt) {
   for (const n of state.resourceNodes) {
+    if (n.subtype === 'tree') continue;
     if (n.subtype === 'sheep') { updateSheep(n, dt); n.position.y = groundY(n.position.x, n.position.z); }
     else if (n.animal) { updateAnimal(n, dt); n.position.y = groundY(n.position.x, n.position.z); }
     else if (n.subtype === 'fish' || n.subtype === 'deepfish') updateFish(n, dt);
+  }
+  for (const n of SHAKING) {
     if (n.shakeT > 0) {
       n.shakeT = Math.max(0, n.shakeT - dt);
       const a = n.shakeT * 40;
       n.model.rotation.z = Math.sin(a) * n.shakeT * (n.resourceType === 'wood' ? 0.18 : 0.05);
-    } else if (n.model.rotation.z !== 0) {
+    } else {
       n.model.rotation.z = 0;
+      SHAKING.delete(n);
     }
   }
   // Animació de desaparició dels recursos esgotats

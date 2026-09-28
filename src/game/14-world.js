@@ -296,26 +296,37 @@ const GENERATORS = {
     const clearing = (x, z) => Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 34) || Math.hypot(x, z) < 12;
     // Arbres llançats a l'atzar (amb una distància mínima entre ells) allà on el soroll diu que hi ha bosc:
     // cap patró de graella, com un bosc de debò
-    const L = CONFIG.MAP_LIMIT - 3, gap = 3.9, cell = gap, GN = Math.ceil(2 * L / cell) + 1;
+    const L = CONFIG.MAP_LIMIT - 1.5, gap = 3.9, cell = gap, GN = Math.ceil(2 * L / cell) + 1;
     const grid = new Map(), ox = rand() * 100, oz = rand() * 100;       // clarianes diferents a cada partida
     const key = (i, j) => j * GN + i;
-    const tooClose = (x, z) => {
+    // Zona de bosc (per a les proves: ningú no hi hauria de poder entrar)
+    WORLD.forestAt = (x, z) => fbm(x * 0.025 + ox, z * 0.025 + oz) >= 0.44 && !onPath(x, z) && !clearing(x, z);
+    const tooClose = (x, z, g = gap) => {
       const ci = Math.floor((x + L) / cell), cj = Math.floor((z + L) / cell);
       for (let j = cj - 1; j <= cj + 1; j++) for (let i = ci - 1; i <= ci + 1; i++) {
         const t = grid.get(key(i, j));
-        if (t && t.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < gap)) return true;
+        if (t && t.some(([tx, tz]) => Math.hypot(tx - x, tz - z) < g)) return true;
       }
       return false;
     };
-    const tries = Math.round((2 * L) ** 2 / (gap * gap) * 3);
+    const plant = (x, z) => {
+      createTree(x, z, randRange(1.1, 1.5)).dense = true;          // bosc dens: tots els forats es tanquen
+      const kk = key(Math.floor((x + L) / cell), Math.floor((z + L) / cell));
+      if (!grid.has(kk)) grid.set(kk, []);
+      grid.get(kk).push([x, z]);
+    };
+    const tries = Math.round((2 * L) ** 2 / (gap * gap) * 14);         // prou intents perquè el bosc quedi ple, sense forats
     for (let k = 0; k < tries; k++) {
       const x = randRange(-L, L), z = randRange(-L, L);
       if (fbm(x * 0.025 + ox, z * 0.025 + oz) < 0.44) continue;         // clarianes naturals
       if (tooClose(x, z) || onPath(x, z) || clearing(x, z) || isNearObstacle(x, z, 1.5)) continue;
-      createTree(x, z, randRange(1.1, 1.5));
-      const kk = key(Math.floor((x + L) / cell), Math.floor((z + L) / cell));
-      if (!grid.has(kk)) grid.set(kk, []);
-      grid.get(kk).push([x, z]);
+      plant(x, z);
+    }
+    // Segona passada: els forats que han quedat dins del bosc (cap arbre a menys de 3,4 m) s'omplen
+    for (let z = -L; z <= L; z += 1.1) for (let x = -L; x <= L; x += 1.1) {
+      const jx = x + randRange(-0.3, 0.3), jz = z + randRange(-0.3, 0.3);
+      if (fbm(jx * 0.025 + ox, jz * 0.025 + oz) < 0.44 || tooClose(jx, jz, 3.4) || onPath(jx, jz) || clearing(jx, jz) || isNearObstacle(jx, jz, 1.5)) continue;
+      plant(jx, jz);
     }
     placeWolves(4);
   },
@@ -326,6 +337,7 @@ function buildWorld(type, seed = MAP_SEED) {
   if (!GENERATORS[type]) type = 'arabia';
   WORLD.type = type;
   WORLD.seed = seed >>> 0;
+  WORLD.forestAt = null;
   reseedRand((WORLD.seed ^ { arabia: 0x1111, blackforest: 0x2222, lakes: 0x3333, rivers: 0x4444 }[type]) >>> 0);
   setupWater(type, WORLD.seed);
   setupHeights(type, WORLD.seed);
@@ -355,6 +367,7 @@ function resetWorld() {
   for (const e of [...state.units, ...state.buildings, ...state.resourceNodes, ...state.dying, ...state.relics]) scene.remove(e.group);
   for (const p of state.projectiles) scene.remove(p.g);
   for (const m of state.markers) scene.remove(m.g);
+  SHAKING.clear();
   Object.assign(state, { units: [], buildings: [], resourceNodes: [], obstacles: [], pickables: [], selected: [], dying: [],
     projectiles: [], markers: [], relics: [], animals: [], relicWin: null, controlGroups: {}, pings: [] });
   removeDecorations();

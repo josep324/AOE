@@ -181,6 +181,7 @@ function wallsIn(x, z, sw, sd, team = PLAYER.id) {
 const WATER_BUILD_MIN = 0.1;      // el pla de l'aigua és a 0,07 m
 /* Alguna part de la cel·la (centre o cantonades) queda sota el pla de l'aigua? */
 function belowWater(cx, cz) {
+  if (!waterNear(cx, cz, 2)) return false;          // lluny de l'aigua el terreny pla és a 0,02 m i no es veu cap aigua
   for (const [dx, dz] of [[0, 0], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) if (groundY(cx + dx, cz + dz) < WATER_BUILD_MIN) return true;
   return false;
 }

@@ -7,9 +7,17 @@ function lerpAngle(a, b, t) {
 }
 const easeOutBack = t => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
 
-const obsBuf = [];
+const obsBuf = [], nearObsList = [];
+/* Mig costat de la caixa que conté l'obstacle (per descartar ràpidament els llunyans) */
+const obsReach = (o) => o.reachB ?? (o.reachB = o.rect ? Math.hypot(o.hw, o.hd) : (o.ext || o.r));
 function resolveObstacleCollision(u, dt) {
-  const list = obstaclesNear(u.position.x, u.position.z, obsBuf);
+  const all = obstaclesNear(u.position.x, u.position.z, obsBuf);
+  // Només els obstacles que poden tocar la unitat (o el tram que ha fet des de l'últim pas)
+  const px0 = u.position.x, pz0 = u.position.z;
+  const slack = u.radius + 0.1 + (u.safeX !== undefined ? Math.min(4, Math.abs(px0 - u.safeX) + Math.abs(pz0 - u.safeZ)) : 0);
+  const list = nearObsList;
+  list.length = 0;
+  for (const o of all) { const e = obsReach(o) + slack; if (Math.abs(o.x - px0) <= e && Math.abs(o.z - pz0) <= e) list.push(o); }
   // Una unitat empesa (per les altres o per la separació) no pot acabar dins d'una muralla, un edifici
   // o el farciment d'un bosc venint de fora: torna on era. Així no es travessen muralles ni boscos.
   if (u.safeX !== undefined) {

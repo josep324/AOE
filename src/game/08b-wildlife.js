@@ -268,7 +268,7 @@ function updateAnimal(n, dt) {
 function animalHit(n, amount, attacker) {
   if (!n.alive) return;
   n.hp -= amount;
-  n.shakeT = 0.2;
+  n.shakeT = 0.2; SHAKING.add(n);
   spawnParticles(atGround(n.position.x, 0.9, n.position.z), 0xb02020, 3, null);
   if (n.hp <= 0) { animalDie(n); return; }
   if (n.subtype === 'deer') { if (attacker) { n.fleeFrom = attacker.position.clone(); n.fleeT = 1.4; } }
