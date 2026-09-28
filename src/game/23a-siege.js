@@ -76,6 +76,8 @@ const projGeo = {
   axeHandle: new THREE.BoxGeometry(0.05, 0.05, 0.55),
   axeHead: new THREE.BoxGeometry(0.04, 0.22, 0.16).translate(0, 0.06, 0.24),
   blade: new THREE.BoxGeometry(0.05, 0.02, 0.75),
+  javelin: new THREE.CylinderGeometry(0.025, 0.025, 1.4, 5).rotateX(Math.PI / 2),
+  javelinTip: new THREE.ConeGeometry(0.05, 0.22, 5).rotateX(Math.PI / 2).translate(0, 0, 0.8),
   bolt: new THREE.CylinderGeometry(0.05, 0.05, 1.6, 5).rotateX(Math.PI / 2),
   boltTip: new THREE.ConeGeometry(0.1, 0.3, 5).rotateX(Math.PI / 2).translate(0, 0, 0.9),
   stone: new THREE.IcosahedronGeometry(0.28, 0),
@@ -87,6 +89,7 @@ function projectileMesh(kind) {
   const g = new THREE.Group();
   if (kind === 'axe') g.add(new THREE.Mesh(projGeo.axeHandle, mat(0x6b4423)), new THREE.Mesh(projGeo.axeHead, mat(0x9ca3ad, { metalness: 0.7, roughness: 0.4 })));
   else if (kind === 'scimitar') g.add(new THREE.Mesh(projGeo.blade, mat(0xc8ccd2, { metalness: 0.8, roughness: 0.3 })));
+  else if (kind === 'javelin') g.add(new THREE.Mesh(projGeo.javelin, mat(0x6b4a2a)), new THREE.Mesh(projGeo.javelinTip, mat(0x9ca3ad, { metalness: 0.7, roughness: 0.4 })));
   else if (kind === 'bullet') g.add(new THREE.Mesh(projGeo.bullet, mat(0x2a2a2c, { metalness: 0.7, roughness: 0.35 })));
   else if (kind === 'cannonball') g.add(new THREE.Mesh(projGeo.cannonball, mat(0x1c1c1e, { metalness: 0.6, roughness: 0.4 })));
   else if (kind === 'bolt') g.add(new THREE.Mesh(projGeo.bolt, mat(0x5a3a1e)), new THREE.Mesh(projGeo.boltTip, mat(0x777777)));
@@ -99,6 +102,7 @@ function hitDamage(u, t, type) {
   if (t.category === 'archer') d += u.bonusArcher || 0;
   if (t.spearLine) d += u.bonusSpear || 0;
   if (t.category === 'infantry') d += u.bonusInf || 0;
+  if (t.category === 'siege') d += u.bonusSiege || 0;
   if (t.isUnique) d += u.bonusUnique || 0;
   if (t.naval) d += u.bonusShip || 0;
   // Avantatge d'altura (com a l'AoE II): +25% contra unitats més baixes, −25% contra les més altes
@@ -127,7 +131,12 @@ function fireProjectile(u, t) {
   }
   const type = u.meleeShot ? 0 : 1;
   const dmg = hitDamage(u, t, type);
-  if (kind === 'arrow') { spawnArrow(from, t, dmg, u); return; }
+  if (kind === 'arrow') {
+    spawnArrow(from, t, dmg, u);
+    // Chu Ko Nu: virots de més, més febles, que surten seguits
+    for (let i = 0; i < (u.multiShot || 0); i++) spawnArrow(from.clone().add(new THREE.Vector3(randRange(-0.2, 0.2), 0, randRange(-0.2, 0.2))), t, Math.max(1, computeDamage(3, t, 1)), u, 0.08 * (i + 1));
+    return;
+  }
   if (kind === 'bullet') {
     // Canoner: fumarada a la boca del canó i bala gairebé recta; pot fallar (poca precisió)
     const ry = u.group.rotation.y;

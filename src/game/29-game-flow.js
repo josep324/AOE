@@ -108,8 +108,22 @@ function setTeamCiv(T, civ) {
   T.civ = civ;
   T.mods = defaultMods();
   applyCivMods(T);
-  for (const b of state.buildings.filter(b => b.team === T.id)) rebuildBuildingModel(b);
+  for (const b of state.buildings.filter(b => b.team === T.id)) {
+    // Vida dels edificis que ja hi ha segons la nova civilització (Bizantins: +20%)
+    const f = T.mods.buildingHpMul / (b.bhm || 1);
+    if (f !== 1) { b.maxHp = Math.round(b.maxHp * f); b.hp = Math.round(b.hp * f); b.bhm = T.mods.buildingHpMul; }
+    rebuildBuildingModel(b);
+  }
   for (const u of state.units.filter(u => u.team === T.id)) rebuildUnitModel(u);
+}
+/* Sortida pròpia d'una civilització (Xinesos: més aldeans i menys recursos) */
+function applyCivStart(T) {
+  const st = civOf(T.id).mods.start;
+  if (!st) return;
+  for (const [k, v] of Object.entries(st.res || {})) T.res[k] = Math.max(0, T.res[k] + v);
+  const tc = state.buildings.find(b => b.team === T.id && b.subtype === 'towncenter');
+  for (let i = 0; tc && i < (st.villagers || 0); i++) { const s = findSpawnSpot(tc); createVillager(s.x, s.z, T.id); }
+  if (T === PLAYER) { updateResourcesUI(); updatePopulationUI(); }
 }
 function updateCivLabels() {
   const P = civOf(PLAYER.id), E = civOf(ENEMY.id);
@@ -139,6 +153,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   updateVictoryUI();
   aiReset(AI, DIFFICULTY[chosenDiff]);
   for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;
+  for (const T of [PLAYER, ENEMY]) applyCivStart(T);
   FOG.enabled = document.getElementById('fog-toggle').checked;
   startScreen.classList.add('hidden');
   state.paused = false;

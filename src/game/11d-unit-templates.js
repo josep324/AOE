@@ -31,7 +31,7 @@ function unitTemplate(kind, team, arch, variant) {
         rig.remove(s.parts.legL); rig.remove(s.parts.legR);
         for (const sx of [-1, 1]) piece(s.parts.torso, taper(0.1, 0.085, 0.62), soldierLook(arch, team, kind).pants, { x: sx * 0.3, y: 0.62, z: 0.1, rx: 0.5, rz: sx * 0.35 });
         if (kind === 'mameluke' || kind === 'camel' || kind === 'heavycamel') { rider.position.y = 1.18; buildCamelMount(rig, team); }
-        else buildHorse(rig, team, arch, VIS_BASE[kind] || kind, kind === 'king' ? 2 : d.tier || 0);
+        else buildHorse(rig, team, arch, VIS_BASE[kind] || kind, kind === 'king' ? 2 : UNIQUE_TIER[kind] ?? (d.tier || 0));
       }
     }
     rig.traverse(o => { if (o.name === 'torso') refineHead(o); });

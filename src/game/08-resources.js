@@ -235,6 +235,8 @@ function createTownCenter(x, z, team = PLAYER.id) {
     kind: 'building', subtype: 'towncenter', name: 'Centre de Ciutat', icon: '🏰',
     team, radius: 6.9, selRadius: 7.8, hp: 2400, maxHp: 2400,
   });
+  e.maxHp = e.hp = Math.round(2400 * teamOf(team).mods.buildingHpMul);   // (Bizantins: +20%)
+  e.bhm = teamOf(team).mods.buildingHpMul;
   e.armor = [3, 5];
   e.los = 18;
   e.dropoff = true;   // accepta tots els recursos

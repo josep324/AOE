@@ -6,13 +6,22 @@ Joc d'estratègia en temps real a l'estil **Age of Empires II**, fet amb [Three.
 
 Obre **`index.html`** directament al navegador (doble clic). És un sol fitxer autònom: no cal Internet ni instal·lar res.
 
-Civilitzacions disponibles (es trien al menú d'inici), cadascuna amb arquitectura, vestits i dues bonificacions pròpies:
+Vuit civilitzacions (es trien al menú d'inici), cadascuna amb arquitectura, vestits, bonificacions, unitat única (amb versió d'elit), tecnologia única i arbre tecnològic propis:
 
 | Civilització | Estil | Unitat única (Castell) | Bonificacions |
 |---|---|---|---|
 | ⚜️ Francs | Europa occidental: entramat de fusta, palla i pedra | Llançador de destrals | Castells −25% · Cavalleria +20% vida · Baies +15% · Collar de cavall gratuït · *Destral barbuda* |
 | 🌙 Sarraïns | Orient Mitjà: tova, arenisca, terrats, arcs i cúpules | Mameluc (camell) | Arquers +2 contra edificis · Comerç +20% · Mercat −75 fusta · Menys comissió · *Zelotisme* |
 | ⛩️ Japonesos | Àsia oriental: fusta fosca, parets blanques, teulades corbes | Samurai | Infanteria +25% velocitat d'atac · Magatzems a meitat de preu · Fusta +10% · Torres +2 visió · *Yasama* |
+| 🏹 Britons | Europa occidental | Arquer de tir llarg (abast molt llarg) | Arquers a peu +1 casella a Castells i Imperial · Galeria +20% ràpida · Pastors +25% · Centre a meitat de fusta · *Yeomen* |
+| ☦️ Bizantins | Mediterrània oriental | Catafracta (cavalleria pesant, +9 contra infanteria) | Edificis +20% vida · Llancers, escaramussadors i camells −25% · Imperial −33% · Guàrdia urbana gratuïta · *Logistica* |
+| 🐎 Mongols | Estepa | Mangudai (arquer a cavall ràpid, +3 contra setge) | Arquers a cavall +25% ritme · Genets lleugers +30% vida · Caçadors +40% · Exploradors +2 visió · *Instrucció* |
+| 🏮 Xinesos | Àsia oriental | Chu Ko Nu (ballesta de repetició) | +3 aldeans a l'inici · Tecnologies −15% · Centre +10 població · Demolició +50% vida · *Coets* |
+| ⚓ Catalans | Europa occidental (gòtic català) | Almogàver (infanteria ràpida que llança azcones, +4 contra cavalleria) | Infanteria +10% velocitat · Vaixells +15% vida · Granges +15% · Mercat i Moll −25% · *Consolat de Mar* i *Venjança Catalana* |
+
+Els Catalans no són a l'AoE II: estan dissenyats a partir de la història de la Corona d'Aragó (els almogàvers,
+la flota mediterrània i el Consolat de Mar). Els Bizantins i els Mongols fan servir l'arquitectura de l'Orient Mitjà,
+i els Britons i els Catalans l'occidental (de moment no hi ha models d'edificis propis per a aquests estils).
 
 Edats: Fosca → Feudal → Castells → **Imperial**. Línies completes d'unitats que es milloren (i converteixen les existents):
 Milícia → Home d'armes → Espadatxí → Dues mans → Campió · Llancer → Piquer → Alabarder · Arquer → Ballester → Arbalester ·

@@ -417,6 +417,7 @@ const SHORT = {
   heavycavarcher: 'Arq. cav. P.', lightcav: 'Genet lleu.', cavalier: 'Cav. pesant', camel: 'Camell', heavycamel: 'Camell P.',
   cappedram: 'Ariet ref.', siegeram: 'Ariet setge', heavyscorpion: 'Escorpí P.', bombard: 'Canó', tradecart: 'Carro',
   throwingaxe: 'Destraler', trebuchet: 'Trabuc', knight: 'Cavaller',
+  longbowman: 'Tir llarg', cataphract: 'Catafracta', mangudai: 'Mangudai', chukonu: 'Chu Ko Nu', almogaver: 'Almogàver',
   age1: 'Feudal', age2: 'Castells', age3: 'Imperial', handcart: 'Carro mà', doublebit: 'Doble fil', goldmining: 'Mineria',
   reseed: 'Resembra', horsecollar: 'Collar', bowsaw: 'Serra', twomansaw: 'Serra 2', goldshaft: "Pou d'or", stoneshaft: 'Pedrera',
   heavyplow: 'Arada', croprotation: 'Rotació', scalearmor: 'Escates', paddedarcher: 'Encoixin.', ironcasting: 'Fosa ferro',
@@ -424,6 +425,8 @@ const SHORT = {
   leatherarcher: 'Cuir', ringarcher: 'Anelles', architecture: 'Arquitect.', treadmill: 'Grua', guardtower: 'Torre guàrd.',
   keep: 'Torrassa', siegeengineers: 'Enginyers', beardedaxe: 'Destral B.', illumination: 'Il·lumin.', blockprinting: 'Impremta',
   elite_throwingaxe: 'Elit', elite_mameluke: 'Elit', elite_samurai: 'Elit',
+  elite_longbowman: 'Elit', elite_cataphract: 'Elit', elite_mangudai: 'Elit', elite_chukonu: 'Elit', elite_almogaver: 'Elit',
+  consolatdemar: 'Consolat', venjanca: 'Venjança',
 };
 function shortLabel(kind) {
   const d = itemDef(kind);

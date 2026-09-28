@@ -42,7 +42,9 @@ function costFor(kind, team = PLAYER.id) {
   const def = CONFIG.BUILDINGS[kind] || CONFIG.UNITS[kind] || CONFIG.TECHS[kind];
   const base = (def && def.cost) || {};
   const C = CIVS[teamOf(team).civ];
-  const m = C && C.mods.cost ? C.mods.cost[kind] : undefined;
+  const ud = CONFIG.UNITS[kind];
+  // (el descompte d'una unitat val per a tota la seva línia: llancer → piquer → alabarder)
+  const m = C && C.mods.cost ? (C.mods.cost[kind] ?? (ud && ud.line ? C.mods.cost[ud.line] : undefined)) : undefined;
   let out = base;
   if (typeof m === 'number') out = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.round(v * m)]));
   else if (m) out = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, Math.max(0, v + (m[k] || 0))]));
@@ -53,6 +55,9 @@ function costFor(kind, team = PLAYER.id) {
     if (delta) out = Object.fromEntries(Object.entries(out).map(([k, v]) => [k, Math.max(0, v + (delta[k] || 0))]));
     if (u.cat === 'ship' && M.shipWoodMul !== 1 && out.wood) out = { ...out, wood: Math.round(out.wood * M.shipWoodMul) };
   }
+  // Xinesos: tecnologies més barates (les edats no)
+  const t = CONFIG.TECHS[kind], tm = teamOf(team).mods.techCost;
+  if (t && !t.ageUp && tm !== 1) out = Object.fromEntries(Object.entries(out).map(([k, v]) => [k, Math.round(v * tm)]));
   return out;
 }
 /* Unitat única de la civilització d'un equip */
@@ -64,7 +69,7 @@ function popCap(team = PLAYER.id) {
   let cap = 0;
   for (const b of state.buildings) {
     if (b.team !== team || b.underConstruction) continue;
-    cap += b.subtype === 'towncenter' ? CONFIG.TC_POP : ((b.def && b.def.pop) || 0);
+    cap += b.subtype === 'towncenter' ? CONFIG.TC_POP + teamOf(team).mods.tcPop : ((b.def && b.def.pop) || 0);
   }
   return Math.min(CONFIG.POP_CAP, cap);
 }
@@ -221,6 +226,13 @@ function applyTechEffect(team, kind) {
     case 'beardedaxe': M.unitRange.throwingaxe = (M.unitRange.throwingaxe || 0) + 1; break;
     case 'zealotry': M.unitHp.mameluke = (M.unitHp.mameluke || 0) + 20; break;
     case 'yasama': M.towerArrows += 2; break;
+    case 'yeomen': M.unitRange.archer = (M.unitRange.archer || 0) + TILE; M.unitRange.longbowman = (M.unitRange.longbowman || 0) + TILE;
+      for (const k of ['crossbow', 'arbalester']) M.unitRange[k] = (M.unitRange[k] || 0) + TILE; M.towerAttack += 2; break;
+    case 'logistica': M.unitBonusInf.cataphract = (M.unitBonusInf.cataphract || 0) + 6; break;
+    case 'drill': M.speedMul.siege = (M.speedMul.siege || 1) * 1.5; break;
+    case 'rocketry': M.unitAttack.chukonu = (M.unitAttack.chukonu || 0) + 2; M.unitAttack.scorpion = (M.unitAttack.scorpion || 0) + 4; break;
+    case 'consolatdemar': M.tradeMul *= 1.2; M.shipArmor += 1; M.unitArmor.galley = [1, 0]; break;
+    case 'venjanca': M.unitAttack.almogaver = (M.unitAttack.almogaver || 0) + 2; M.unitArmor.almogaver = [1, 1]; break;
     case 'gillnets': M.shipGather *= 1.25; break;
     case 'careening': M.shipArmor += 1; M.transportCap += 5; break;
     case 'drydock': M.shipSpeed *= 1.15; break;
@@ -310,7 +322,8 @@ function updateTraining(dt) {
       if (!item.warned && b.isOwn) { item.warned = true; toast('🏠 Població plena: construeix més cases'); }
       continue;
     }
-    item.t += dt * (!isTech(item.kind) && CONSCRIPTION_AT.has(b.subtype) ? teamOf(b.team).mods.trainSpeed : 1);
+    const TM = teamOf(b.team).mods;
+    item.t += dt * (!isTech(item.kind) ? (CONSCRIPTION_AT.has(b.subtype) ? TM.trainSpeed : 1) * (TM.trainAt[b.subtype] || 1) : 1);
     if (item.t >= def.time) {
       b.trainQueue.shift();
       if (isTech(item.kind)) completeTech(b.team, item.kind);

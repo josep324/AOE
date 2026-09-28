@@ -2,8 +2,8 @@
    que no passa res impossible. node tests/run.mjs --bench soak */
 export default async ({ open, log }) => {
   const runs = [
-    [31, 'arabia', 'franks', 'saracens'], [32, 'blackforest', 'japanese', 'franks'],
-    [33, 'lakes', 'saracens', 'japanese'], [34, 'rivers', 'franks', 'japanese'],
+    [31, 'arabia', 'britons', 'byzantines'], [32, 'blackforest', 'mongols', 'chinese'],
+    [33, 'lakes', 'catalans', 'saracens'], [34, 'rivers', 'japanese', 'franks'],
   ];
   const MIN = +(process.env.SOAK_MIN || 15);
   for (const [seed, map, civ, enemyCiv] of runs) {

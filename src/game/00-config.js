@@ -106,6 +106,9 @@ function defaultMods() {
     speedMul: {}, mountedHp: 0, mountedSpeed: 1, perfectAim: {}, ballistics: false, wallHpMul: 1,
     lineArmor: {}, lineBonusSpear: {}, lineCost: {}, towerAttack: 0, heatedShot: false, castleHpMul: 1,
     trainSpeed: 1, garrisonHeal: 1, guilds: false, buildingLos: 0, shipWoodMul: 1,
+    // Fase 17: bonificacions de civilització i tecnologies úniques
+    lineHpMul: {}, lineReloadMul: {}, lineLos: {}, ageRange: {}, trainAt: {}, tcPop: 0, techCost: 1,
+    unitAttack: {}, unitBonusInf: {}, unitArmor: {},
   };
 }
 for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }
@@ -124,6 +127,15 @@ function applyCivMods(T) {
   Object.assign(T.mods.reloadMul, m.reloadMul || {});
   Object.assign(T.mods.vsBuilding, m.vsBuilding || {});
   if (m.tradeMul) T.mods.tradeMul = m.tradeMul;
+  for (const [k, v] of Object.entries(m.speedMul || {})) T.mods.speedMul[k] = (T.mods.speedMul[k] || 1) * v;
+  Object.assign(T.mods.lineHpMul, m.lineHpMul || {});
+  Object.assign(T.mods.lineReloadMul, m.lineReloadMul || {});
+  Object.assign(T.mods.lineLos, m.lineLos || {});
+  Object.assign(T.mods.ageRange, m.ageRange || {});
+  Object.assign(T.mods.trainAt, m.trainAt || {});
+  if (m.buildingHpMul) T.mods.buildingHpMul *= m.buildingHpMul;
+  if (m.tcPop) T.mods.tcPop = m.tcPop;
+  if (m.techCost) T.mods.techCost = m.techCost;
 }
 
 const state = {

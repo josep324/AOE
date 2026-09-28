@@ -366,7 +366,10 @@ const VIS_BASE = {
   pikeman: 'spearman', halberdier: 'spearman', crossbow: 'archer', arbalester: 'archer',
   eliteskirm: 'skirmisher', heavycavarcher: 'cavarcher', lightcav: 'scout', hussar: 'scout',
   cavalier: 'knight', paladin: 'knight', heavycamel: 'camel', king: 'knight',
+  longbowman: 'archer', cataphract: 'knight', mangudai: 'cavarcher', chukonu: 'archer',
 };
+/* Nivell d'equipament de les unitats úniques que fan servir l'aspecte d'una línia */
+const UNIQUE_TIER = { cataphract: 2, chukonu: 1 };
 function armorDetails(torso, arch, team, kind, tier = 0) {
   const T = teamOf(team);
   const heavy = kind === 'militia' || kind === 'knight' || kind === 'throwingaxe' || (tier >= 1 && kind !== 'archer' && kind !== 'skirmisher' && kind !== 'cavarcher');
@@ -394,7 +397,7 @@ function armorDetails(torso, arch, team, kind, tier = 0) {
 function buildSoldierRig(kind, team, arch) {
   const T = teamOf(team);
   const rig = new THREE.Group();
-  const tier = (CONFIG.UNITS[kind] && CONFIG.UNITS[kind].tier) || 0;
+  const tier = UNIQUE_TIER[kind] ?? ((CONFIG.UNITS[kind] && CONFIG.UNITS[kind].tier) || 0);
   const base = VIS_BASE[kind] || kind;
   const look = soldierLook(arch, team, base);
   if (tier >= 2 && (base === 'militia' || base === 'knight')) look.sleeves = arch === 'eastasian' ? 0x2a2622 : 0x9ca3ad;
@@ -432,6 +435,14 @@ function buildSoldierRig(kind, team, arch) {
     HATS.turban(t, 0xf0ece0);
     piece(t, UG.box, T.color, { y: 1.3, z: -0.25, sx: 0.5, sy: 0.7, sz: 0.04, rx: 0.15 });
     WEAPONS.sword(P.armR, true);
+    return { rig, parts: P };
+  }
+  if (kind === 'almogaver') {
+    // Almogàver: gorra de cuir, samarreta curta, azcones a la mà i escut rodó amb els colors de l'equip
+    HATS.coif(t, 0x6a4a2a);
+    WEAPONS.javelins(P.armR);
+    WEAPONS.round(P.armL, T.color, WOOD);
+    piece(t, UG.box, 0xd8b830, { y: 1.15, z: 0.27, sx: 0.08, sy: 0.5, sz: 0.02 });   // franja groga (senyal)
     return { rig, parts: P };
   }
   if (kind === 'samurai') {

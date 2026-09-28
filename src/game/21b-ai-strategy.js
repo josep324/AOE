@@ -8,7 +8,9 @@
      boom       Molts aldeans i dos o tres Centres abans d'atacar
    L'exèrcit barreja la composició de l'obertura amb el que contraresta el que ha vist del rival.
    ===================================================================== */
-const AI_STRATEGIES = { franks: ['scoutrush', 'fastcastle'], saracens: ['archers', 'fastcastle'], japanese: ['maa', 'boom'] };
+const AI_STRATEGIES = { franks: ['scoutrush', 'fastcastle'], saracens: ['archers', 'fastcastle'], japanese: ['maa', 'boom'],
+  britons: ['archers', 'boom'], byzantines: ['archers', 'fastcastle'], mongols: ['scoutrush', 'fastcastle'], chinese: ['archers', 'boom'],
+  catalans: ['maa', 'fastcastle'] };
 function aiPickStrategy(A) {
   if (A.diff === DIFFICULTY.easy) return 'boom';
   const opts = AI_STRATEGIES[teamOf(A.team).civ] || ['boom'];
@@ -132,10 +134,10 @@ function aiComposition(A, C) {
 }
 
 /* ---------- Edats i tecnologies ---------- */
-function aiTryTech(A, C, kind) {
+function aiTryTech(A, C, kind, reserved = false) {
   if (!CONFIG.TECHS[kind] || C.E.techs.has(kind) || techQueued(C.T, kind) || itemBlockReason(kind, C.T)) return false;
-  // Les tecnologies no toquen la reserva per a l'edat
-  if (!CONFIG.TECHS[kind].ageUp && !aiAffords(A, C, costFor(kind, C.T))) return false;
+  // Les tecnologies no toquen la reserva per a l'edat (tret de la que es reservava per a ella mateixa)
+  if (!CONFIG.TECHS[kind].ageUp && !reserved && !aiAffords(A, C, costFor(kind, C.T))) return false;
   // L'edat té prioritat: si el Centre té aldeans a la cua, se'n treu un (i se'n recupera el cost)
   if (CONFIG.TECHS[kind].ageUp) {
     const tc = C.tcs.find(b => b.trainQueue.length >= 2 && !b.trainQueue.some(it => isTech(it.kind)));
@@ -179,6 +181,16 @@ function aiAgesAndTechs(A, C) {
     }
   }
   if (A.saving) return;
+  // Tecnologia única (amb Castell): es reserven els recursos, com per a l'edat, perquè l'exèrcit no ho gasti tot
+  if (hasCompleted('castle', C.T) && vills >= 30) {
+    const uniq = Object.keys(CONFIG.TECHS).find(k => { const d = CONFIG.TECHS[k];
+      return d.civ === C.E.civ && !d.elite && !C.E.techs.has(k) && !techQueued(C.T, k) && (d.age || 0) <= C.age; });
+    if (uniq) {
+      const cost = costFor(uniq, C.T);
+      if (canAfford(cost, C.T) && aiTryTech(A, C, uniq, true)) A.reserve = null;
+      else A.reserve = cost;
+    }
+  }
   // Economia (a temps, com la IA de l'AoE II)
   const g = C.gath || {};
   const farms = state.resourceNodes.filter(n => n.subtype === 'farm' && n.team === C.T).length;
@@ -206,6 +218,11 @@ function aiAgesAndTechs(A, C) {
   const comp = aiComposition(A, C);
   const has = (...kinds) => kinds.some(k => (comp[k] || 0) > 0.08);
   const mil = [];
+  // Amb Castell, primer el que fa única la civilització: la tecnologia única i la unitat única d'elit
+  if (hasCompleted('castle', C.T)) {
+    for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.civ === C.E.civ && !d.elite) mil.push(k);
+    if (has('@unique')) mil.push('elite_' + uniqueUnitOf(C.T));
+  }
   if (has('militia', 'spearman', '@unique')) mil.push('forging', 'scalearmor', 'ironcasting', 'chainmail', 'squires', 'blastfurnace', 'platemail', 'arson');
   if (has('militia')) mil.push('supplies', 'gambesons');
   if (has('archer', 'skirmisher', 'cavarcher', 'handcannon')) mil.push('fletching', 'paddedarcher', 'bodkin', 'leatherarcher', 'thumbring', 'ballistics', 'bracer', 'ringarcher');
@@ -216,7 +233,6 @@ function aiAgesAndTechs(A, C) {
     const line = CONFIG.UNITS[d.upgradeTo].line;
     if (line && has(line)) mil.push(k);
   }
-  if (hasCompleted('castle', C.T)) { mil.push('elite_' + uniqueUnitOf(C.T)); for (const [k, d] of Object.entries(CONFIG.TECHS)) if (d.civ === C.E.civ && !d.elite) mil.push(k); }
   if (C.age >= 2) mil.push('chemistry', 'guardtower', 'arrowslits', 'siegeengineers', 'keep', 'conscription');
   if (C.age >= 3 && C.D.towers) mil.push('bombardtowertech');
   if (hasCompleted('castle', C.T) && C.age >= 3) mil.push('hoardings');
