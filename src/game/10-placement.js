@@ -111,6 +111,11 @@ function lineCells(x0, z0, x1, z1, max = 60) {
   }
   return out;
 }
+/* La cel·la ja és impassable per si mateixa (troncs i farciment del bosc, penya-segat…) */
+function wallCellClosed(x, z) {
+  const i = navCell(x), j = navCell(z);
+  return i >= 0 && j >= 0 && i < NAV.N && j < NAV.N && NAV.walk[j * NAV.N + i] === 1;
+}
 function updateWallPlacement(p) {
   const cur = [snapToGrid(p.x, 1), snapToGrid(p.z, 1)];
   const cells = placing.start ? lineCells(placing.start[0], placing.start[1], cur[0], cur[1]) : [cur];
@@ -130,6 +135,9 @@ function updateWallPlacement(p) {
   placing.pool.forEach((m, i) => {
     if (i >= cells.length) { m.visible = false; return; }
     const [x, z] = cells[i];
+    // Un tram on ja no es pot passar (dins del bosc, entre troncs) no cal: no es mostra ni es paga.
+    // Així es pot arrossegar d'arbre a arbre i només es fan els trams dels forats
+    if (wallCellClosed(x, z)) { m.visible = false; return; }
     const ok = canPlace(placing.type, x, z) && n < affordable;
     if (ok) { n++; placing.cells.push([x, z]); }
     m.visible = true;
@@ -228,10 +236,11 @@ function snapGateToWall(p) {
     && Math.abs(b.position.x - (near.position.x + dx)) < 0.2 && Math.abs(b.position.z - (near.position.z + dz)) < 0.2);
   const horiz = at(1, 0) || at(-1, 0), vert = at(0, 1) || at(0, -1);
   if (horiz === vert) return null;
-  // Porta de 3 cel·les centrada a la muralla, sobre la mateixa línia
+  // Porta centrada a la muralla, sobre la mateixa línia
+  const w = CONFIG.BUILDINGS.gate.size[0];
   return horiz
-    ? { rot: 0, x: snapToGrid(p.x, 3), z: near.position.z }
-    : { rot: 1, x: near.position.x, z: snapToGrid(p.z, 3) };
+    ? { rot: 0, x: snapToGrid(p.x, w), z: near.position.z }
+    : { rot: 1, x: near.position.x, z: snapToGrid(p.z, w) };
 }
 function updatePlacement() {
   if (!placing.type) return;

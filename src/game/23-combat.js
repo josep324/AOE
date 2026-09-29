@@ -133,6 +133,7 @@ function killEntity(e, killer) {
   if (e.dead) return;
   e.dead = true;
   e.hp = 0;
+  statsKilled(e, killer);
   if (e.kind === 'unit') {
     if (e.garrison && e.garrison.length) ungarrison(e);
     if (e.relic) unitDropRelic(e);

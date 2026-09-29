@@ -210,6 +210,8 @@ document.getElementById('start-btn').addEventListener('click', () => {
     for (const k of Object.keys(TEAMS[id].res)) TEAMS[id].res[k] = CONFIG.STARTING_RESOURCES[k] + A.diff.bonusRes;
   }
   for (const id of GAME.players) applyCivStart(TEAMS[id]);
+  statsReset();
+  statsSample();
   FOG.enabled = document.getElementById('fog-toggle').checked;
   startScreen.classList.add('hidden');
   state.paused = false;

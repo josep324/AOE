@@ -10,11 +10,15 @@ function setRayFromScreen(x, y) {
 function pickEntity(x, y) {
   setRayFromScreen(x, y);
   const hits = raycaster.intersectObjects(state.pickables, false);
+  let first = null;
   for (const h of hits) {
     const ent = h.object.userData.entity;
-    if (ent && ent.group.visible && !ent.dead) return ent;
+    if (!ent || !ent.group.visible || ent.dead) continue;
+    // Un arbre al davant no amaga un fonament propi (p. ex. un tram de muralla fet dins del bosc: s'ha de poder enderrocar)
+    if (!first) { first = ent; if (ent.subtype !== 'tree') return ent; continue; }
+    if (ent.isOwn && ent.kind === 'building' && ent.underConstruction) return ent;
   }
-  return null;
+  return first;
 }
 function pickGround(x, y) {
   setRayFromScreen(x, y);

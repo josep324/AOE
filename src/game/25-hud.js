@@ -346,6 +346,11 @@ function updateSelectionUI(panelOnly = false) {
     actionsEl.classList.add('compact');
     const btn = makeActionButton('🗑️', 'Enderrocar', first.underConstruction && first.progress < 0.02 ? 'retorna cost' : 'Supr', '', () => demolishBuilding(first), true);
     actionsEl.appendChild(btn);
+    if (first.def && first.def.gate && !first.underConstruction) {
+      const lk = makeActionButton(first.locked ? '🔓' : '🔒', first.locked ? 'Desbloquejar' : 'Bloquejar', first.locked ? 'tancada' : 'oberta', '', () => { setGateLocked(first, !first.locked); updateSelectionUI(); }, true);
+      lk.title = first.locked ? 'La porta està bloquejada: no hi passa ningú. Prem per tornar-la a obrir per a les teves unitats.' : 'Bloqueja la porta: no hi passarà ningú, tampoc les teves unitats.';
+      actionsEl.appendChild(lk);
+    }
     if (garrisonCap(first) > 0 && !first.underConstruction) {
       const n = first.garrison ? first.garrison.length : 0;
       const g = makeActionButton('🚪', n ? 'Fer sortir' : 'Refugi', `${n}/${garrisonCap(first)} dins`, 'U', () => ungarrison(first), true);
@@ -517,6 +522,7 @@ function sendTribute(from, to, r, n = 100) {
   if (R[r] < n) { if (from === PLAYER.id) toast(`Cal tenir ${n} de ${RES_LABEL[r].toLowerCase()} per enviar-ne`); return false; }
   R[r] -= n;
   resOf(to)[r] += Math.round(n * 0.8);
+  statsTribute(from, to, n, Math.round(n * 0.8));
   if (from === PLAYER.id) { toast(`🎁 Has enviat ${n} de ${RES_LABEL[r].toLowerCase()} als ${civOf(to).name}`); updateResourcesUI(); }
   if (to === PLAYER.id) { toast(`🎁 El teu aliat (${civOf(from).name}) t'envia ${Math.round(n * 0.8)} de ${RES_LABEL[r].toLowerCase()}`); updateResourcesUI(); }
   return true;

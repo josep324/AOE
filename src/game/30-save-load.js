@@ -19,6 +19,7 @@ function serializeGame() {
       queue: b.trainQueue ? b.trainQueue.map(q => ({ kind: q.kind, t: r2(q.t) })) : null,
       rally: b.rally ? { x: r2(b.rally.point.x), z: r2(b.rally.point.z) } : null, seen: !!b.seen,
       arch: b.visArch, wonderEnd: b.wonderEnd ? r2(b.wonderEnd - state.elapsed) : undefined,
+      locked: b.locked || undefined,
     });
   }
   for (const u of state.units) {
@@ -47,6 +48,7 @@ function serializeGame() {
     layout: GAME.layout, defeated: [...GAME.defeated],
     ai: { diff: diffKey(AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
     ais: serializeAIs(idx),
+    stats: statsSerialize(),
     fog: { enabled: FOG.enabled, explored },
     cam: { x: camState.target.x, z: camState.target.z, yaw: camState.yaw, dist: camState.targetDist },
     ents,
@@ -144,6 +146,7 @@ function loadGame(data) {
       if (d.arch && d.arch !== archOf(d.team)) { e.visArch = d.arch; rebuildBuildingModel(e); }
       e.hp = d.hp;
       if (d.wonderEnd !== undefined) e.wonderEnd = data.elapsed + d.wonderEnd;
+      if (d.locked) { e.locked = true; if (e.obstacle) e.obstacle.gateTeam = -1; }
       if (d.queue && e.trainQueue) e.trainQueue = d.queue.map(q => ({ ...q }));
       if (d.rally) e.rally = { point: new THREE.Vector3(d.rally.x, 0, d.rally.z), node: null };
       e.seen = d.seen;
@@ -188,6 +191,7 @@ function loadGame(data) {
     else if (d.trade !== undefined && made[d.trade]) orderTrade(u, made[d.trade]);
   });
   // IA, boira, temps i càmera
+  statsRestore(data.stats);
   if (data.ais) restoreAIs(data.ais, made);
   else {
     // Partides desades abans que es desés la memòria de la IA
@@ -434,6 +438,7 @@ function checkGameOver() {
   if (win && lose) win = false;
   state.over = true;
   state.paused = true;
+  statsSample();
   const T = `<b>${formatTime(state.elapsed)}</b>`, P = civOf(PLAYER.id).name;
   const E = winner && !win ? civOf(winner).name : foes.map(t => civOf(t).name).join(' i ');
   const resigned = foes.every(t => aiOf(t) && aiOf(t).resigned);

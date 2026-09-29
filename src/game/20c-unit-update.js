@@ -245,6 +245,7 @@ function updateUnit(u, dt) {
       if (inReach(u, dest)) {
         if (u.tradeLoaded > 0) {
           resOf(u.team).gold += u.tradeLoaded;
+          statsGather(u.team, 'gold', u.tradeLoaded, 'trade');
           if (u.isOwn) { spawnFloater(`+${u.tradeLoaded} 🪙`, u.position, 3.2, 'gold'); updateResourcesUI(); }
           u.tradeLoaded = 0;
         } else {

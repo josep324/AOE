@@ -421,3 +421,37 @@ kbd { border-radius: 2px !important; }
 #players .trib button:hover{background:rgba(255,215,120,.18)}
 @media (max-width: 1100px){ #players{top:auto;bottom:calc(var(--hud-h) + 10px)} }
 #layout-choices .choice{padding:6px 12px;font-size:12px}
+
+/* Estadístiques */
+.overlay .card.stats-card{width:min(980px,calc(100vw - 32px))}
+.st-tabs .choice,.st-metrics .choice{padding:7px 12px;font-size:12.5px}
+.st-table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0 4px;text-align:right}
+.st-table th{font:600 11.5px 'Inter',sans-serif;color:var(--muted);padding:6px 8px;border-bottom:1px solid rgba(216,178,90,.25);vertical-align:bottom;max-width:92px}
+.st-table th:first-child,.st-table td:first-child{text-align:left}
+.st-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);color:var(--text);font-variant-numeric:tabular-nums}
+.st-table tr.me td{background:rgba(216,178,90,.06)}
+.st-table td.best{font-weight:700;color:#fff}
+.st-player{white-space:nowrap}
+.st-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.st-rel{margin-left:8px;color:var(--muted);font-size:11px}
+.st-note{font-size:11.5px !important;color:var(--muted) !important;text-align:left}
+.st-chart{position:relative;background:#171614;border:1px solid rgba(216,178,90,.18);border-radius:10px;padding:10px 12px 6px;margin-top:6px}
+.st-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text);margin:0 0 4px 4px}
+.st-leg{display:inline-flex;align-items:center;gap:6px}
+.st-leg i{display:inline-block;width:16px;height:2px;border-radius:1px}
+.st-svg{width:100%;height:auto;display:block;overflow:visible}
+.st-svg .st-grid{stroke:#2c2a26;stroke-width:1}
+.st-svg .st-tick{fill:#8f8a7d;font:11px 'Inter',sans-serif}
+.st-svg .st-endlbl{fill:var(--text);font:600 11.5px 'Inter',sans-serif}
+.st-svg .st-cross{stroke:#8f8a7d;stroke-width:1}
+.st-svg rect:focus{outline:none}
+.st-tip{position:absolute;top:34px;min-width:150px;padding:8px 10px;border-radius:8px;background:rgba(10,10,9,.94);border:1px solid rgba(216,178,90,.35);font-size:12px;pointer-events:none;text-align:left}
+.st-tip.hidden{display:none}
+.st-tip-t{color:var(--muted);margin-bottom:4px;font-size:11px}
+.st-tip-row{display:flex;align-items:center;gap:7px;line-height:1.6}
+.st-tip-row i{display:inline-block;width:12px;height:2px;border-radius:1px}
+.st-tip-row b{color:#fff;font-variant-numeric:tabular-nums;min-width:44px}
+.st-tip-row span{color:var(--muted)}
+.st-empty{color:var(--muted) !important}
+@media (max-width: 700px){ .st-table{font-size:11.5px} .st-table th,.st-table td{padding:5px 4px} }
+.st-scroll{overflow-x:auto}

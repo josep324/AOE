@@ -65,6 +65,7 @@
     <h2 id="menu-info">La partida està en pausa</h2>
     <div class="row">
       <button class="big-btn" id="menu-continue">CONTINUAR</button>
+      <button class="choice" id="menu-stats">📊 Estadístiques</button>
       <button class="choice" id="menu-new">🔄 Nova partida</button>
     </div>
     <div class="save-grid">
@@ -103,7 +104,17 @@
   <div class="card glass">
     <h1 id="end-title">VICTÒRIA</h1>
     <p id="end-text"></p>
+    <div class="row"><button class="choice" id="end-stats">📊 Estadístiques</button></div>
     <button class="big-btn" id="restart-btn">TORNAR A JUGAR</button>
+  </div>
+</div>
+<div id="stats-screen" class="overlay hidden">
+  <div class="card glass stats-card">
+    <h1>ESTADÍSTIQUES</h1>
+    <h2 id="stats-sub"></h2>
+    <div class="row st-tabs" id="stats-tabs"></div>
+    <div id="stats-body"></div>
+    <div class="row"><button class="choice" id="stats-close">Tancar</button></div>
   </div>
 </div>
 <div id="floaters"></div>

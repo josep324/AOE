@@ -22,7 +22,7 @@ function navFree(i, j) {
   if (i < 0 || j < 0 || i >= NAV.N || j >= NAV.N) return false;
   const k = j * NAV.N + i;
   if (NAV.need > 1 && NAV.clr[k] < NAV.need) return false;       // unitat gran: no hi cap
-  return !NAV.walk[k] && (!NAV.gate[k] || NAV.gate[k] === NAV.team);
+  return !NAV.walk[k] && (!NAV.gate[k] || allied(NAV.gate[k], NAV.team));      // (les portes deixen passar els aliats)
 }
 
 function rebuildNav() {

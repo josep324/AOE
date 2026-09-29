@@ -267,6 +267,7 @@ function depositCarry(u) {
     const amt = u.carry.amount;
     const type = u.carry.type;
     resOf(u.team)[type] += amt;
+    statsGather(u.team, type, amt);
     if (u.isOwn) {
       spawnFloater(`+${amt} ${RES_ICON[type]}`, u.position, 3.0, type);
       updateResourcesUI();

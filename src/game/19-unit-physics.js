@@ -26,7 +26,7 @@ function resolveObstacleCollision(u, dt) {
     if (jump > 0.02 && jump < 4) {
       const mx = (px + sx) / 2, mz = (pz + sz) / 2;
       for (const o of list) {
-        if (o.gateTeam === u.team) continue;
+        if (o.gateTeam && allied(o.gateTeam, u.team)) continue;
         if ((obstacleSurface(o, px, pz).d < 0 || (jump > 0.5 && obstacleSurface(o, mx, mz).d < 0)) && obstacleSurface(o, sx, sz).d >= 0) {
           u.position.x = sx; u.position.z = sz;
           break;
@@ -35,7 +35,7 @@ function resolveObstacleCollision(u, dt) {
     }
   }
   for (const o of list) {
-    if (o.gateTeam === u.team) continue;
+    if (o.gateTeam && allied(o.gateTeam, u.team)) continue;
     const s = pushOutOf(u.position, o, u.radius);
     if (s && u.target) {
       // Llisquem per la tangent cap al costat del destí per no quedar encallats

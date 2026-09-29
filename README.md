@@ -69,7 +69,9 @@ clarianes amagades) i no s'hi pot entrar pel mig ni vorejar-lo per la vora del m
 **Relleu** com a l'AoE II: turons (Aràbia el més accidentat) i penya-segats de roca que no es poden travessar
 (als extrems s'hi pot pujar). Des de dalt es fa +25% de dany i des de baix −25%. Els edificis anivellen el terreny
 i no es poden fer en pendents massa forts. La IA reuneix l'exèrcit i fa torres i castells en terreny alt.
-**Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba.
+**Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba. Traçar una muralla d'arbre a arbre només fa (i paga) els trams dels forats: dins del bosc ja no es pot passar.
+La **porta** fa 4 cel·les, s'obre sola per a les teves unitats i les aliades (no per a les enemigues) i es pot
+**bloquejar** (🔒): llavors no hi passa ningú. Un fonament que ha quedat dins del bosc es pot seleccionar i enderrocar.
 
 **Naval** (mapes amb aigua): ⚓ **Moll** a l'aigua fonda tocant a la riba; vaixells pesquers (també peix d'altura),
 transport (10 unitats: clic dret sobre el vaixell per embarcar, clic dret a terra per desembarcar), Galera → Galera de guerra → Galió,
@@ -106,6 +108,10 @@ Tàctica part; els Japonesos no tenen camells, Hússar, Paladí ni Canó bombard
 i la IA no ho fa servir. `npm run check` comprova que cap unitat o tecnologia depengui d'una civilització que no existeix.
 Queden fora les unitats i tecnologies d'altres civilitzacions (elefants, missioners, àguiles…) i les que depenen de
 coses que el joc no té (tributs: Encunyació i Banca; Espies, Teocràcia i Matacans).
+
+**Estadístiques** (📊 al menú o en acabar la partida), com a l'AoE II: punts (militar, economia i tecnologia),
+baixes, edificis destruïts, recursos recollits per tipus, comerç, relíquies, tributs, tecnologies, quan puja d'edat
+cada jugador i gràfiques de l'evolució (punts, població, exèrcit, aldeans i recursos, una mostra cada 30 segons).
 
 **Desar i carregar** conserva també la memòria de les IA (el que han vist de tu, l'exèrcit reunit, les incursions,
 la ruta de l'explorador, la reserva per a l'edat), de manera que una partida carregada continua com l'original.

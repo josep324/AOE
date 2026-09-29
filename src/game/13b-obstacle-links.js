@@ -104,6 +104,8 @@ function rebuildWallLinks() {
       const qx = w.x - s.nx * s.d, qz = w.z - s.nz * s.d;
       const s2 = obstacleSurface(w, qx, qz);
       if (s2.d < 0.15 || s2.d > WALL_LINK_GAP) continue;
+      // Porta: només pels extrems (per la cara de pas, el farciment la tancaria)
+      if (w.gateTeam !== undefined && w.gateTeam !== 0 && (w.hw > w.hd ? Math.abs(s2.nz) > Math.abs(s2.nx) : Math.abs(s2.nx) > Math.abs(s2.nz))) continue;
       out.push(linkObstacle(qx - s2.nx * s2.d, qz - s2.nz * s2.d, qx, qz, 0.3, w.entity, q.entity || null, 'wall'));
     }
   }

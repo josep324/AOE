@@ -272,6 +272,7 @@ function applyTechEffect(team, kind) {
 }
 function completeTech(team, kind) {
   const d = CONFIG.TECHS[kind];
+  statsTech(team, kind);
   applyTechEffect(team, kind);
   for (const u of state.units) if (u.team === team) { setUnitStats(u, u.unitKind); if (u.garrison && u.garrison.length) refreshContainer(u); }
   if (kind === 'masonry' || kind === 'architecture') for (const b of state.buildings) if (b.team === team) applyBuildingMods(b, 1.1);
@@ -338,6 +339,7 @@ function updateTraining(dt) {
 
 function spawnUnit(building, kind) {
   kind = currentKind(building.team, kind);
+  statsTrained(building.team, kind);
   const spot = findSpawnSpot(building);
   const v = kind === 'villager' ? createVillager(spot.x, spot.z, building.team)
     : kind === 'tradecart' ? createTradeCart(spot.x, spot.z, building.team)

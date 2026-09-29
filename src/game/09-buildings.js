@@ -32,6 +32,14 @@ function makeBuildingModel(type, team = PLAYER.id, arch = null) {
     wrap.add(kit.model);
     return { model: wrap, height: kit.height * s };
   }
+  if (kit && type === 'gate') {
+    // Porta de 4 cel·les (com a l'AoE II): el model, pensat per a 3, s'eixampla
+    const wrap = new THREE.Group();
+    kit.model.scale.x = 4 / 3;
+    wrap.add(kit.model);
+    wrap.userData = kit.model.userData;
+    return { model: wrap, height: kit.height };
+  }
   if (kit) return kit;
   const g = new THREE.Group();
   bx(g, fw * 0.9, 2, fd * 0.9, mat(teamOf(team).color), 0, 1, 0);
@@ -159,6 +167,7 @@ function applyConstructionVisual(b) {
 function completeBuilding(b, silent = false) {
   b.underConstruction = false;
   b.progress = 1;
+  if (!silent) statsBuilt(b);
   applyConstructionVisual(b);
   b.hp = b.maxHp;
   if (b.subtype === 'farm') {
@@ -180,12 +189,21 @@ function completeBuilding(b, silent = false) {
   if (b.selected) updateSelectionUI();
 }
 
+const gateNearBuf = [];
+/* Bloqueja o desbloqueja una porta: bloquejada, no hi passa ningú (tampoc les unitats pròpies) */
+function setGateLocked(b, locked) {
+  if (!b || !b.def || !b.def.gate) return;
+  b.locked = !!locked;
+  if (b.obstacle) b.obstacle.gateTeam = b.locked ? -1 : b.team;
+  rebuildNav();
+}
 /* Progrés de construcció: com a l'AoE II, cada constructor extra aporta menys (3/(n+2)) */
 function updateConstruction(dt) {
   for (const b of state.buildings.slice()) {
     if (b.model && b.model.userData.blades && !b.underConstruction) b.model.userData.blades.rotation.z -= dt * 0.9;
     if (b.model && b.model.userData.doors && !b.underConstruction) {
-      const near = state.units.some(u => u.team === b.team && !u.garrisoned && hDist(u.position, b.position) < 3.2);
+      // S'obre sola quan s'hi acosten unitats pròpies o aliades (si no està bloquejada)
+      const near = !b.locked && unitsNear(b.position.x, b.position.z, 3.6, gateNearBuf).some(u => allied(u.team, b.team) && !u.garrisoned && hDist(u.position, b.position) < 3.6);
       b.doorOpen = THREE.MathUtils.damp(b.doorOpen || 0, near ? 1 : 0, 6, dt);
       b.model.userData.doors[0].rotation.y = -b.doorOpen * 1.45;
       b.model.userData.doors[1].rotation.y = b.doorOpen * 1.45;
