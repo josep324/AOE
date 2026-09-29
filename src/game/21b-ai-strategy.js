@@ -166,7 +166,7 @@ function aiAgesAndTechs(A, C) {
   // Edifici que falta per poder pujar d'edat (se'n fan quan ja s'hi acosta)
   const next = C.age + 1;
   A.saving = false;
-  A.reserve = null;
+  A.reserve = A.campNeed ? { ...A.campNeed } : null;      // (campament d'una altra illa pendent: 21d)
   if (next <= 3 && !techQueued(C.T, 'age' + next)) {
     const need = thr[C.age];
     const req = CONFIG.AGES[next].req;

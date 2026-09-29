@@ -329,7 +329,8 @@ function placeRelics() {
   // Zona de terra de les bases: una relíquia dins d'un racó tancat del bosc no la podria recollir ningú
   const N = NAV.N, homeCell = nearestFreeCellIn(NAV.label, navCell(bases[0].x), navCell(bases[0].z + 12));
   const home = homeCell !== null ? NAV.label[homeCell] : 0;
-  const reachable = (x, z) => !home || NAV.label[navCell(z) * N + navCell(x)] === home;
+  // (a les Illes, qualsevol terra: s'hi arriba amb vaixell)
+  const reachable = (x, z) => WORLD.type === 'islands' ? NAV.label[navCell(z) * N + navCell(x)] > 0 : !home || NAV.label[navCell(z) * N + navCell(x)] === home;
   const free = (x, z) => !isNearObstacle(x, z, 2.5) && bases.every(B => Math.hypot(x - B.x, z - B.z) > baseGap) && reachable(x, z);
   let best = null;
   for (let attempt = 0; attempt < 25; attempt++) {

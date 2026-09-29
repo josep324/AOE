@@ -73,9 +73,12 @@ function aiEcoTargets(A, C) {
   if (C.age >= 2 && (A.wantTC || A.wantCastle)) { t.stone += 0.07; t.food -= 0.04; t.wood -= 0.03; }
   // Amb pedra de sobres (i sense Centre ni Castell a fer), aquests aldeans van a l'or i al menjar
   if (t.stone > 0 && C.res.stone > 650 && !A.wantTC && !A.wantCastle) { t.gold += t.stone * 0.5; t.food += t.stone * 0.5; t.stone = 0; }
-  // Sense mines d'or o pedra a l'abast: aquests aldeans van a la resta
+  // Or acumulat sense menjar ni fusta per gastar-lo: la meitat dels miners passen al menjar i a la fusta
+  if (C.res.gold > 1200 && Math.min(C.res.food, C.res.wood) < 300) { t.food += t.gold * 0.3; t.wood += t.gold * 0.2; t.gold *= 0.5; }
+  // Sense mines d'or o pedra a l'abast (a les Illes, a la mateixa illa): aquests aldeans van a la resta
+  const probe = C.overseas ? { position: C.homeRally, naval: false } : null;
   for (const r of ['gold', 'stone']) {
-    if (t[r] > 0 && !nearestResource(r, C.home, 400)) { t.food += t[r] * 0.6; t.wood += t[r] * 0.4; t[r] = 0; }
+    if (t[r] > 0 && !nearestResource(r, C.home, 400, probe)) { t.food += t[r] * 0.6; t.wood += t[r] * 0.4; t[r] = 0; }
   }
   return t;
 }
@@ -237,8 +240,16 @@ function aiMarket(A, C) {
   if (C.age < 2) return;
   const R = C.res;
   // Sense mercat i amb un recurs que sobra i l'or esgotat (p. ex. les mines de casa s'han acabat): en fa un
-  if (!C.has('market') && C.vn >= 30 && R.gold < 150 && Math.max(R.food, R.wood, R.stone) > 600) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
+  // (a les Illes, abans que s'acabi la fusta de l'illa: després potser només es podrà comprar)
+  if (!C.has('market') && C.vn >= 30 && ((R.gold < 150 && Math.max(R.food, R.wood, R.stone) > 600) || (C.overseas && C.vn >= 40 && R.wood >= 175))) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
   if (!hasCompleted('market', C.T) || C.now - A.lastTrade < 3) return;
+  // Sense fusta (l'illa esgotada): en compra amb or, i ven menjar per tenir-ne
+  const homeV = C.overseas ? C.villagers.find(v => !v.garrisoned && landZoneAt(v.position, 3) === landZoneAt(C.homeRally)) : C.villagers[0];
+  if (R.wood < 250 && homeV && (R.food > 1500 || !state.resourceNodes.some(n => n.resourceType === 'wood' && !n.depleted && canReach(homeV, n)))) {
+    if (R.gold >= teamOf(C.T).prices.wood + 50) { marketTrade(C.T, 'wood', true); A.lastTrade = C.now; return; }
+    if (R.food > 400) { marketTrade(C.T, 'food', false); A.lastTrade = C.now; return; }
+    if (R.stone > 300) { marketTrade(C.T, 'stone', false); A.lastTrade = C.now; return; }
+  }
   // Ven el que sobra; si falta or (mines esgotades), ven abans, deixant-ne una reserva
   const keep = { food: 500, wood: 450, stone: 250 };
   for (const r of ['stone', 'food', 'wood']) {

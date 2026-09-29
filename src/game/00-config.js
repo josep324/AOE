@@ -203,21 +203,24 @@ PLAYER.res = state.resources;
    dona sempre el mateix resultat. Només la lògica del joc el fa servir; els efectes purament
    visuals (partícules, espurnes…) fan servir vrand perquè no alterin la seqüència. */
 const RNG = { s: 0 };
-function mulberry32(seed) {
-  RNG.s = seed | 0;
+/* Cada generador té el seu estat; només el del joc (shared) el guarda a RNG, que es desa amb la partida.
+   (Abans tots compartien RNG.s: l'aigua, el relleu i la decoració reiniciaven l'atzar del joc) */
+function mulberry32(seed, shared = false) {
+  const S = shared ? RNG : { s: 0 };
+  S.s = seed | 0;
   return function () {
-    RNG.s = (RNG.s + 0x6D2B79F5) | 0;
-    let t = Math.imul(RNG.s ^ (RNG.s >>> 15), 1 | RNG.s);
+    S.s = (S.s + 0x6D2B79F5) | 0;
+    let t = Math.imul(S.s ^ (S.s >>> 15), 1 | S.s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 /* Llavor del mapa: aleatòria a cada partida (o fixa amb ?seed=123 a l'adreça) */
 const MAP_SEED = (parseInt(new URLSearchParams(location.search).get('seed'), 10) || Math.floor(Math.random() * 1e9)) >>> 0;
-let randGen = mulberry32(MAP_SEED);
+let randGen = mulberry32(MAP_SEED, true);
 const rand = () => randGen();
 /* Torna a sembrar l'aleatorietat de la simulació (cada mapa es genera igual a partir de la seva llavor) */
-function reseedRand(seed) { randGen = mulberry32(seed >>> 0); }
+function reseedRand(seed) { randGen = mulberry32(seed >>> 0, true); }
 const vrand = Math.random;
 const vrandRange = (a, b) => a + (b - a) * vrand();
 const randRange = (a, b) => a + (b - a) * rand();

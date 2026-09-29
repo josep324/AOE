@@ -1,7 +1,7 @@
 /* Els quatre tipus de mapa: camí entre bases, relíquies escampades i recursos */
 export default async ({ open, assert, log }) => {
   const page = await open({ start: false });
-  for (const m of ['arabia', 'blackforest', 'lakes', 'rivers']) {
+  for (const m of ['arabia', 'blackforest', 'lakes', 'rivers', 'islands']) {
     const r = await page.evaluate((m) => {
       const R = window.RTS, S = R.state;
       R.resetWorld(); R.buildWorld(m, 77);
@@ -17,10 +17,10 @@ export default async ({ open, assert, log }) => {
       return { m, relics: rel.length, minGap: Math.round(minGap), minBase: Math.round(minBase), c, path: path && !path.partial ? path.length : 0 };
     }, m);
     log(JSON.stringify(r));
-    assert(r.path > 0, `${m}: no hi ha camí entre les bases`);
+    if (m !== 'islands') assert(r.path > 0, `${m}: no hi ha camí entre les bases`);
     assert(r.relics === 5 && r.minGap >= 40 && r.minBase >= 50, `${m}: relíquies mal repartides`);
     assert(r.c.gold >= 8 && r.c.stone >= 4, `${m}: falten mines`);
     assert(r.c.tree > 300, `${m}: massa pocs arbres`);
-    if (m === 'lakes' || m === 'rivers') assert(r.c.fish > 0, `${m}: no hi ha peixos`);
+    if (m === 'lakes' || m === 'rivers' || m === 'islands') assert(r.c.fish > 0, `${m}: no hi ha peixos`);
   }
 };

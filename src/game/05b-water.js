@@ -91,15 +91,49 @@ function genRiver(rng, set) {
   const f = (s) => A1 * Math.sin(k1 * s) + A2 * Math.sin(k2 * s);
   const S1 = (42 + rng() * 22) * MSw;
   WATER.fords = [0, S1, -S1];
-  const four = GAME.players.length > 2;          // 3 o 4 jugadors: el riu va d'est a oest, entre les bases del sud i les del nord
-  set((x, z) => {
-    const s = four ? x : (x - z) / Math.SQRT2, p = four ? z : (x + z) / Math.SQRT2;
+  const inRiver = (s, p) => {
     const w = 5.6 + 1.2 * Math.cos(k3 * s);
     if (Math.abs(p - f(s)) >= w) return 0;
     return WATER.fords.some(sf => Math.abs(s - sf) < 5.5) ? 2 : 1;
-  });
+  };
+  if (GAME.players.length > 2) {
+    // 3 o 4 jugadors (bases a les cantonades): dos rius que es creuen en creu (el de nord a sud és el mateix
+    // girat 90°), perquè cada base quedi igual; al centre, on es troben, hi ha un gual
+    set((x, z) => {
+      const a = inRiver(x, z), b = inRiver(z, -x);
+      if (!a && !b) return 0;
+      return a === 2 || b === 2 || Math.hypot(x, z) < 9 ? 2 : 1;
+    });
+    return;
+  }
+  set((x, z) => inRiver((x - z) / Math.SQRT2, (x + z) / Math.SQRT2));
 }
 
+/* Illes: una per jugador (a les cantonades), una de gran al centre i quatre de petites entre les bases,
+   totes amb recursos; les cantonades buides també són illes lliures. Entre les illes, aigua fonda:
+   per atacar cal un Moll i vaixells de transport. Simètric com la resta de mapes */
+const ISLAND_R = () => Math.max(62, 46 * CONFIG.MAP_LIMIT / 125);
+function genIslands(rng, set) {
+  const MSw = CONFIG.MAP_LIMIT / 125, four = GAME.players.length > 2;
+  const off = rng() * 100, R = ISLAND_R(), B = 72 * MSw;
+  const isles = [];
+  // Una illa a cada cantonada (les de jugador i les buides), amb la vora irregular
+  for (const [sx, sz] of [[-1, -1], [1, 1], [1, -1], [-1, 1]]) isles.push({ x: sx * B, z: sz * B, r: R, off: off + sx * 7 + sz * 13 });
+  // Centre i illots entre les bases (a mig camí de dues cantonades veïnes)
+  const rc = (16 + rng() * 5) * MSw, rs = (9 + rng() * 3) * MSw, ds = (78 + rng() * 8) * MSw;
+  isles.push({ x: 0, z: 0, r: rc, off: off + 50 });
+  for (const [x, z] of [[0, -ds], [ds, 0], [0, ds], [-ds, 0]]) isles.push({ x, z, r: rs, off: off + 70 });
+  const land = (x, z) => isles.some(I => {
+    const dx = x - I.x, dz = z - I.z, d = Math.hypot(dx, dz);
+    if (d > I.r * 1.25) return false;
+    return d < I.r * (0.9 + 0.42 * (fbm(dx * 0.04 + I.off, dz * 0.04 - I.off) - 0.5));
+  });
+  // (amb 2 jugadors, simètric respecte del centre; amb més, girant 90°)
+  set((x, z) => {
+    const pts = four ? [[x, z], [-z, x], [-x, -z], [z, -x]] : [[x, z], [-x, -z]];
+    return pts.some(([a, b]) => land(a, b)) ? 0 : 1;
+  });
+}
 function clearWater() {
   if (WATER.mesh) { scene.remove(WATER.mesh); WATER.mesh.geometry.dispose(); WATER.mesh = null; }
   if (WATER.tex) { WATER.tex.dispose(); WATER.tex = null; }
@@ -119,6 +153,7 @@ function setupWater(type, seed) {
   };
   if (type === 'lakes') genLakes(rng, set);
   else if (type === 'rivers') genRiver(rng, set);
+  else if (type === 'islands') genIslands(rng, set);
   else return;
   WATER.any = WATER.mask.some(v => v);
   if (!WATER.any) return;

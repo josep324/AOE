@@ -138,7 +138,11 @@ function killEntity(e, killer) {
   e.hp = 0;
   statsKilled(e, killer);
   if (e.kind === 'unit') {
-    if (e.garrison && e.garrison.length) ungarrison(e);
+    if (e.garrison && e.garrison.length) {
+      ungarrison(e);
+      // Transport enfonsat lluny de la riba: els que porta s'enfonsen amb ell (com a l'AoE II)
+      if (e.garrison && e.garrison.length) { const lost = e.garrison.slice(); e.garrison = []; for (const u of lost) { u.garrisoned = null; killEntity(u, killer); } }
+    }
     if (e.relic) unitDropRelic(e);
     if (e.category === 'king') toast(e.isOwn ? '👑 El teu rei ha mort!' : `👑 El rei dels ${civOf(e.team).name} ha mort!`);
     state.units = state.units.filter(u => u !== e);

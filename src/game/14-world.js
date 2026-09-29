@@ -28,6 +28,7 @@ const MAP_TYPES = {
   blackforest: { name: 'Bosc Negre', icon: '🌲', desc: 'Boscos immensos i tancats: només uns quants camins porten a l\'enemic' },
   lakes: { name: 'Llacs', icon: '🏞️', desc: 'Un gran llac al centre i altres de petits, amb peixos a la riba' },
   rivers: { name: 'Rius', icon: '🌊', desc: 'Un riu parteix el mapa: només es pot creuar pels guals' },
+  islands: { name: 'Illes', icon: '🏝️', desc: 'Cada jugador a la seva illa: per atacar calen un Moll, una flota i vaixells de transport' },
 };
 const WORLD = { type: 'arabia', seed: MAP_SEED, layout: '1v1' };
 let townCenter = null, enemyTC = null;
@@ -52,6 +53,15 @@ function forestKeepList() {
   for (const n of state.resourceNodes) if (n.subtype !== 'tree' && !n.obstacle) out.push([n.position.x, n.position.z]);
   for (const a of state.animals) out.push([a.position.x, a.position.z]);
   return out;
+}
+/* Treu un arbre mentre es genera el mapa (sense caure ni efectes) */
+function removeTreeNow(n) {
+  treeDetach(n);
+  scene.remove(n.group);
+  state.resourceNodes = state.resourceNodes.filter(m => m !== n);
+  state.pickables = state.pickables.filter(m => m.userData.entity !== n);
+  dropObstaclesOf(n);
+  LINKS.trees = true;
 }
 /* Radi aproximat d'un bosc compacte de n arbres */
 const forestRadius = (n) => Math.sqrt(n * 4.9 / Math.PI);
@@ -158,10 +168,13 @@ function createStartingBase(team) {
   const bp = freeSpot(B, randRange(14, 17), pickAngle(0.8), 0.3, 3);
   if (bp) {
     const [bx, bz] = bp;
-    [[0, 0], [2.6, 1.4], [-0.8, 2.8], [2.2, 4.2], [4.8, 3.2], [1.6, 5.6]].forEach(([dx, dz]) => {
+    // Sis mates per a tothom: si algun lloc està ocupat, es prova un dels de recanvi (partida justa)
+    let n = 0;
+    for (const [dx, dz] of [[0, 0], [2.6, 1.4], [-0.8, 2.8], [2.2, 4.2], [4.8, 3.2], [1.6, 5.6], [-2.6, 0.2], [3.4, -1.2], [-1.8, 5.4], [5.2, 0.6], [-3, 3.4], [4.2, 6.2]]) {
+      if (n >= 6) break;
       const x = bx + dx, z = bz + dz;
-      if (!isNearObstacle(x, z, 1.1)) createBerryBush(x, z);
-    });
+      if (!isNearObstacle(x, z, 1.1)) { createBerryBush(x, z); n++; }
+    }
   }
   const sp = freeSpot(B, randRange(10, 13), pickAngle(0.6), 0.4, 2);
   if (sp) [[0, 0], [-2, 2.5], [2, 3], [-3, -1.5]].forEach(([dx, dz]) => createSheep(sp[0] + dx, sp[1] + dz));
@@ -227,7 +240,8 @@ function placeWolves(n) {
 /* Peixos a la riba de l'aigua (simètrics), separats entre ells */
 function placeFish(max, minGap = 9) {
   if (!WATER.any) return;
-  const cells = shoreCells();
+  const cells = shoreCells().filter(([x, z]) => fishSector(x, z));
+  if (fishPoints(1, 1).length > 2) max = Math.ceil(max / 2);     // (cada punt en fa quatre)
   for (let i = cells.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [cells[i], cells[j]] = [cells[j], cells[i]]; }
   const placed = [];
   for (const [x, z] of cells) {
@@ -235,10 +249,13 @@ function placeFish(max, minGap = 9) {
     if (placed.some(([px, pz]) => Math.hypot(px - x, pz - z) < minGap)) continue;
     if (Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 22)) continue;
     placed.push([x, z]);
-    createFish(x, z);
-    createFish(-x, -z);
+    for (const [a, b] of fishPoints(x, z)) createFish(a, b);
   }
 }
+/* Punts simètrics per als peixos: amb 3 o 4 jugadors l'aigua gira 90° i els peixos també */
+const fishPoints = (x, z) => symPoints(x, z);
+/* Cel·la que pertany a la part del mapa de la qual es copien els peixos (una meitat o un quart) */
+const fishSector = (x, z) => sym4() ? (x > 0 && z >= 0) : !(x + z < 0 || (x + z === 0 && x < 0));
 
 /* Peix d'altura: al mig de l'aigua, lluny de la riba (només per als vaixells) */
 function placeDeepFish(max) {
@@ -246,19 +263,19 @@ function placeDeepFish(max) {
   const L = CONFIG.MAP_LIMIT, N = WATER.N, cands = [];
   for (let j = 3; j < N - 3; j += 2) for (let i = 3; i < N - 3; i += 2) {
     const x = -L + i + 0.5, z = -L + j + 0.5;
-    if (x + z < 0 || WATER.mask[j * N + i] !== 1) continue;
+    if (!fishSector(x, z) || WATER.mask[j * N + i] !== 1) continue;
     let deep = true;
     for (let dj = -3; dj <= 3 && deep; dj++) for (let di = -3; di <= 3; di++) if (WATER.mask[(j + dj) * N + i + di] !== 1) { deep = false; break; }
     if (deep) cands.push([x, z]);
   }
   for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [cands[i], cands[j]] = [cands[j], cands[i]]; }
+  if (fishPoints(1, 1).length > 2) max = Math.ceil(max / 2);
   const placed = [];
   for (const [x, z] of cands) {
     if (placed.length >= max) break;
     if (placed.some(([px, pz]) => Math.hypot(px - x, pz - z) < 8)) continue;
     placed.push([x, z]);
-    createFish(x, z, true);
-    createFish(-x, -z, true);
+    for (const [a, b] of fishPoints(x, z)) createFish(a, b, true);
   }
 }
 /* ---------- Generadors de cada tipus de mapa ---------- */
@@ -292,6 +309,28 @@ const GENERATORS = {
     placeDeepFish(2);
     placeWolves(2);
   },
+  islands() {
+    // Cada illa de jugador: un bosc més (la fusta de l'illa ha de durar) i or i pedra de reserva a la vora
+    // (sense poder anar enlloc més fins que es tenen vaixells, cada illa ha de tenir recursos per a tota la partida)
+    const R = ISLAND_R();
+    for (const id of GAME.players) {
+      const B = BASES[id], back = Math.atan2(B.z, B.x);                // (cap a fora del mapa)
+      for (const [n, spread, dist] of [[70, 1.3, 50], [60, 2.4, 54], [55, 3.1, 48], [45, 3.1, 56]]) {
+        const a = back + randRange(-spread, spread), d = Math.min(R - 12, dist);
+        createForest(B.x + Math.cos(a) * d, B.z + Math.sin(a) * d, n, { elong: randRange(1.6, 2.4), angle: a + Math.PI / 2 });
+      }
+      for (const [fn, dist] of [[createGoldMine, 36], [createGoldMine, 40], [createGoldMine, 46], [createGoldMine, 50], [createStoneMine, 38], [createStoneMine, 48]]) {
+        const p = freeSpot(B, Math.min(R - 10, dist), randRange(0, Math.PI * 2), 1.2, 4);
+        if (p) fn(p[0], p[1]);
+      }
+    }
+    neutralResources();
+    scatterForests(Math.round(9 * AREA_F), 18, 45, 40);
+    scatterTrees(Math.round(26 * AREA_F));
+    placeFish(18, 8);
+    placeDeepFish(8);
+    placeWolves(1);
+  },
   blackforest() {
     // Primer els recursos (a les clarianes) i després el bosc, que ho omple tot menys camins i clarianes
     neutralResources();
@@ -311,8 +350,44 @@ const GENERATORS = {
       const t = Math.max(0, Math.min(1, (wx * vx + wz * vz) / (vx * vx + vz * vz)));
       return Math.hypot(wx - vx * t, wz - vz * t);
     };
+    // Els recursos neutrals (or, pedra, ovelles) queden en una clariana unida a la xarxa de camins pel
+    // tram més curt: si no, el bosc els tancava i ningú no hi podia arribar
+    const spots = state.resourceNodes.filter(n => (n.subtype === 'gold' || n.subtype === 'stone' || n.subtype === 'sheep') &&
+      Object.values(BASES).every(B => Math.hypot(n.position.x - B.x, n.position.z - B.z) > 36)).map(n => [n.position.x, n.position.z]);
+    // (el tram no pot travessar els boscos de sortida, que ja hi són: es tria el punt del camí més proper
+    //  al qual s'arriba en línia recta sense tocar cap arbre)
+    const netPts = [];
+    for (const p of paths) for (let i = 1; i < p.length; i++) {
+      const a = p[i - 1], b = p[i], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4));
+      for (let k = 0; k <= n; k++) netPts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
+    }
+    const oldTrees = state.resourceNodes.filter(n => n.subtype === 'tree').map(n => [n.position.x, n.position.z]);
+    const treeFree = (x0, z0, x1, z1) => {
+      const vx = x1 - x0, vz = z1 - z0, d2 = vx * vx + vz * vz;
+      return oldTrees.every(([x, z]) => {
+        const t = Math.max(0, Math.min(1, ((x - x0) * vx + (z - z0) * vz) / d2));
+        return Math.hypot(x0 + vx * t - x, z0 + vz * t - z) > 4;
+      });
+    };
+    const spurs = [];
+    for (const [x, z] of spots) {
+      const cands = netPts.map(q => [Math.hypot(q[0] - x, q[1] - z), q]).sort((a, b) => a[0] - b[0]);
+      let pick = cands.find(([d, q]) => d <= 4 || treeFree(x, z, q[0], q[1]));
+      if (!pick && cands.length) {
+        // Tancat darrere d'un bosc de sortida: s'hi obre un pas (es treuen els arbres del tram)
+        pick = cands[0];
+        const [qx, qz] = pick[1], vx = qx - x, vz = qz - z, d2 = vx * vx + vz * vz;
+        for (const n of state.resourceNodes.filter(n => n.subtype === 'tree')) {
+          const t = Math.max(0, Math.min(1, ((n.position.x - x) * vx + (n.position.z - z) * vz) / d2));
+          if (Math.hypot(x + vx * t - n.position.x, z + vz * t - n.position.z) < 5) removeTreeNow(n);
+        }
+      }
+      if (pick && pick[0] > 4) spurs.push([[x, z], pick[1]]);
+    }
+    paths.push(...spurs);
     const onPath = (x, z) => paths.some(p => p.some((a, i) => i > 0 && segDist(x, z, p[i - 1], a) < 5.5 + 2 * fbm(x * 0.05, z * 0.05)));
-    const clearing = (x, z) => Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 34) || Math.hypot(x, z) < 12;
+    const clearing = (x, z) => Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 34) || Math.hypot(x, z) < 12 ||
+      spots.some(([sx, sz]) => Math.abs(sx - x) < 7 && Math.abs(sz - z) < 7 && Math.hypot(sx - x, sz - z) < 7);
     // Arbres llançats a l'atzar (amb una distància mínima entre ells) allà on el soroll diu que hi ha bosc:
     // cap patró de graella, com un bosc de debò
     const L = CONFIG.MAP_LIMIT - 1.5, gap = 3.9, cell = gap, GN = Math.ceil(2 * L / cell) + 1;
@@ -359,7 +434,7 @@ function buildWorld(type, seed = MAP_SEED) {
   WORLD.forestAt = null;
   WORLD.layout = GAME.layout;
   setupBases();
-  reseedRand((WORLD.seed ^ { arabia: 0x1111, blackforest: 0x2222, lakes: 0x3333, rivers: 0x4444 }[type]) >>> 0);
+  reseedRand((WORLD.seed ^ { arabia: 0x1111, blackforest: 0x2222, lakes: 0x3333, rivers: 0x4444, islands: 0x5555 }[type]) >>> 0);
   setupWater(type, WORLD.seed);
   setupHeights(type, WORLD.seed);
   rebuildNav();

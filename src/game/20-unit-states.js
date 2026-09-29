@@ -77,13 +77,16 @@ function acceptsDropoff(b, type, team = PLAYER.id, naval = false) {
   return !b.dead && b.team === team && !b.underConstruction && b.dropoffTypes && (!type || b.dropoffTypes.includes(type));
 }
 function nearestDropoff(pos, type = null, team = PLAYER.id, naval = false) {
-  let best = null, bestD = Infinity;
+  // Primer els que s'hi pot arribar (a les Illes, el campament de l'altra illa no serveix)
+  let best = null, bestD = Infinity, any = null, anyD = Infinity;
+  const probe = { position: pos, naval };
   for (const b of state.buildings) {
     if (!acceptsDropoff(b, type, team, naval)) continue;
     const d = entSurfaceDist(b, pos.x, pos.z);
-    if (d < bestD) { bestD = d; best = b; }
+    if (d < anyD) { anyD = d; any = b; }
+    if (d < bestD && canReach(probe, b)) { bestD = d; best = b; }
   }
-  return best;
+  return best || any;
 }
 function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
   let best = null, bestD = maxDist;

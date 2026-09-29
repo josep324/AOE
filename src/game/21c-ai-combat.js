@@ -82,6 +82,7 @@ function aiDefense(A, C) {
 
 /* ---------- Incursions i exèrcit principal ---------- */
 function aiRetreat(A, C, group) {
+  if (group.overseas) return;                     // (a una altra illa no poden tornar caminant)
   const home = C.homeRally.clone();
   for (const u of group.units) if (!u.dead) { u.aiRole = 'return'; u.speedCap = null; orderMove(u, clampToMap(home.clone().add(new THREE.Vector3((u.id % 7) - 3, 0, ((u.id * 3) % 7) - 3)))); }
   if (group === A.army) { A.army = null; A.nextAttackAt = C.now + 50; }
@@ -120,7 +121,7 @@ function aiAttacks(A, C) {
   for (const u of C.army) if (u.aiRole === 'return' && (hDist(u.position, C.home) < 22 || u.state === STATE.IDLE)) u.aiRole = null;
 
   // --- Incursions contra els aldeans ---
-  if (D.raids && C.age >= 1 && !A.raid && now >= A.nextRaidAt) {
+  if (D.raids && C.age >= 1 && !A.raid && !C.overseas && now >= A.nextRaidAt) {
     const fast = aiHomeArmy(A, C).filter(u => u.mounted && u.category !== 'siege' && u.hp > u.maxHp * 0.7);
     const size = C.age === 1 ? 3 : 5;
     const tgt = fast.length >= size ? aiRaidTarget(A, C) : null;
@@ -165,7 +166,15 @@ function aiAttacks(A, C) {
   const rush = (A.strategy === 'scoutrush' || A.strategy === 'archers' || A.strategy === 'maa') && C.age === 1;
   const need = Math.round((rush ? D.attackBase * 0.7 : D.attackBase + C.age * 3) + A.attackCount * 2);
   const waitCastle = (A.strategy === 'fastcastle' || A.strategy === 'boom') && C.age < 2 && !A.urgent;
-  if (!A.army && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || (A.urgent && homeArmy.length >= 4))) {
+  // Rival a una altra illa: l'exèrcit hi va amb vaixells de transport (21d)
+  aiFerryTick(A, C);
+  aiFerryTick(A, C, 'colony');
+  aiColonize(A, C);
+  if (C.overseas && !A.army && !A.ferry && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || (A.urgent && homeArmy.length >= 4))) {
+    aiStartFerry(A, C, homeArmy, false);
+    return;
+  }
+  if (!A.army && !C.overseas && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || (A.urgent && homeArmy.length >= 4))) {
     const target = aiObjective(A, C, C.home);
     if (target) {
       const dir = new THREE.Vector3(target.position.x - C.home.x, 0, target.position.z - C.home.z).normalize();
@@ -200,11 +209,16 @@ function aiAttacks(A, C) {
   const c = centroidOf(W.units);
   const reinf = homeArmy;
   // (els reforços hi van en grup, no un a un a mesura que surten dels edificis)
-  if (reinf.length >= Math.max(4, Math.round(need * 0.3))) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
+  // (a una altra illa, els reforços hi van en una altra travessia)
+  if (reinf.length >= Math.max(4, Math.round(need * 0.3))) {
+    if (!W.overseas) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
+    else if (!A.ferry) aiStartFerry(A, C, reinf, true);
+  }
   const near = W.units.filter(u => hDist(u.position, c) < 28);
   const myStr = near.reduce((s, u) => s + unitStrength(u), 0);
   const foeStr = aiFoeStrengthAt(A, c, 24);
-  if (!A.urgent && myStr < foeStr * 0.65) { aiRetreat(A, C, W); return; }
+  // (desembarcats no es poden retirar: lluiten fins al final)
+  if (!A.urgent && !W.overseas && myStr < foeStr * 0.65) { aiRetreat(A, C, W); return; }
   for (const u of W.units) {
     if (u.category !== 'siege') continue;
     const isRam = (CONFIG.UNITS[u.unitKind].line || u.unitKind) === 'ram';
@@ -217,7 +231,7 @@ function aiAttacks(A, C) {
   if (idle.length) {
     const t = aiObjective(A, C, idle[0].position);
     if (t) commandAttackMove(idle, t.kind === 'unit' ? t.position.clone() : approachPoint(t, idle[0].position));
-    else if (idle.length === W.units.length) { aiRetreat(A, C, W); A.nextAttackAt = now + 30; }
+    else if (idle.length === W.units.length && !W.overseas) { aiRetreat(A, C, W); A.nextAttackAt = now + 30; }
   }
 }
 
@@ -285,42 +299,6 @@ function aiMonks(A, C) {
       const c = centroidOf(W.units);
       if (hDist(c, m.position) > 8) { orderMove(m, clampToMap(c)); m.attackMove = c.clone(); }
     }
-  }
-}
-
-/* ---------- Naval: moll, pesca i flota de guerra (només si el mapa té aigua) ---------- */
-function aiNaval(A, C) {
-  if (!WATER.any) return;
-  const T = C.T, D = C.D, now = C.now;
-  const docks = C.blds.filter(b => b.subtype === 'dock');
-  if (!docks.length && C.villagers.length >= 10 && C.res.wood >= 170 && !A.saving && now > (A.dockSearchAt || 0)) {
-    A.dockSearchAt = now + 30;
-    const spot = findDockSpot(C.home, 120);
-    if (spot) {
-      const who = aiPickBuilders(A, 2, spot);
-      if (who.length) { applyCost(costFor('dock', T), -1, T); commandBuild(who, createBuilding('dock', spot.x, spot.z, false, T)); }
-    }
-  }
-  const dock = docks.find(b => !b.underConstruction);
-  const fishers = C.ships.filter(u => u.subtype === 'fishingship'), fleet = C.ships.filter(u => u.isMilitary);
-  if (dock && !A.saving && dock.trainQueue.length < 2) {
-    const fishLeft = state.resourceNodes.some(n => n.subtype === 'fish' || n.subtype === 'deepfish');
-    if (fishLeft && fishers.length < (D.micro >= 2 ? 6 : 4)) queueUnit(dock, 'fishingship');
-    else if (C.age >= 1 && fleet.length < (D === DIFFICULTY.easy ? 2 : D.micro >= 2 ? 7 : 4)) {
-      queueUnit(dock, C.age >= 2 && fleet.length % 3 === 2 && !itemBlockReason('fireship', T) ? 'fireship' : 'galley');
-    }
-  }
-  if (dock && C.age >= 2 && C.res.gold > 300 && !A.saving) for (const k of ['up_wargalley', 'gillnets', 'careening']) aiTryTech(A, C, k);
-  if (dock && C.age >= 3 && C.res.gold > 700 && !A.saving) for (const k of ['up_galleon', 'drydock', 'up_fastfireship', 'heatedshot']) aiTryTech(A, C, k);
-  for (const f of fishers) if (f.state === STATE.IDLE) { const n = nearestResource('food', f.position, 220, f); if (n) orderGather(f, n, null); }
-  // Flota: quan n'hi ha prou, ataca els vaixells rivals o el seu moll
-  if (fleet.length >= 3) for (const w of fleet) {
-    if (w.state !== STATE.IDLE) continue;
-    let tgt = null, bd = Infinity;
-    // (només el que pot atacar des de la seva aigua: un vaixell d'un altre llac no)
-    for (const u of state.units) if (hostile(u.team, A.team) && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd && canReach(w, u, w.range)) { bd = d; tgt = u; } }
-    if (!tgt) for (const b of state.buildings) if (hostile(b.team, A.team) && b.subtype === 'dock') { const d = hDist(b.position, w.position); if (d < bd && canReach(w, b, w.range)) { bd = d; tgt = b; } }
-    if (tgt) { orderAttack(w, tgt, false); w.forcedTarget = true; }
   }
 }
 

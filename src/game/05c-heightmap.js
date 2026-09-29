@@ -7,7 +7,7 @@
    pendent massa fort. groundY(x, z) dona l'alçada de qualsevol punt (interpolació bilineal).
    ===================================================================== */
 const TERRAIN = { hs: 2, pad: 30, n: 0, x0: 0, h: null, mesh: null, mmCanvas: null, maxH: 0, dirty: false, cliffs: [], cliffMesh: null };
-const TERRAIN_AMP = { arabia: 9, blackforest: 5, lakes: 5.5, rivers: 5.5 };
+const TERRAIN_AMP = { arabia: 9, blackforest: 5, lakes: 5.5, rivers: 5.5, islands: 4 };
 const MAX_BUILD_SLOPE = 3.2;          // desnivell màxim (m) dins la planta d'un edifici
 
 function terrainInit() {
@@ -259,7 +259,7 @@ function buildTerrainMinimap() {
    Trams de roca que separen dos nivells: un costat queda més alt (un altiplà que baixa suaument
    cap enfora) i la paret no es pot travessar; als extrems s'hi pot pujar. Com a l'AoE II, no
    aturen els projectils. */
-const CLIFF_COUNT = { arabia: 5, lakes: 3, rivers: 3, blackforest: 2 };
+const CLIFF_COUNT = { arabia: 5, lakes: 3, rivers: 3, blackforest: 2, islands: 0 };
 const CLIFF_H = 3.6;
 function clearCliffs() {
   const T = TERRAIN;

@@ -6,6 +6,8 @@ export default async ({ open, assert, log }) => {
     R.AI.enabled = false;
     R.FOG.enabled = false; R.updateFog();
     const run = (s) => { for (let i = 0; i < s * 60; i++) R.simulate(1 / 60); };
+    // (el camp de batalla, lliure: segons la llavor hi pot haver un bosc)
+    for (const n of S.resourceNodes.filter(n => Math.hypot(n.position.x, n.position.z) < 28)) R.depleteResource(n);
     const mk = (kind, n, x, z, t) => Array.from({ length: n }, (_, i) => R.createSoldierAt(kind, x + (i % 5) * 1.6, z + Math.floor(i / 5) * 1.6, t));
     const A = [...mk('spearman', 10, -10, -10, P), ...mk('archer', 5, -14, -14, P)];
     const B = mk('scout', 10, 12, 12, E);

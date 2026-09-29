@@ -47,7 +47,7 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 
 **Jugadors i equips** (es trien a l'inici, fins a 4 jugadors): 1 contra 1 · 1 contra 2 · 2 contra 2 (amb una IA aliada) ·
 1 contra 3 · tots contra tots (3 o 4). Amb més de dos jugadors les bases són a les quatre cantonades i els recursos, els
-llacs i els rius giren igual per a totes (el riu separa el nord del sud: en un 2 contra 2, cada equip té el seu costat).
+llacs, els rius i les illes giren igual per a totes (dos rius en creu separen les quatre cantonades).
 Els aliats comparteixen la visió, no s'ataquen, comercien amb els mercats de l'altre i guanyen o perden junts (també
 les relíquies i la Meravella compten per equip). Des del quadre de jugadors (a dalt a la dreta) pots enviar un **tribut**
 de 100 d'un recurs a l'aliat (arriba el 80%), i l'aliat IA també t'envia el que li sobra si vas curt. Cada IA rival ataca
@@ -56,7 +56,12 @@ tropes a defensar-te si t'ataquen. Un jugador derrotat o rendit desapareix del m
 `node tests/run.mjs --bench teams` juga partides d'equips només amb IA.
 
 **Mapes** (es trien a l'inici; cada partida és diferent però justa):
-🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb uns quants camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals).
+🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb uns quants camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals) · 🏝️ Illes (cada jugador a la seva illa, amb illots de recursos al mig i a les cantonades lliures: per atacar calen un Moll, una flota i vaixells de transport).
+A les **Illes** la IA fa el Moll de seguida, pesca, fa flota i transports, embarca l'exèrcit a la riba de casa i el
+desembarca a la riba rival més propera a l'objectiu (amb escorta); els reforços hi van en una altra travessia. Quan a
+la seva illa s'acaba la fusta, l'or o la pedra, porta aldeans a una altra illa sense enemics, hi fa un campament i hi
+treballa (i, si no hi queda res, els torna a casa); sense fusta, en compra al Mercat. Un transport enfonsat lluny de la
+riba s'enfonsa amb les tropes que porta. Els aldeans deixen el que porten al campament on poden arribar.
 **Mides** com les de l'AoE II (1 casella ≈ 2,15 m): Minúscul 120×120 · Petit 144×144 · Mitjà 168×168 (per defecte) · Normal 200×200 · Gran 220×220.
 Com a l'AoE II, cada jugador té la mateixa sortida (línia de bosc, 5 arbres solts a prop del Centre, or, pedra i menjar);
 els boscos són taques compactes i irregulars repartides a l'atzar per tot el mapa, i les 5 relíquies queden escampades
@@ -64,7 +69,8 @@ a més de 25 caselles de qualsevol base i a més de 20 l'una de l'altra.
 **Boscos i muralles** com a l'AoE II: un bosc dens és una paret (entre troncs propers hi ha un farciment invisible que
 desapareix quan se'n talla un), les muralles es poden construir enganxades als arbres per tancar una zona aprofitant
 el bosc, i les unitats empeses pels companys no travessen muralles ni boscos. Al Bosc Negre el bosc és ple (sense
-clarianes amagades) i no s'hi pot entrar pel mig ni vorejar-lo per la vora del mapa. No es pot construir just a la riba
+clarianes amagades) i no s'hi pot entrar pel mig ni vorejar-lo per la vora del mapa; l'or, la pedra i les ovelles de
+fora de les bases queden en clarianes unides als camins (si no, el bosc les tancava). No es pot construir just a la riba
 (on l'edifici quedaria dins de l'aigua) ni a sobre de les relíquies.
 **Relleu** com a l'AoE II: turons (Aràbia el més accidentat) i penya-segats de roca que no es poden travessar
 (als extrems s'hi pot pujar). Des de dalt es fa +25% de dany i des de baix −25%. Els edificis anivellen el terreny
@@ -171,8 +177,8 @@ src/
     13 navegació     graella, A*, portes per equip; farciment entre troncs i entre muralla i bosc (13b)
     14 món           generació del mapa (sortides iguals, boscos i recursos a l'atzar)
     15…20            selecció, ordres, entrenament, física i màquina d'estats de les unitats
-    21 IA            nucli (21), economia (21a), estratègia i producció (21b), combat i micro (21c)
-    05b aigua        llacs, rius i guals (graella, shader i navegació)
+    21 IA            nucli (21), economia (21a), estratègia i producció (21b), combat i micro (21c), naval i desembarcaments (21d)
+    05b aigua        llacs, rius, guals i illes (graella, shader i navegació)
     05c relleu       mapa d'alçades, turons, penya-segats, anivellar per als edificis, clic al terreny
     20a naval        moll, vaixells, pesca, transport i combat a l'aigua
     08b fauna        cérvols, senglars, llops i peixos

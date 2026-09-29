@@ -69,7 +69,7 @@ function canPlaceDock(x, z, rot = 0) {
   return shore >= 2;
 }
 /* Busca on posar un moll a prop d'un punt (IA) */
-function findDockSpot(near, maxR = 80) {
+function findDockSpot(near, maxR = 80, accept = null) {
   if (!WATER.any) return null;
   const cands = [];
   const L = CONFIG.MAP_LIMIT, N = WATER.N;
@@ -83,7 +83,7 @@ function findDockSpot(near, maxR = 80) {
   for (const [, x0, z0] of cands) {
     for (const [ox, oz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) {
       const x = snapToGrid(x0 + ox, 5), z = snapToGrid(z0 + oz, 5);
-      if (canPlaceDock(x, z)) return { x, z };
+      if (canPlaceDock(x, z) && (!accept || accept(x, z))) return { x, z };
     }
   }
   return null;

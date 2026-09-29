@@ -139,7 +139,7 @@ function aiHelpAllies(A, C) {
       let s = 0;
       for (const u of unitsNear(tc.position.x, tc.position.z, 30, aiNearBuf)) if (hostile(u.team, A.team) && u.isMilitary && !u.dead) s += unitStrength(u);
       if (s < 3) continue;
-      const helpers = aiHomeArmy(A, C).filter(u => u.state === STATE.IDLE && u.category !== 'siege');
+      const helpers = aiHomeArmy(A, C).filter(u => u.state === STATE.IDLE && u.category !== 'siege' && canReach(u, tc, 4));
       if (helpers.length >= 3) {
         commandAttackMove(helpers, tc.position.clone());
         if (t === PLAYER.id && C.now > (A.helpToast || 0)) { A.helpToast = C.now + 60; toast(`🤝 El teu aliat (${civOf(A.team).name}) envia ${helpers.length} unitats a ajudar-te`); }
@@ -297,6 +297,7 @@ function aiThink(A) {
   if (!A.strategy) A.strategy = aiPickStrategy(A);
   aiPickFoe(A, C);
   aiIntel(A, C);
+  C.overseas = aiOverseas(A, C);
   if (!C.tcs.length) {
     // Sense Centre de Ciutat: en torna a fer un si pot; si no, tot l'exèrcit a l'atac
     if (C.villagers.length && canAfford(costFor('towncenter', A.team), A.team) && !C.has('towncenter')) {
