@@ -98,7 +98,7 @@ function updateUnit(u, dt) {
       const bt = u.buildTarget;
       if (bt) {
         if (bt.dead) { u.buildTarget = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
-        if (!bt.underConstruction) { afterBuild(u, bt); break; }
+        if (!needsWork(bt)) { afterBuild(u, bt); break; }
         if (inReach(u, bt)) { startBuilding(u); break; }
       }
       const node = u.gatherNode;
@@ -206,7 +206,7 @@ function updateUnit(u, dt) {
     case STATE.BUILDING: {
       const b = u.buildTarget;
       if (!b || b.dead) { u.buildTarget = null; setUnitState(u, STATE.IDLE); break; }
-      if (!b.underConstruction) { afterBuild(u, b); break; }
+      if (!needsWork(b)) { afterBuild(u, b); break; }
       if (!inReach(u, b)) { goToBuild(u); break; }
       // Mirar cap al punt més proper de l'edifici
       const fp = b.footprint;

@@ -40,6 +40,23 @@ export default async ({ open, assert, log }) => {
     o.ownLocked = trip(P);
     R.setGateLocked(gate, false);
     o.ownUnlocked = trip(P);
+    // Reparar: un tram de muralla danyat, dos aldeans el reparen pagant pedra
+    const wall = S.buildings.find(b => b.subtype === 'stonewall' && !b.dead);
+    wall.hp = Math.round(wall.maxHp * 0.3);
+    R.PLAYER.res.stone = 500;
+    const reps = [0, 1].map(i => R.createVillager(wall.position.x + 1.5 + i, wall.position.z - 2.5, P));
+    const hp0 = wall.hp, st0 = R.PLAYER.res.stone;
+    R.commandBuild(reps, wall);
+    run(90);
+    o.repairHp = Math.round(wall.hp - hp0);
+    o.repairFull = wall.hp >= wall.maxHp;
+    o.repairStone = st0 - R.PLAYER.res.stone;
+    o.repairExpect = Math.round((wall.maxHp - hp0) / wall.maxHp * R.CONFIG.BUILDINGS.stonewall.cost.stone * 0.5);
+    // Sense recursos no es repara
+    wall.hp = Math.round(wall.maxHp * 0.3); R.PLAYER.res.stone = 0;
+    R.commandBuild(reps, wall); run(10);
+    o.repairNoRes = Math.round(wall.hp) === Math.round(wall.maxHp * 0.3) && reps.every(v => !v.buildTarget);
+    reps.forEach(v => R.kill(v));
     // Muralla arrossegada per un bosc amb un forat: només es fan els trams que tanquen el forat
     const fz = cz + 30, fx0 = cx - 12;
     const trees = [];
@@ -66,5 +83,7 @@ export default async ({ open, assert, log }) => {
   assert(r.enemy === 0, 'les unitats enemigues passen per la porta');
   assert(r.ownLocked === 0, 'la porta bloquejada deixa passar');
   assert(r.ownUnlocked >= 10, 'la porta desbloquejada no deixa passar');
+  assert(r.repairFull && Math.abs(r.repairStone - r.repairExpect) <= 1, 'els aldeans no reparen la muralla o no paguen el que toca');
+  assert(r.repairNoRes, 'es repara sense recursos');
   assert(r.cells > 0 && r.cells <= 8 && r.closedCells === 0 && r.gapCovered, 'la muralla pel bosc fa trams on no cal');
 };

@@ -148,6 +148,22 @@ function aiHelpAllies(A, C) {
     }
   }
 }
+/* Reparació: quan no hi ha enemics a prop, dos aldeans reparen els edificis importants danyats */
+const AI_REPAIR = new Set(['towncenter', 'castle', 'watchtower', 'bombardtower', 'stonewall', 'gate', 'palisade']);
+function aiRepair(A, C) {
+  if (C.now < (A.repairAt || 0) || A.threatened) return;
+  A.repairAt = C.now + 8;
+  for (const b of C.blds) {
+    if (!AI_REPAIR.has(b.subtype) || !canRepair(b, A.team) || b.hp > b.maxHp * 0.75) continue;
+    if (Object.entries(CONFIG.BUILDINGS[b.subtype].cost || {}).some(([k, v]) => C.res[k] < Math.max(20, v * 0.2))) continue;
+    if (aiFoeStrengthAt(A, b.position, 18) > 0) continue;
+    const busy = C.villagers.filter(v => v.buildTarget === b).length;
+    if (busy >= 2) continue;
+    const free = C.villagers.filter(v => !v.garrisoned && !v.buildTarget && v.aiRole !== 'fight' && hDist(v.position, b.position) < 60)
+      .sort((p, q) => hDist(p.position, b.position) - hDist(q.position, b.position)).slice(0, 2 - busy);
+    if (free.length) { commandBuild(free, b); return; }
+  }
+}
 /* Tribut: si a un aliat li falta un recurs que a la IA li sobra, n'hi envia (cada 90 s com a màxim) */
 function aiTribute(A, C) {
   if (C.now < (A.tributeAt || 0)) return;
@@ -293,6 +309,7 @@ function aiThink(A) {
   aiDefense(A, C);
   aiHelpAllies(A, C);
   aiTribute(A, C);
+  aiRepair(A, C);
   aiAttacks(A, C);
   aiMicro(A, C);
   aiMonks(A, C);

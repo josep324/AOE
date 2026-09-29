@@ -72,6 +72,10 @@ i no es poden fer en pendents massa forts. La IA reuneix l'exèrcit i fa torres 
 **Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba. Traçar una muralla d'arbre a arbre només fa (i paga) els trams dels forats: dins del bosc ja no es pot passar.
 La **porta** fa 4 cel·les, s'obre sola per a les teves unitats i les aliades (no per a les enemigues) i es pot
 **bloquejar** (🔒): llavors no hi passa ningú. Un fonament que ha quedat dins del bosc es pot seleccionar i enderrocar.
+**Reparar** (com a l'AoE II): clic dret amb aldeans sobre un edifici propi danyat (muralla, porta, torre, castell,
+Centre…). El primer aldeà repara 12,5 punts de vida per segon i cada un de més, la meitat; costa la meitat del preu
+de l'edifici per tota la vida reparada, es paga a mesura que avança i sense recursos s'atura. La IA també repara
+els seus edificis importants quan no té enemics a prop.
 
 **Naval** (mapes amb aigua): ⚓ **Moll** a l'aigua fonda tocant a la riba; vaixells pesquers (també peix d'altura),
 transport (10 unitats: clic dret sobre el vaixell per embarcar, clic dret a terra per desembarcar), Galera → Galera de guerra → Galió,

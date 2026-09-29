@@ -197,6 +197,35 @@ function setGateLocked(b, locked) {
   if (b.obstacle) b.obstacle.gateTeam = b.locked ? -1 : b.team;
   rebuildNav();
 }
+/* ---------- Reparació (com a l'AoE II) ----------
+   Els aldeans reparen els edificis propis acabats i danyats (muralles, portes, torres, castells…).
+   Costa la meitat del preu de l'edifici per tota la vida que es repara, es paga a mesura que avança
+   i, sense recursos, s'atura. El primer aldeà repara REPAIR_HP punts per segon; cada un de més, la meitat. */
+const REPAIR_HP = 12.5;
+const canRepair = (b, team) => !!b && b.kind === 'building' && !b.dead && !b.underConstruction && b.subtype !== 'farm' && b.team === team && b.hp < b.maxHp;
+const needsWork = (b) => !!b && (b.underConstruction || canRepair(b, b.team));
+function repairTick(b, dt) {
+  let n = 0;
+  for (const u of state.units) if (u.state === STATE.BUILDING && u.buildTarget === b) n++;
+  if (!n) return;
+  const hp = Math.min(b.maxHp - b.hp, REPAIR_HP * (1 + 0.5 * (n - 1)) * dt);
+  // Cost proporcional: meitat del preu per tota la vida de l'edifici (es deu i es paga en unitats senceres)
+  const cost = CONFIG.BUILDINGS[b.subtype].cost || {}, R = resOf(b.team), debt = b.repairDebt || (b.repairDebt = {});
+  const next = {};
+  for (const [k, v] of Object.entries(cost)) {
+    next[k] = (debt[k] || 0) + v * 0.5 * hp / b.maxHp;
+    if (R[k] < Math.ceil(next[k])) {
+      // Sense recursos: els aldeans ho deixen estar
+      for (const u of state.units.slice()) if (u.state === STATE.BUILDING && u.buildTarget === b) afterBuild(u, b);
+      if (b.isOwn) toast(`🔨 Falten recursos (${RES_LABEL[k].toLowerCase()}) per reparar: ${b.name}`);
+      return;
+    }
+  }
+  for (const [k, d] of Object.entries(next)) { const whole = Math.floor(d); R[k] -= whole; debt[k] = d - whole; }
+  if (b.team === PLAYER.id) updateResourcesUI();
+  b.hp = Math.min(b.maxHp, b.hp + hp);
+  if (b.hp >= b.maxHp) b.repairDebt = null;
+}
 /* Progrés de construcció: com a l'AoE II, cada constructor extra aporta menys (3/(n+2)) */
 function updateConstruction(dt) {
   for (const b of state.buildings.slice()) {
@@ -208,7 +237,7 @@ function updateConstruction(dt) {
       b.model.userData.doors[0].rotation.y = -b.doorOpen * 1.45;
       b.model.userData.doors[1].rotation.y = b.doorOpen * 1.45;
     }
-    if (!b.underConstruction) continue;
+    if (!b.underConstruction) { if (b.hp < b.maxHp) repairTick(b, dt); continue; }
     let n = 0;
     for (const u of state.units) if (u.state === STATE.BUILDING && u.buildTarget === b) n++;
     if (!n) continue;

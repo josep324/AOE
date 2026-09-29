@@ -210,7 +210,7 @@ function runOrder(u, order) {
     return;
   }
   if (order.type === 'build') {
-    if (order.building && !order.building.dead && order.building.underConstruction) orderBuild(u, order.building, null);
+    if (order.building && !order.building.dead && needsWork(order.building)) orderBuild(u, order.building, null);
     return;
   }
   if (order.type === 'move') orderMove(u, order.point);
@@ -440,6 +440,17 @@ function issueRightClick(x, y, queued = false) {
     spawnMoveMarker(targetEnt.position, 0xffd84a, 3.5);
     if (carts.length === units.length) return;
     units = units.filter(u => u.subtype !== 'tradecart');
+  }
+  // Edifici propi danyat: els aldeans el reparen (els que porten càrrega que s'hi pot descarregar, la descarreguen)
+  if (targetEnt && canRepair(targetEnt, PLAYER.id)) {
+    const reps = units.filter(u => u.subtype === 'villager' && !(u.carry.amount > 0 && acceptsDropoff(targetEnt, u.carry.type, u.team)));
+    if (reps.length) {
+      if (queued) reps.forEach(u => enqueueOrder(u, { type: 'build', building: targetEnt }));
+      else commandBuild(reps, targetEnt);
+      spawnMoveMarker(targetEnt.position, 0x6ef2ff, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
+      if (reps.length === units.length) return;
+      units = units.filter(u => !reps.includes(u));
+    }
   }
   // Refugi: torres, castells, Centre de Ciutat (tropes a peu) i ariets (infanteria)
   if (targetEnt && targetEnt.isOwn && !targetEnt.underConstruction && garrisonCap(targetEnt) > 0) {

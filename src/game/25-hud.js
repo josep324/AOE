@@ -48,7 +48,7 @@ function updatePopulationUI() {
 
 function hpBar(e, cls = '') {
   const pct = e.maxHp ? (e.hp / e.maxHp) * 100 : 0;
-  return `<div class="bar ${cls}"><i style="width:${pct}%"></i><span>${e.hp} / ${e.maxHp}</span></div>`;
+  return `<div class="bar ${cls}"><i style="width:${pct}%"></i><span>${Math.ceil(e.hp)} / ${e.maxHp}</span></div>`;
 }
 function ownerLine(e) {
   if (e.team === 0) return `<div class="sel-owner">Natura · Recurs neutral</div>`;
