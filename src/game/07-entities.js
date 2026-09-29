@@ -2,6 +2,7 @@
    ENTITATS
    ===================================================================== */
 let nextEntityId = 1;
+const selColorFor = (team) => team === PLAYER.id ? SEL_COLOR_OWN : team === 0 ? SEL_COLOR_NEUTRAL : allied(team, PLAYER.id) ? SEL_COLOR_ALLY : SEL_COLOR_ENEMY;
 class Entity {
   constructor({ kind, subtype, name, icon, team = 0, radius = 1, selRadius, hp = 0, maxHp = 0 }) {
     this.id = nextEntityId++;
@@ -18,12 +19,14 @@ class Entity {
     this.group.userData.entity = this;
     this.selRadius = selRadius ?? radius * 1.3;
     this.selection = makeSelectionIndicator(this.selRadius,
-      team === PLAYER.id ? SEL_COLOR_OWN : team === 0 ? SEL_COLOR_NEUTRAL : SEL_COLOR_ENEMY);
+      selColorFor(team));
     this.group.add(this.selection);
   }
   get position() { return this.group.position; }
   get isOwn() { return this.team === PLAYER.id; }
-  isEnemyOf(other) { return !!other && this.team !== 0 && other.team !== 0 && this.team !== other.team; }
+  get isAlly() { return this.team !== PLAYER.id && allied(this.team, PLAYER.id); }
+  get isFriendly() { return allied(this.team, PLAYER.id); }        // propi o aliat (visió compartida)
+  isEnemyOf(other) { return !!other && hostile(this.team, other.team); }
   finalize() {
     this.group.traverse(o => {
       if (!o.isMesh) return;
@@ -37,7 +40,7 @@ class Entity {
   recolorSelection() {
     const vis = this.selection.visible;
     this.group.remove(this.selection);
-    this.selection = makeSelectionIndicator(this.selRadius, this.team === PLAYER.id ? SEL_COLOR_OWN : this.team === 0 ? SEL_COLOR_NEUTRAL : SEL_COLOR_ENEMY);
+    this.selection = makeSelectionIndicator(this.selRadius, selColorFor(this.team));
     this.selection.visible = vis;
     this.group.add(this.selection);
   }

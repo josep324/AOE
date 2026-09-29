@@ -65,6 +65,15 @@ function blobInside(x, z, cx, cz, r, off) {
 function genLakes(rng, set) {
   const MSw = CONFIG.MAP_LIMIT / 125;
   const lakes = [{ x: 0, z: 0, r: (15 + rng() * 6) * MSw, off: rng() * 100 }];
+  if (GAME.players.length > 2) {
+    // 3 o 4 jugadors (bases a les quatre cantonades): llac central més gran i un estany a cada costat
+    // del mapa, entre dues bases; tot gira igual 90° (cada base té la mateixa aigua)
+    lakes[0].r *= 1.2;
+    const d = (78 + rng() * 10) * MSw, r = (6 + rng() * 3) * MSw, off = rng() * 100;
+    const rot = (x, z) => [[x, z], [-z, x], [-x, -z], [z, -x]];
+    set((x, z) => rot(x, z).some(([a, b]) => blobInside(a, b, 0, 0, lakes[0].r, lakes[0].off) || blobInside(a, b, 0, -d, r, off)) ? 1 : 0);
+    return;
+  }
   // Llacs petits a banda i banda, lluny de les bases (cap a les cantonades lliures)
   const a = Math.PI * 0.75 + (rng() - 0.5) * 0.7, d = (44 + rng() * 14) * MSw;
   lakes.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, r: (7 + rng() * 4) * MSw, off: rng() * 100 });
@@ -82,8 +91,9 @@ function genRiver(rng, set) {
   const f = (s) => A1 * Math.sin(k1 * s) + A2 * Math.sin(k2 * s);
   const S1 = (42 + rng() * 22) * MSw;
   WATER.fords = [0, S1, -S1];
+  const four = GAME.players.length > 2;          // 3 o 4 jugadors: el riu va d'est a oest, entre les bases del sud i les del nord
   set((x, z) => {
-    const s = (x - z) / Math.SQRT2, p = (x + z) / Math.SQRT2;
+    const s = four ? x : (x - z) / Math.SQRT2, p = four ? z : (x + z) / Math.SQRT2;
     const w = 5.6 + 1.2 * Math.cos(k3 * s);
     if (Math.abs(p - f(s)) >= w) return 0;
     return WATER.fords.some(sf => Math.abs(s - sf) < 5.5) ? 2 : 1;

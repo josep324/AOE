@@ -133,7 +133,7 @@ function explodeDemolition(u, t) {
     applyDamage(e, Math.max(1, Math.round(computeDamage(u.attack, e, 0) * (d < 1.5 ? 1 : 0.5))), u);
   }
   for (const b of state.buildings.slice()) {
-    if (b.team === u.team || b.dead) continue;
+    if (allied(b.team, u.team) || b.dead) continue;
     if (entSurfaceDist(b, p.x, p.z) <= R) applyDamage(b, computeDamage(u.attack, b, 0, u.vsBuilding), u);
   }
   killEntity(u, null);

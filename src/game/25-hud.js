@@ -53,7 +53,7 @@ function hpBar(e, cls = '') {
 function ownerLine(e) {
   if (e.team === 0) return `<div class="sel-owner">Natura · Recurs neutral</div>`;
   const T = teamOf(e.team);
-  return `<div class="sel-owner"><span class="dot" style="background:#${T.color.toString(16).padStart(6, '0')};box-shadow:0 0 6px #${T.color.toString(16).padStart(6, '0')}"></span>${T.name}${e.isOwn ? '' : ' · <b style="color:#ff8a7a">enemic</b>'}</div>`;
+  return `<div class="sel-owner"><span class="dot" style="background:#${T.color.toString(16).padStart(6, '0')};box-shadow:0 0 6px #${T.color.toString(16).padStart(6, '0')}"></span>${T.name}${e.isOwn ? '' : e.isAlly ? ' · <b style="color:#9ef07a">aliat</b>' : ' · <b style="color:#ff8a7a">enemic</b>'}</div>`;
 }
 
 function unitTaskLine(u) {
@@ -359,6 +359,8 @@ function updateSelectionUI(panelOnly = false) {
       ? 'Selecciona aldeans i fes<br><kbd>clic dret</kbd> al fonament<br>per ajudar a construir.'
       : (first.dropoffTypes ? `Els aldeans hi poden<br>descarregar ${first.dropoffTypes.map(t => RES_ICON[t]).join(' ')}.` : first.def.desc);
     actionsEl.appendChild(hint);
+  } else if (first.team && first.isAlly) {
+    actionsEl.innerHTML = `<div class="action-hint">${first.kind === 'unit' ? 'Unitat' : 'Edifici'} del teu aliat, el <b style="color:#9ef07a">${teamOf(first.team).name}</b>.${first.subtype === 'market' ? '<br>Els teus carros de comerç hi poden comerciar.' : ''}</div>`;
   } else if (first.team && !first.isOwn) {
     actionsEl.innerHTML = `<div class="action-hint">${first.kind === 'unit' ? 'Unitat' : 'Edifici'} de l'<b style="color:#ff8a7a">${teamOf(first.team).name}</b>.<br>Selecciona unitats i fes <kbd>clic dret</kbd><br>per atacar-lo.</div>`;
   } else if (first.kind === 'relic') {
@@ -485,4 +487,43 @@ document.getElementById('help-toggle').addEventListener('click', () => {
   const help = document.getElementById('help');
   help.classList.toggle('collapsed');
   document.getElementById('help-toggle').textContent = help.classList.contains('collapsed') ? 'mostrar ▼' : 'amagar ▲';
+});
+
+/* ---------- Jugadors de la partida (fase 20) ----------
+   Llista amb el color, la civilització, l'edat i si és aliat o rival; als aliats se'ls pot enviar
+   un tribut de 100 d'un recurs (com a l'AoE II, amb un 20% de comissió) */
+const playersEl = document.getElementById('players');
+let playersSig = '';
+function updatePlayersPanel() {
+  const show = GAME.players.length > 2 || GAME.players.some(t => t !== PLAYER.id && allied(t, PLAYER.id));
+  playersEl.classList.toggle('hidden', !show || state.paused && !state.elapsed);
+  if (!show) return;
+  const sig = GAME.players.map(t => `${t}:${teamOf(t).civ}:${teamOf(t).age}:${GAME.defeated.has(t) || !teamAlive(t)}`).join('|');
+  if (sig === playersSig) return;
+  playersSig = sig;
+  const AGE_SHORT = ['Fosca', 'Feudal', 'Castells', 'Imperial'];
+  playersEl.innerHTML = GAME.players.map(t => {
+    const C = civOf(t), out = GAME.defeated.has(t) || !teamAlive(t), me = t === PLAYER.id, ally = !me && allied(t, PLAYER.id);
+    const dot = `<span class="pdot" style="background:#${teamOf(t).color.toString(16).padStart(6, '0')}"></span>`;
+    const rel = me ? '<span class="rel">tu</span>' : ally ? '<span class="rel ally">aliat</span>' : '<span class="rel foe">rival</span>';
+    const trib = ally && !out ? `<div class="trib">${['food', 'wood', 'gold', 'stone'].map(r => `<button data-trib="${t}:${r}" title="Envia 100 de ${RES_LABEL[r].toLowerCase()} al teu aliat (arriben 80)">${RES_ICON[r]}</button>`).join('')}</div>` : '';
+    return `<div class="pl ${me ? 'me' : ''} ${out ? 'out' : ''}">${dot}<b>${C.icon} ${C.name}</b> <span>${AGE_SHORT[teamOf(t).age] || ''}</span>${rel}</div>${trib}`;
+  }).join('');
+}
+/* Tribut: envia recursos a un aliat (un 20% es perd pel camí) */
+function sendTribute(from, to, r, n = 100) {
+  if (!allied(from, to) || from === to || GAME.defeated.has(to)) return false;
+  const R = resOf(from);
+  if (R[r] < n) { if (from === PLAYER.id) toast(`Cal tenir ${n} de ${RES_LABEL[r].toLowerCase()} per enviar-ne`); return false; }
+  R[r] -= n;
+  resOf(to)[r] += Math.round(n * 0.8);
+  if (from === PLAYER.id) { toast(`🎁 Has enviat ${n} de ${RES_LABEL[r].toLowerCase()} als ${civOf(to).name}`); updateResourcesUI(); }
+  if (to === PLAYER.id) { toast(`🎁 El teu aliat (${civOf(from).name}) t'envia ${Math.round(n * 0.8)} de ${RES_LABEL[r].toLowerCase()}`); updateResourcesUI(); }
+  return true;
+}
+playersEl.addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-trib]');
+  if (!b) return;
+  const [t, r] = b.dataset.trib.split(':');
+  sendTribute(PLAYER.id, +t, r);
 });

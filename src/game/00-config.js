@@ -89,10 +89,40 @@ const RES_ICON = { wood: '🪵', gold: '🪙', food: '🍖', stone: '🪨' };
 const PLAYER = { id: 1, name: 'Civilització Blava', color: 0x2c5aa8, colorLight: 0x5b8ad8, colorDark: 0x1a3266 };
 const SEL_COLOR_OWN = 0xcfeeff;
 const SEL_COLOR_NEUTRAL = 0xffe07a;
+const SEL_COLOR_ALLY = 0x9ef07a;
 const SEL_COLOR_ENEMY = 0xff4a3a;
 const ENEMY = { id: 2, name: 'Imperi Vermell', color: 0xa3302a, colorLight: 0xd05a48, colorDark: 0x661a14,
                 res: { food: 0, wood: 0, gold: 0, stone: 0 } };
-const TEAMS = { 1: PLAYER, 2: ENEMY };
+/* Fase 20: fins a 4 jugadors. Els jugadors 3 i 4 només juguen si la partida en té (GAME.players) */
+const P3 = { id: 3, name: 'Regne Verd', color: 0x3a8a3a, colorLight: 0x68c060, colorDark: 0x1c4a1c,
+             res: { food: 0, wood: 0, gold: 0, stone: 0 } };
+const P4 = { id: 4, name: 'Senyoria Groga', color: 0xc9a019, colorLight: 0xefd060, colorDark: 0x6e560a,
+             res: { food: 0, wood: 0, gold: 0, stone: 0 } };
+const TEAMS = { 1: PLAYER, 2: ENEMY, 3: P3, 4: P4 };
+const COLOR_NAME = { 1: 'blau', 2: 'vermell', 3: 'verd', 4: 'groc' };
+/* Jugadors de la partida i el bàndol (equip) de cadascun: els del mateix bàndol són aliats
+   (no s'ataquen, comparteixen la visió i guanyen o perden junts) */
+const GAME = { players: [1, 2], side: { 1: 1, 2: 2 }, layout: '1v1', defeated: new Set() };
+const sideOf = (id) => GAME.side[id] || 0;
+const hostile = (a, b) => !!a && !!b && a !== b && sideOf(a) !== sideOf(b);
+const allied = (a, b) => a === b || (!!a && !!b && sideOf(a) === sideOf(b));
+const activeTeams = () => GAME.players;
+/* Formes de partida: bàndol de cada jugador (1 = el teu) */
+const LAYOUTS = {
+  '1v1': { name: '1 contra 1', side: { 1: 1, 2: 2 } },
+  '1v2': { name: '1 contra 2', side: { 1: 1, 2: 2, 3: 2 } },
+  '2v2': { name: '2 contra 2', side: { 1: 1, 3: 1, 2: 2, 4: 2 } },
+  '1v3': { name: '1 contra 3', side: { 1: 1, 2: 2, 3: 2, 4: 2 } },
+  'ffa3': { name: 'Tots contra tots (3)', side: { 1: 1, 2: 2, 3: 3 } },
+  'ffa4': { name: 'Tots contra tots (4)', side: { 1: 1, 2: 2, 3: 3, 4: 4 } },
+};
+function setLayout(id) {
+  const L = LAYOUTS[id] || LAYOUTS['1v1'];
+  GAME.layout = LAYOUTS[id] ? id : '1v1';
+  GAME.side = { ...L.side };
+  GAME.players = Object.keys(L.side).map(Number).sort();
+  GAME.defeated = new Set();
+}
 function defaultMods() {
   return {
     gather: {}, capacity: 0, villagerSpeed: 1, villagerHp: 0, villagerArmor: [0, 0], farmBonus: 0,
@@ -111,10 +141,12 @@ function defaultMods() {
     unitAttack: {}, unitBonusInf: {}, unitArmor: {},
   };
 }
-for (const T of [PLAYER, ENEMY]) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }
+for (const T of Object.values(TEAMS)) { T.age = 0; T.techs = new Set(); T.mods = defaultMods(); T.prices = { food: 100, wood: 100, stone: 130 }; }
 const teamOf = (id) => TEAMS[id] || PLAYER;
 PLAYER.civ = 'franks';
 ENEMY.civ = 'saracens';
+P3.civ = 'japanese';
+P4.civ = 'britons';
 const civOf = (team) => CIVS[teamOf(team).civ] || CIVS.franks;
 const archOf = (team) => (team && TEAMS[team] ? civOf(team).arch : 'western');
 /* Bonificacions de civilització sobre els modificadors de l'equip (es criden en començar o carregar) */

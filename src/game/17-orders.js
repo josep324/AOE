@@ -397,10 +397,10 @@ function issueRightClick(x, y, queued = false) {
       if (free.length) { free[0].orderQueue.length = 0; orderPickRelic(free[0], targetEnt); used = [free[0]]; }
       else toast('🏺 Aquests monjos ja porten una relíquia');
       spawnMoveMarker(targetEnt.position, 0xffe6a0, 1.4);
-    } else if (targetEnt.team && targetEnt.team !== PLAYER.id && (targetEnt.kind === 'unit' || targetEnt.kind === 'building')) {
+    } else if (hostile(targetEnt.team, PLAYER.id) && (targetEnt.kind === 'unit' || targetEnt.kind === 'building')) {
       if (commandConvert(monks, targetEnt)) used = monks.filter(m => m.convTarget === targetEnt);
       spawnMoveMarker(targetEnt.position, teamOf(PLAYER.id).colorLight, (targetEnt.footprint ? targetEnt.footprint.hw : targetEnt.radius) + 0.8);
-    } else if (targetEnt.kind === 'unit' && targetEnt.isOwn && canHeal(monks[0], targetEnt)) {
+    } else if (targetEnt.kind === 'unit' && targetEnt.isFriendly && canHeal(monks[0], targetEnt)) {
       monks.forEach(m => { m.orderQueue.length = 0; orderHeal(m, targetEnt); });
       used = monks;
       spawnMoveMarker(targetEnt.position, 0x9dffa0, 1.2);
@@ -413,7 +413,7 @@ function issueRightClick(x, y, queued = false) {
       units = units.filter(u => !used.includes(u));
       if (!units.length) return;
       // La resta de monjos acompanya el grup; els soldats ataquen l'enemic
-      if (targetEnt.kind === 'relic' || !(targetEnt.team && targetEnt.team !== PLAYER.id)) { commandMove(units, targetEnt.position.clone(), queued); return; }
+      if (targetEnt.kind === 'relic' || !(hostile(targetEnt.team, PLAYER.id))) { commandMove(units, targetEnt.position.clone(), queued); return; }
     }
   }
   // Animal viu: els aldeans el cacen (si dona carn); la resta de tropes l'ataquen
@@ -426,7 +426,7 @@ function issueRightClick(x, y, queued = false) {
     return;
   }
   // Enemic: atacar (tothom)
-  if (targetEnt && targetEnt.team && targetEnt.team !== PLAYER.id && isAttackable(targetEnt)) {
+  if (targetEnt && hostile(targetEnt.team, PLAYER.id) && isAttackable(targetEnt)) {
     units = units.filter(u => !isMonk(u));
     if (!units.length) return;
     commandAttack(units, targetEnt, queued);
@@ -435,7 +435,7 @@ function issueRightClick(x, y, queued = false) {
   }
   // Carros de comerç sobre un mercat propi: ruta comercial
   const carts = units.filter(u => u.subtype === 'tradecart');
-  if (carts.length && targetEnt && targetEnt.subtype === 'market' && targetEnt.isOwn && !targetEnt.underConstruction) {
+  if (carts.length && targetEnt && targetEnt.subtype === 'market' && targetEnt.isFriendly && !targetEnt.underConstruction) {
     carts.forEach(u => orderTrade(u, targetEnt));
     spawnMoveMarker(targetEnt.position, 0xffd84a, 3.5);
     if (carts.length === units.length) return;

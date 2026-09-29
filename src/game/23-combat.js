@@ -17,7 +17,7 @@ function isAttackable(t) {
 }
 
 function orderAttack(u, target, keepAttackMove = true) {
-  if (!isAttackable(target) || target.team === u.team) return;
+  if (!isAttackable(target) || allied(target.team, u.team)) return;
   if (u.onlyBuildings && target.kind === 'unit' && target.category !== 'siege') return;   // ariets i trabucs: només edificis
   if (target.naval && !u.naval && !(u.range > 0)) return;                                    // el cos a cos no arriba als vaixells
   u.forcedTarget = false;
@@ -73,7 +73,7 @@ const targetBuf = [];
 function findTargetNear(u, radius) {
   let best = null, bestD = Infinity;
   for (const e of unitsNear(u.position.x, u.position.z, radius, targetBuf)) {
-    if (e.team === u.team || e.team === 0 || e.dead || e.garrisoned) continue;
+    if (!hostile(e.team, u.team) || e.dead || e.garrisoned) continue;
     if (u.onlyBuildings && e.category !== 'siege') continue;     // ariets i trabucs: només edificis i setge
     if (e.naval && !u.naval && !(u.range > 0)) continue;          // el cos a cos no pot atacar vaixells
     if (u.naval && !e.naval && u.range < 2 && !u.demolition) continue;
@@ -88,7 +88,7 @@ function findTargetNear(u, radius) {
   }
   if (best) return best;
   for (const b of state.buildings) {
-    if (b.team === u.team || b.dead) continue;
+    if (!hostile(b.team, u.team) || b.dead) continue;
     const d = entSurfaceDist(b, u.position.x, u.position.z);
     if (d < radius && d < bestD) { bestD = d; best = b; }
   }
@@ -194,7 +194,7 @@ function arrowLanded(p) {
   // Fletxa desviada: pot tocar un altre enemic del tirador que sigui just allà
   const team = p.shooter ? p.shooter.team : 0;
   for (const u of unitsNear(e.x, e.z, 1.6, arrowHitBuf)) {
-    if (u.dead || u.garrisoned || !team || u.team === team || u.team === 0) continue;
+    if (u.dead || u.garrisoned || !hostile(u.team, team)) continue;
     if (hDist(u.position, e) <= u.radius + 0.35) { applyDamage(u, p.dmg, p.shooter); return; }
   }
 }
@@ -260,13 +260,13 @@ function updateDefensiveBuildings(dt) {
     const C = lvl ? { ...C0, damage: C0.damage + lvl, range: C0.range + (lvl >= 2 ? 1 : 0) } : C0;
     let target = null, bestD = Infinity;
     for (const u of unitsNear(b.position.x, b.position.z, C.range + (b.footprint ? b.footprint.hw : b.radius) + 1, targetBuf)) {
-      if (u.team === b.team || u.team === 0 || u.dead || u.garrisoned) continue;
+      if (!hostile(u.team, b.team) || u.dead || u.garrisoned) continue;
       const d = entSurfaceDist(b, u.position.x, u.position.z);
       if (d <= C.range && d < bestD) { bestD = d; target = u; }
     }
     if (!target) {
       for (const e of state.buildings) {
-        if (e.team === b.team || e.dead) continue;
+        if (!hostile(e.team, b.team) || e.dead) continue;
         const d = hDist(e.position, b.position) - (b.footprint ? b.footprint.hw : b.radius) - (e.footprint ? e.footprint.hw : e.radius);
         if (d <= C.range && d < bestD) { bestD = d; target = e; }
       }

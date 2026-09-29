@@ -6,6 +6,11 @@ const mm = {
   ctx: null, size: 150, dpr: 1, scale: 1, dragging: false, timer: 0,
 };
 mm.ctx = mm.el.getContext('2d');
+/* Colors de cada jugador al minimapa: edifici, unitat, fonament */
+const MM_TEAM = {
+  1: ['#2f6fe0', '#5ab0ff', 'rgba(90,150,255,0.55)'], 2: ['#e0402f', '#ff5a4a', 'rgba(255,110,90,0.55)'],
+  3: ['#2f9e3a', '#6ee060', 'rgba(90,210,90,0.55)'], 4: ['#d8a818', '#ffd84a', 'rgba(240,200,60,0.55)'],
+};
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 function mmResize() {
   const rect = mm.el.parentElement.getBoundingClientRect();
@@ -105,12 +110,12 @@ function drawMinimap() {
     ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
     ctx.strokeStyle = '#d8aa3a'; ctx.lineWidth = 1; ctx.strokeRect(x - 2.5, y - 2.5, 5, 5);
   }
-  // Edificis
+  // Edificis (cada jugador amb el seu color: blau, vermell, verd, groc)
   for (const b of state.buildings) {
     if (!b.group.visible) continue;
-    const col = b.isOwn ? '#2f6fe0' : '#e0402f';
+    const C = MM_TEAM[b.team] || MM_TEAM[2], col = C[0];
     if (b.footprint) {
-      mmRect(ctx, b, ax, b.selected ? '#ffffff' : (b.underConstruction ? (b.isOwn ? 'rgba(90,150,255,0.55)' : 'rgba(255,110,90,0.55)') : col), '#0b1a3a');
+      mmRect(ctx, b, ax, b.selected ? '#ffffff' : (b.underConstruction ? C[2] : col), '#0b1a3a');
       continue;
     }
     const [x, y] = worldToMM(b.position.x, b.position.z, ax);
@@ -138,7 +143,7 @@ function drawMinimap() {
   for (const u of state.units) {
     if (!u.group.visible) continue;
     const [x, y] = worldToMM(u.position.x, u.position.z, ax);
-    ctx.fillStyle = u.selected ? '#ffffff' : u.isOwn ? '#5ab0ff' : '#ff5a4a';
+    ctx.fillStyle = u.selected ? '#ffffff' : (MM_TEAM[u.team] || MM_TEAM[2])[1];
     ctx.fillRect(x - 1.6, y - 1.6, 3.2, 3.2);
   }
   // Avisos d'atac (cercles vermells que parpellegen)

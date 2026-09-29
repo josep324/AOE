@@ -55,8 +55,8 @@ function updateFog() {
   FOG.visible.fill(0);
   if (!FOG.enabled) { FOG.visible.fill(1); FOG.explored.fill(1); }
   else {
-    for (const u of state.units) if (u.isOwn && !u.garrisoned) revealCircle(u.position.x, u.position.z, u.los || 10);
-    for (const b of state.buildings) if (b.isOwn) revealCircle(b.position.x, b.position.z, (b.underConstruction ? 6 : (b.los || 8)) + (b.footprint ? b.footprint.hw : b.radius));
+    for (const u of state.units) if (u.isFriendly && !u.garrisoned) revealCircle(u.position.x, u.position.z, u.los || 10);
+    for (const b of state.buildings) if (b.isFriendly) revealCircle(b.position.x, b.position.z, (b.underConstruction ? 6 : (b.los || 8)) + (b.footprint ? b.footprint.hw : b.radius));
   }
   const d = FOG.data, im = FOG.img.data;
   for (let k = 0; k < N * N; k++) {
@@ -69,13 +69,13 @@ function updateFog() {
   FOG.ctx.putImageData(FOG.img, 0, 0);
   // Visibilitat de les entitats que no són del jugador
   for (const u of state.units) {
-    if (u.isOwn) continue;
+    if (u.isFriendly) continue;
     const vis = entityVisible(u);
     u.group.visible = vis && !u.garrisoned;
     if (!vis && u.selected) { removeFromSelection(u); onSelectionChanged(); }
   }
   for (const b of state.buildings) {
-    if (b.isOwn) continue;
+    if (b.isFriendly) continue;
     if (entityVisible(b)) b.seen = true;       // els edificis enemics es recorden un cop vistos
     b.group.visible = !!b.seen;
   }

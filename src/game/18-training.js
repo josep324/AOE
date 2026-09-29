@@ -297,7 +297,8 @@ function completeTech(team, kind) {
     updateAgeUI();
     updateSelectionUI();
   } else if (d.ageUp) {
-    toast(`📜 L'enemic (${civOf(ENEMY.id).name}) ha avançat a l'${d.name}`);
+    toast(allied(team, PLAYER.id) ? `📜 El teu aliat (${civOf(team).name}) ha avançat a l'${d.name}`
+      : GAME.players.length > 2 ? `📜 ${teamOf(team).name} ha avançat a l'${d.name}` : `📜 L'enemic (${civOf(team).name}) ha avançat a l'${d.name}`);
   }
 }
 

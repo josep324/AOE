@@ -13,7 +13,7 @@ const NO_CONVERT = ['towncenter', 'castle', 'wonder', 'gate', 'farm'];
 
 function isMonk(u) { return !!u && u.kind === 'unit' && u.category === 'monk'; }
 function canConvert(u, t) {
-  if (!t || t.dead || t.garrisoned || t.isGround || !t.team || t.team === u.team) return false;
+  if (!t || t.dead || t.garrisoned || t.isGround || !t.team || allied(t.team, u.team)) return false;
   const T = teamOf(u.team);
   if (t.kind === 'unit') {
     if (t.category === 'king') return false;
@@ -25,7 +25,7 @@ function canConvert(u, t) {
   return false;
 }
 function canHeal(u, t) {
-  return !!t && !t.dead && !t.garrisoned && t.kind === 'unit' && t.team === u.team && t !== u && t.category !== 'siege' && t.hp < t.maxHp;
+  return !!t && !t.dead && !t.garrisoned && t.kind === 'unit' && allied(t.team, u.team) && t !== u && t.category !== 'siege' && t.hp < t.maxHp;
 }
 function monkDist(u, t) { return entSurfaceDist(t, u.position.x, u.position.z) - u.radius; }
 function clearMonkTask(u) {
@@ -79,13 +79,13 @@ function monkConvertTick(u, dt) {
   u.sparkT = (u.sparkT || 0) - dt;
   if (u.sparkT <= 0) { u.sparkT = 0.3; spawnSparkles(aimPoint(t), teamOf(u.team).colorLight, 4, t.kind === 'building' ? 2.5 : 0.7); }
   if (u.convT >= u.convNeed) {
-    const name = t.name;
+    const name = t.name, wasMine = t.team === PLAYER.id;
     convertEntity(t, u.team);
     u.faith = 0;
     u.convTarget = null; u.convNeed = 0; u.convT = 0;
     setUnitState(u, STATE.IDLE);
     if (u.isOwn) toast(`✨ Conversió! ${name} ara és teu`);
-    else if (t.team === u.team && t.kind) toast(`😱 Un monjo enemic ha convertit: ${name}`);
+    else if (wasMine) toast(`😱 Un monjo enemic ha convertit: ${name}`);
   }
   return false;
 }
@@ -346,9 +346,17 @@ function placeRelics() {
     }
     // Equilibri: quantes en té més a prop cada jugador (les del mig no compten)
     let diff = 0;
-    for (const [x, z] of placed) {
+    if (bases.length === 2) for (const [x, z] of placed) {
       const d1 = Math.hypot(x - bases[0].x, z - bases[0].z), d2 = Math.hypot(x - bases[1].x, z - bases[1].z);
       if (Math.abs(d1 - d2) > 20) diff += d1 < d2 ? 1 : -1;
+    } else {
+      // Més jugadors: diferència entre qui en té més i qui en té menys clarament a prop
+      const near = bases.map(() => 0);
+      for (const [x, z] of placed) {
+        const ds = bases.map(B => Math.hypot(x - B.x, z - B.z)), m = Math.min(...ds);
+        if (ds.filter(d => d - m < 20).length === 1) near[ds.indexOf(m)]++;
+      }
+      diff = Math.max(...near) - Math.min(...near);
     }
     const score = (RELIC_COUNT - placed.length) * 10 + Math.abs(diff);
     if (!best || score < best.score) best = { placed, score };

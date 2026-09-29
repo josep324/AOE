@@ -188,7 +188,7 @@ function stoneImpact(info, p) {
     applyDamage(e, Math.max(1, Math.round(computeDamage(info.attack, e, 0) * f)), info.shooter);
   }
   for (const b of state.buildings.slice()) {
-    if (b.team === info.team || b.dead) continue;
+    if (allied(b.team, info.team) || b.dead) continue;
     if (entSurfaceDist(b, p.x, p.z) <= (info.big ? 1.2 : r * 0.5)) applyDamage(b, computeDamage(info.attack, b, 0, info.vsBuilding), info.shooter);
   }
 }
@@ -200,7 +200,7 @@ function boltPierce(info, end, first) {
   dir.divideScalar(len);
   const total = len + 3.5;
   for (const e of unitsNear((info.start.x + end.x) / 2, (info.start.z + end.z) / 2, total / 2 + 2, splashBuf)) {
-    if (e === first || e.dead || e.garrisoned || e.team === info.team || e.team === 0) continue;
+    if (e === first || e.dead || e.garrisoned || !hostile(e.team, info.team)) continue;
     const rx = e.position.x - info.start.x, rz = e.position.z - info.start.z;
     const along = rx * dir.x + rz * dir.z;
     if (along < 1 || along > total) continue;

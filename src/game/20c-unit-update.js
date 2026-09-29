@@ -241,7 +241,7 @@ function updateUnit(u, dt) {
       break;
     case STATE.TRADING: {
       const dest = u.tradeDest, home = u.tradeHome;
-      if (!dest || dest.dead || !home || home.dead) { u.tradeDest = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
+      if (!dest || dest.dead || !home || home.dead || !allied(dest.team, u.team) || !allied(home.team, u.team)) { u.tradeDest = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); break; }
       if (inReach(u, dest)) {
         if (u.tradeLoaded > 0) {
           resOf(u.team).gold += u.tradeLoaded;

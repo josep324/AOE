@@ -400,3 +400,24 @@ kbd { border-radius: 2px !important; }
 .overlay { background: radial-gradient(circle at 50% 40%, rgba(30,26,20,.8), rgba(6,5,4,.93)) !important; }
 #sel-content .portrait { align-self: flex-start; aspect-ratio: 1 / 1; height: auto; }
 .action-btn.small .big { width: 40px; height: 32px; }
+
+/* Fase 20: jugadors i equips */
+.slot-row{gap:12px;flex-wrap:wrap}
+.slot-row.hidden{display:none}
+.slot-row .slot{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.slot-row select{background:rgba(20,26,36,.85);color:inherit;border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:4px 6px;font:inherit}
+.pdot{display:inline-block;width:10px;height:10px;border-radius:50%;box-shadow:0 0 5px rgba(255,255,255,.35)}
+#players{position:fixed;top:12px;right:12px;z-index:25;padding:8px 12px;font-size:12px;min-width:190px}
+#players.hidden{display:none}
+#players .pl{display:flex;align-items:center;gap:7px;padding:3px 0;color:var(--muted)}
+#players .pl b{color:var(--text);font-weight:600}
+#players .pl.me b{color:var(--gold)}
+#players .pl.out{opacity:.45;text-decoration:line-through}
+#players .rel{margin-left:auto;font-size:11px}
+#players .rel.ally{color:#9ef07a}
+#players .rel.foe{color:#ff8a7a}
+#players .trib{display:flex;gap:4px;padding:2px 0 4px 17px}
+#players .trib button{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);color:var(--text);border-radius:5px;font-size:11px;padding:2px 5px;cursor:pointer}
+#players .trib button:hover{background:rgba(255,215,120,.18)}
+@media (max-width: 1100px){ #players{top:auto;bottom:calc(var(--hud-h) + 10px)} }
+#layout-choices .choice{padding:6px 12px;font-size:12px}

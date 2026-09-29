@@ -43,7 +43,8 @@ function serializeGame() {
   return {
     v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE, rng: RNG.s,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
-    teams: { 1: team(PLAYER), 2: team(ENEMY) },
+    teams: Object.fromEntries(GAME.players.map(id => [id, team(TEAMS[id])])),
+    layout: GAME.layout, defeated: [...GAME.defeated],
     ai: { diff: diffKey(AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
     ais: serializeAIs(idx),
     fog: { enabled: FOG.enabled, explored },
@@ -90,12 +91,18 @@ function loadGame(data) {
   paintGroundBase();
   WORLD.type = MAP_TYPES[data.map] ? data.map : 'arabia';
   WORLD.seed = (data.mapSeed ?? MAP_SEED) >>> 0;
+  // Jugadors i equips de la partida (les desades abans de la fase 20 són 1 contra 1)
+  setLayout(data.layout || '1v1');
+  for (const t of data.defeated || []) GAME.defeated.add(t);
+  WORLD.layout = GAME.layout;
+  setupBases();
   setupWater(WORLD.type, WORLD.seed);
   setupHeights(WORLD.type, WORLD.seed);
   rebuildNav();
   // Equips: recursos, preus, edat i tecnologies (abans de crear les unitats)
-  for (const [id, T] of [[1, PLAYER], [2, ENEMY]]) {
-    const d = data.teams[id];
+  for (const id of GAME.players) {
+    const T = TEAMS[id], d = data.teams[id];
+    if (!d) continue;
     Object.assign(T.res, d.res);
     T.prices = { ...d.prices };
     T.age = 0; T.techs = new Set(); T.mods = defaultMods();
@@ -356,7 +363,7 @@ function togglePause() {
 }
 document.getElementById('restart-btn').addEventListener('click', () => location.reload());
 function teamAlive(team) {
-  if (aiOf(team) && aiOf(team).resigned) return false;
+  if (GAME.defeated.has(team) || (aiOf(team) && aiOf(team).resigned)) return false;
   return state.units.some(u => u.team === team) || state.buildings.some(b => b.team === team && !b.underConstruction);
 }
 const hasKing = (team) => state.units.some(u => u.team === team && u.category === 'king');
@@ -366,15 +373,16 @@ function victoryCheck() {
   for (const b of state.buildings) {
     if (b.subtype !== 'wonder' || b.underConstruction || b.wonderEnd) continue;
     b.wonderEnd = state.elapsed + WONDER_WIN_TIME;
-    toast(b.isOwn ? `🏛️ Meravella acabada! Si resisteix ${WONDER_WIN_TIME / 60} minuts, guanyes` : `🏛️ Els ${civOf(b.team).name} han acabat una Meravella! Destrueix-la abans de ${WONDER_WIN_TIME / 60} minuts`);
-    if (!b.isOwn) state.pings.push({ x: b.position.x, z: b.position.z, t: 0 });
+    toast(b.isFriendly ? `🏛️ Meravella acabada! Si resisteix ${WONDER_WIN_TIME / 60} minuts, guanyes` : `🏛️ Els ${civOf(b.team).name} han acabat una Meravella! Destrueix-la abans de ${WONDER_WIN_TIME / 60} minuts`);
+    if (!b.isFriendly) state.pings.push({ x: b.position.x, z: b.position.z, t: 0 });
   }
   if (state.relics.length) {
+    // (amb equips, compten les relíquies de tots els aliats)
     const t0 = state.relics[0].holder ? state.relics[0].holder.team : 0;
-    const team = t0 && state.relics.every(r => r.holder && r.holder.team === t0) ? t0 : 0;
-    if (team && (!state.relicWin || state.relicWin.team !== team)) {
+    const team = t0 && state.relics.every(r => r.holder && allied(r.holder.team, t0)) ? t0 : 0;
+    if (team && (!state.relicWin || !allied(state.relicWin.team, team))) {
       state.relicWin = { team, end: state.elapsed + RELIC_WIN_TIME };
-      toast(team === PLAYER.id ? `🏺 Tens totes les relíquies! Guarda-les ${RELIC_WIN_TIME} segons per guanyar` : `🏺 L'enemic té totes les relíquies! Tens ${RELIC_WIN_TIME} segons per recuperar-ne una`);
+      toast(allied(team, PLAYER.id) ? `🏺 Tens totes les relíquies! Guarda-les ${RELIC_WIN_TIME} segons per guanyar` : `🏺 L'enemic té totes les relíquies! Tens ${RELIC_WIN_TIME} segons per recuperar-ne una`);
     } else if (!team && state.relicWin) {
       state.relicWin = null;
       toast('🏺 Ningú no té totes les relíquies: compte enrere aturat');
@@ -386,35 +394,55 @@ const vicEl = document.getElementById('vic-timers');
 function updateVictoryUI() {
   const items = [];
   if (state.victory === 'regicide') items.push(`<span class="vt" title="Regicidi: si el teu rei mor, perds">👑 ${hasKing(PLAYER.id) ? 'Rei viu' : 'Sense rei'}</span>`);
-  for (const b of state.buildings) if (b.subtype === 'wonder' && b.wonderEnd) items.push(`<span class="vt ${b.isOwn ? '' : 'enemy'}" title="Meravella: si resisteix, guanya">🏛️ ${civOf(b.team).name} ${formatTime(Math.max(0, b.wonderEnd - state.elapsed))}</span>`);
-  if (state.relicWin) items.push(`<span class="vt ${state.relicWin.team === PLAYER.id ? '' : 'enemy'}" title="Totes les relíquies">🏺 ${civOf(state.relicWin.team).name} ${formatTime(Math.max(0, state.relicWin.end - state.elapsed))}</span>`);
+  for (const b of state.buildings) if (b.subtype === 'wonder' && b.wonderEnd) items.push(`<span class="vt ${b.isFriendly ? '' : 'enemy'}" title="Meravella: si resisteix, guanya">🏛️ ${civOf(b.team).name} ${formatTime(Math.max(0, b.wonderEnd - state.elapsed))}</span>`);
+  if (state.relicWin) items.push(`<span class="vt ${allied(state.relicWin.team, PLAYER.id) ? '' : 'enemy'}" title="Totes les relíquies">🏺 ${civOf(state.relicWin.team).name} ${formatTime(Math.max(0, state.relicWin.end - state.elapsed))}</span>`);
   const html = items.join('');
   if (vicEl.innerHTML !== html) vicEl.innerHTML = html;
   vicEl.classList.toggle('on', items.length > 0);
 }
+/* Un jugador eliminat (fase 20): amb més de dos jugadors, el que li queda desapareix i la partida continua */
+function defeatTeam(t, why) {
+  if (GAME.defeated.has(t)) return;
+  GAME.defeated.add(t);
+  const A = aiOf(t);
+  if (A) A.enabled = false;
+  if (t === PLAYER.id) return;
+  for (const u of state.units.filter(u => u.team === t)) killEntity(u, null);
+  for (const b of state.buildings.filter(b => b.team === t)) killEntity(b, null);
+  toast(`💀 ${teamOf(t).name} ${why}`);
+}
 function checkGameOver() {
   if (state.over) return;
   victoryCheck();
-  let win = !teamAlive(ENEMY.id), lose = !teamAlive(PLAYER.id), how = 'conquest';
-  if (state.victory === 'regicide') {
-    if (!hasKing(ENEMY.id)) { win = true; how = 'king'; }
-    if (!hasKing(PLAYER.id)) { lose = true; how = 'king'; }
+  const regicide = state.victory === 'regicide';
+  const out = (t) => GAME.defeated.has(t) || !teamAlive(t) || (regicide && !hasKing(t));
+  // Amb més de dos jugadors, els que cauen s'eliminen i la resta continua
+  if (GAME.players.length > 2) for (const t of GAME.players) {
+    if (t === PLAYER.id || GAME.defeated.has(t) || !out(t)) continue;
+    defeatTeam(t, aiOf(t) && aiOf(t).resigned ? "s'ha rendit" : regicide && !hasKing(t) ? 'ha perdut el rei i queda eliminat' : 'ha estat derrotat');
   }
+  const foes = GAME.players.filter(t => hostile(t, PLAYER.id));
+  let win = foes.every(out), lose = out(PLAYER.id), how = 'conquest';
+  if (regicide && (!hasKing(PLAYER.id) || (win && foes.some(t => !hasKing(t))))) how = 'king';
+  let winner = null;
   if (state.victory === 'standard') {
     const w = state.buildings.find(b => b.subtype === 'wonder' && b.wonderEnd && state.elapsed >= b.wonderEnd);
-    if (w) { if (w.isOwn) win = true; else lose = true; how = 'wonder'; }
-    if (state.relicWin && state.elapsed >= state.relicWin.end) { if (state.relicWin.team === PLAYER.id) win = true; else lose = true; how = 'relics'; }
+    if (w) { if (allied(w.team, PLAYER.id)) win = true; else lose = true; how = 'wonder'; winner = w.team; }
+    if (state.relicWin && state.elapsed >= state.relicWin.end) { if (allied(state.relicWin.team, PLAYER.id)) win = true; else lose = true; how = 'relics'; winner = state.relicWin.team; }
   }
   if (!win && !lose) return;
   if (win && lose) win = false;
   state.over = true;
   state.paused = true;
-  const T = `<b>${formatTime(state.elapsed)}</b>`, E = civOf(ENEMY.id).name, P = civOf(PLAYER.id).name;
+  const T = `<b>${formatTime(state.elapsed)}</b>`, P = civOf(PLAYER.id).name;
+  const E = winner && !win ? civOf(winner).name : foes.map(t => civOf(t).name).join(' i ');
+  const resigned = foes.every(t => aiOf(t) && aiOf(t).resigned);
+  const team = GAME.players.some(t => t !== PLAYER.id && allied(t, PLAYER.id)) ? ' amb el teu aliat' : '';
   const WHY = {
-    conquest: win ? `${AI.resigned ? `Els ${E} s'han rendit` : `Has derrotat els ${E}`} en ${T} (dificultat ${AI.diff.label}).` : `La teva civilització (${P}) ha caigut després de ${T}.`,
+    conquest: win ? `${resigned ? `Els ${E} s'han rendit` : `Has derrotat els ${E}${team}`} en ${T} (dificultat ${AI.diff.label}).` : `La teva civilització (${P}) ha caigut després de ${T}.`,
     king: win ? `El rei dels ${E} ha mort: victòria per regicidi en ${T}.` : `El teu rei ha mort. Els ${E} guanyen per regicidi (${T}).`,
-    wonder: win ? `La teva Meravella ha resistit! Victòria en ${T}.` : `La Meravella dels ${E} ha resistit. Derrota en ${T}.`,
-    relics: win ? `Has reunit totes les relíquies. Victòria en ${T}.` : `Els ${E} han reunit totes les relíquies. Derrota en ${T}.`,
+    wonder: win ? `${winner === PLAYER.id ? 'La teva Meravella' : 'La Meravella del teu aliat'} ha resistit! Victòria en ${T}.` : `La Meravella dels ${E} ha resistit. Derrota en ${T}.`,
+    relics: win ? `${winner === PLAYER.id ? 'Has' : 'El teu equip ha'} reunit totes les relíquies. Victòria en ${T}.` : `Els ${E} han reunit totes les relíquies. Derrota en ${T}.`,
   };
   document.getElementById('end-title').textContent = win ? 'VICTÒRIA' : 'DERROTA';
   document.getElementById('end-text').innerHTML = WHY[how];

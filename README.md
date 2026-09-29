@@ -45,8 +45,18 @@ Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjo
 - ⚔️ **Conquesta**: només destruint l'enemic.
 - 👑 **Regicidi**: cada bàndol té un rei; si mor, perd.
 
+**Jugadors i equips** (es trien a l'inici, fins a 4 jugadors): 1 contra 1 · 1 contra 2 · 2 contra 2 (amb una IA aliada) ·
+1 contra 3 · tots contra tots (3 o 4). Amb més de dos jugadors les bases són a les quatre cantonades i els recursos, els
+llacs i els rius giren igual per a totes (el riu separa el nord del sud: en un 2 contra 2, cada equip té el seu costat).
+Els aliats comparteixen la visió, no s'ataquen, comercien amb els mercats de l'altre i guanyen o perden junts (també
+les relíquies i la Meravella compten per equip). Des del quadre de jugadors (a dalt a la dreta) pots enviar un **tribut**
+de 100 d'un recurs a l'aliat (arriba el 80%), i l'aliat IA també t'envia el que li sobra si vas curt. Cada IA rival ataca
+el rival que té més a prop (en un 2 contra 2, cadascuna té el seu) i, quan cau, ajuda el seu aliat; l'aliat IA envia
+tropes a defensar-te si t'ataquen. Un jugador derrotat o rendit desapareix del mapa i la partida continua.
+`node tests/run.mjs --bench teams` juga partides d'equips només amb IA.
+
 **Mapes** (es trien a l'inici; cada partida és diferent però justa):
-🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb tres camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals).
+🏜️ Aràbia (obert) · 🌲 Bosc Negre (boscos tancats amb uns quants camins) · 🏞️ Llacs (llac central i llacs petits) · 🌊 Rius (un riu parteix el mapa i només es creua pels guals).
 **Mides** com les de l'AoE II (1 casella ≈ 2,15 m): Minúscul 120×120 · Petit 144×144 · Mitjà 168×168 (per defecte) · Normal 200×200 · Gran 220×220.
 Com a l'AoE II, cada jugador té la mateixa sortida (línia de bosc, 5 arbres solts a prop del Centre, or, pedra i menjar);
 els boscos són taques compactes i irregulars repartides a l'atzar per tot el mapa, i les 5 relíquies queden escampades

@@ -28,7 +28,7 @@ setTimeout(() => loadingEl.remove(), 500);
 // Exposem l'estat per depurar des de la consola
 window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVillager, queueUnit, get townCenter() { return townCenter; }, get enemyTC() { return enemyTC; }, mouse, NAV, createBuilding,
   commandBuild, startPlacement, placing, findPath, popCap, createSoldier, commandAttack, AI, FOG, ENEMY, DIFFICULTY, ringTownBell, kill: (e) => killEntity(e, null),
-  PLAYER, completeTech, itemBlockReason, createSoldierAt: createSoldier, saveGame, loadGame, readSave, serializeGame,
+  PLAYER, TEAMS, GAME, LAYOUTS, setLayout, hostile, allied, defeatTeam, P3, P4, completeTech, itemBlockReason, createSoldierAt: createSoldier, saveGame, loadGame, readSave, serializeGame,
   createTradeCart, marketTrade, orderTrade, exportGameCode, importGameCode, setStance, orderBuild, orderGather, depleteResource, simulate, createTownCenter, setTeamCiv, createVillager, createTradeCart, snapGateToWall, costFor, labelRegions, obstacleSurface, popUsed, findBuildSpot, sellRate, buildBlockReason, commandAttackGround, orderGarrison, ungarrison, togglePack, canGarrison, commandAttack, uniqueUnitOf,
   commandMove, setFormation, formationSlots, setSelection, updateSelectionUI,
   buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, canPlaceDock, findDockSpot, orderUnload, spawnUnit, orderAttack, orderGarrison, createAnimal, createFish, waterCell,
@@ -45,6 +45,8 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
     pickChoice('enemy-civ-choices', 'civ', P.enemyCiv);
     pickChoice('victory-choices', 'victory', P.victory);
     pickChoice('diff-choices', 'diff', P.diff);
+    if (P.layout) pickChoice('layout-choices', 'layout', P.layout);
+    if (P.slots) { Object.assign(chosenSlotCiv, P.slots); renderSlots(); }
     document.getElementById('fog-toggle').checked = P.fog !== false;
     document.getElementById('start-btn').click();
   } else if (pending && pending.load) {

@@ -68,7 +68,7 @@ document.querySelectorAll('#victory-choices .choice').forEach(btn => btn.addEven
 }));
 /* Regicidi: cada bàndol comença amb un rei a cavall al costat del Centre de Ciutat */
 function createKings() {
-  for (const team of [PLAYER.id, ENEMY.id]) {
+  for (const team of GAME.players) {
     if (hasKing(team)) continue;
     const tc = state.buildings.find(b => b.team === team && b.subtype === 'towncenter');
     if (!tc) continue;
@@ -103,6 +103,52 @@ for (const [id, label] of [['random', '🎲 Aleatòria'], ...Object.entries(CIVS
   });
   enemyCivChoices.appendChild(b);
 }
+/* ---------- Jugadors i equips (fase 20) ---------- */
+let chosenLayout = '1v1';
+const chosenSlotCiv = { 3: 'random', 4: 'random' };
+const layoutChoices = document.getElementById('layout-choices'), slotChoices = document.getElementById('slot-choices');
+const LAYOUT_TIPS = {
+  '1v1': 'Tu contra una IA', '1v2': 'Tu sol contra dues IA aliades entre elles', '2v2': 'Tu i una IA aliada contra dues IA',
+  '1v3': 'Tu sol contra tres IA aliades entre elles', ffa3: 'Tres jugadors, cadascun pel seu compte', ffa4: 'Quatre jugadors, cadascun pel seu compte',
+};
+const DOT = (id) => `<span class="pdot" style="background:#${TEAMS[id].color.toString(16).padStart(6, '0')}"></span>`;
+function renderSlots() {
+  const L = LAYOUTS[chosenLayout];
+  enemyCivChoices.querySelector('span').innerHTML = Object.keys(L.side).length > 2 ? `${DOT(2)} Rival (vermell):` : 'Rival:';
+  const extra = Object.keys(L.side).map(Number).filter(id => id > 2);
+  slotChoices.innerHTML = '';
+  slotChoices.classList.toggle('hidden', !extra.length);
+  if (!extra.length) return;
+  slotChoices.insertAdjacentHTML('beforeend', `<span class="opt-lbl">Altres:</span>`);
+  for (const id of extra) {
+    const lab = document.createElement('label');
+    lab.className = 'slot';
+    const role = L.side[id] === L.side[1] ? 'aliat' : 'rival';
+    lab.innerHTML = `${DOT(id)}<span>${COLOR_NAME[id]} (${role})</span>`;
+    const sel = document.createElement('select');
+    sel.dataset.slot = id;
+    for (const [k, t] of [['random', '🎲 Aleatòria'], ...Object.entries(CIVS).map(([k, C]) => [k, `${C.icon} ${C.name}`])]) {
+      const o = document.createElement('option'); o.value = k; o.textContent = t; if (k === chosenSlotCiv[id]) o.selected = true; sel.appendChild(o);
+    }
+    sel.addEventListener('change', () => { chosenSlotCiv[id] = sel.value; });
+    lab.appendChild(sel);
+    slotChoices.appendChild(lab);
+  }
+}
+for (const [id, L] of Object.entries(LAYOUTS)) {
+  const b = document.createElement('button');
+  b.className = 'choice' + (id === chosenLayout ? ' on' : '');
+  b.dataset.layout = id;
+  b.textContent = L.name;
+  b.title = LAYOUT_TIPS[id] || '';
+  b.addEventListener('click', () => {
+    chosenLayout = id;
+    layoutChoices.querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
+    renderSlots();
+  });
+  layoutChoices.appendChild(b);
+}
+renderSlots();
 /* Assigna la civilització a un equip i refà els models dels seus edificis i unitats */
 function setTeamCiv(T, civ) {
   T.civ = civ;
@@ -126,37 +172,49 @@ function applyCivStart(T) {
   if (T === PLAYER) { updateResourcesUI(); updatePopulationUI(); }
 }
 function updateCivLabels() {
-  const P = civOf(PLAYER.id), E = civOf(ENEMY.id);
-  PLAYER.name = `${P.name} (blau)`;
-  ENEMY.name = `${E.name} (vermell)`;
+  const P = civOf(PLAYER.id);
+  for (const id of GAME.players) TEAMS[id].name = `${civOf(id).name} (${COLOR_NAME[id]})`;
   document.getElementById('civ-label').textContent = `${P.icon} ${P.name}`;
 }
 updateCivLabels();
 
 document.getElementById('start-btn').addEventListener('click', () => {
   if (chosenSize !== MAP_SIZE) {
-    reloadWithSize(chosenSize, { start: { map: chosenMap, civ: chosenCiv, enemyCiv: chosenEnemyCiv, victory: chosenVictory,
+    reloadWithSize(chosenSize, { start: { map: chosenMap, civ: chosenCiv, enemyCiv: chosenEnemyCiv, victory: chosenVictory, layout: chosenLayout, slots: { ...chosenSlotCiv },
       diff: chosenDiff, fog: document.getElementById('fog-toggle').checked } });
     return;
   }
-  // Mapa: es genera de nou si el tipus triat no és el que hi ha
+  // Mapa: es genera de nou si el tipus triat o els jugadors no són els que hi ha
   const types = Object.keys(MAP_TYPES);
   const mapType = chosenMap === 'random' ? types[Math.floor(Math.random() * types.length)] : chosenMap;   // atzar-ui
-  if (mapType !== WORLD.type) { resetWorld(); buildWorld(mapType, WORLD.seed); updateFog(); }
+  setLayout(chosenLayout);
+  if (mapType !== WORLD.type || WORLD.layout !== GAME.layout) { resetWorld(); buildWorld(mapType, WORLD.seed); updateFog(); }
   centerOn(townCenter.position, true);
   const others = Object.keys(CIVS).filter(k => k !== chosenCiv);
+  const pick = (c) => c === 'random' ? others[Math.floor(Math.random() * others.length)] : c;   // atzar-ui
   setTeamCiv(PLAYER, chosenCiv);
-  setTeamCiv(ENEMY, chosenEnemyCiv === 'random' ? others[Math.floor(Math.random() * others.length)] : chosenEnemyCiv);   // atzar-ui
+  setTeamCiv(ENEMY, pick(chosenEnemyCiv));
+  for (const id of GAME.players) if (id > 2) setTeamCiv(TEAMS[id], pick(chosenSlotCiv[id]));
   updateCivLabels();
   state.victory = chosenVictory;
   if (state.victory === 'regicide') createKings();
   updateVictoryUI();
-  aiReset(AI, DIFFICULTY[chosenDiff]);
-  for (const k of Object.keys(ENEMY.res)) ENEMY.res[k] = CONFIG.STARTING_RESOURCES[k] + AI.diff.bonusRes;
-  for (const T of [PLAYER, ENEMY]) applyCivStart(T);
+  // Una IA per a cada altre jugador (també per a l'aliat), totes amb la dificultat triada
+  for (const A of AIS) if (A.team !== ENEMY.id && !GAME.players.includes(A.team)) A.enabled = false;
+  for (const id of GAME.players) {
+    if (id === PLAYER.id) continue;
+    const A = id === ENEMY.id ? AI : enableAIFor(id, DIFFICULTY[chosenDiff]);
+    aiReset(A, DIFFICULTY[chosenDiff]);
+    const B = BASES[id];
+    A.foe = aiNearestFoe(id, B ? new THREE.Vector3(B.x, 0, B.z) : null) || PLAYER.id;
+    for (const k of Object.keys(TEAMS[id].res)) TEAMS[id].res[k] = CONFIG.STARTING_RESOURCES[k] + A.diff.bonusRes;
+  }
+  for (const id of GAME.players) applyCivStart(TEAMS[id]);
   FOG.enabled = document.getElementById('fog-toggle').checked;
   startScreen.classList.add('hidden');
   state.paused = false;
   canvas.focus();
-  toast(`${MAP_TYPES[WORLD.type].icon} ${MAP_TYPES[WORLD.type].name} · ${civOf(PLAYER.id).icon} ${civOf(PLAYER.id).name} contra ${civOf(ENEMY.id).icon} ${civOf(ENEMY.id).name} · ${AI.diff.label}`);
+  const nm = (id) => `${civOf(id).icon} ${civOf(id).name}`;
+  const mates = GAME.players.filter(t => t !== PLAYER.id && allied(t, PLAYER.id)), foes = GAME.players.filter(t => hostile(t, PLAYER.id));
+  toast(`${MAP_TYPES[WORLD.type].icon} ${MAP_TYPES[WORLD.type].name} · ${[PLAYER.id, ...mates].map(nm).join(' + ')} contra ${foes.map(nm).join(GAME.players.length > 2 && !mates.length && new Set(foes.map(sideOf)).size > 1 ? ' · ' : ' + ')} · ${AI.diff.label}`);
 });

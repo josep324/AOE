@@ -43,7 +43,7 @@ for (const f of files) {
   const pages = [];
   const errors = [];
   /* Obre el joc: seed fixa, espera que estigui llest i (si es demana) comença la partida */
-  const open = async ({ seed = 21, map = 'arabia', start = true, civ = 'franks', enemyCiv = 'saracens', diff = 'normal', viewport = { width: 1280, height: 800 } } = {}) => {
+  const open = async ({ seed = 21, map = 'arabia', start = true, civ = 'franks', enemyCiv = 'saracens', diff = 'normal', layout = null, slots = null, viewport = { width: 1280, height: 800 } } = {}) => {
     const page = await browser.newPage({ viewport });
     pages.push(page);
     page.on('pageerror', e => errors.push(e.message + '\n' + (e.stack || '')));
@@ -55,6 +55,8 @@ for (const f of files) {
       await page.click(`#civ-choices [data-civ=${civ}]`);
       await page.click(`#enemy-civ-choices [data-civ=${enemyCiv}]`);
       await page.click(`#diff-choices [data-diff=${diff}]`);
+      if (layout) await page.click(`#layout-choices [data-layout="${layout}"]`);
+      if (slots) for (const [id, c] of Object.entries(slots)) if (await page.$(`#slot-choices select[data-slot="${id}"]`)) await page.selectOption(`#slot-choices select[data-slot="${id}"]`, c);
       // Començar i pausar en el mateix instant: la simulació la fan avançar les proves (RTS.simulate), no el rellotge
       await page.evaluate(() => { document.getElementById('start-btn').click(); window.RTS.state.paused = true; });
     }

@@ -82,6 +82,7 @@ function animate() {
     idleCountEl.textContent = state.units.filter(u => u.isOwn && u.subtype === 'villager' && u.state === STATE.IDLE).length;
     idleMilCountEl.textContent = state.units.filter(isIdleMilitary).length;
     updatePopulationUI();
+    updatePlayersPanel();
   }
   for (const a of state.animated) a.update(t, dt);
 

@@ -7,17 +7,29 @@
    ===================================================================== */
 /* Les coordenades de disseny són d'un mapa de 250×250; MS les escala a la mida real del mapa */
 const MS = CONFIG.MAP_LIMIT / 125;
-const BASES = {
-  [PLAYER.id]: { x: -72 * MS, z: -72 * MS, s: 1 },     // s = orientació (el rival té la base girada 180°)
-  [ENEMY.id]: { x: 72 * MS, z: 72 * MS, s: -1 },
-};
+/* Bases a les cantonades: en un 1 contra 1, les dues oposades; amb més jugadors, les quatre
+   (en un 2 contra 2, els aliats comparteixen costat: 1 i 3 al sud, 2 i 4 al nord) */
+const BASE_POS = { 1: [-72, -72], 2: [72, 72], 3: [72, -72], 4: [-72, 72] };
+const BASES = {};
+function setupBases() {
+  for (const k of Object.keys(BASES)) delete BASES[k];
+  for (const id of GAME.players) {
+    const [x, z] = BASE_POS[id];
+    BASES[id] = { x: x * MS, z: z * MS, s: z < 0 ? 1 : -1 };     // s = orientació (cap al centre del mapa)
+  }
+}
+setupBases();
+/* Punts equivalents per simetria: respecte del centre (2 jugadors) o girant 90° (3 o 4 jugadors),
+   perquè cada base tingui els mateixos recursos a la mateixa distància */
+const sym4 = () => GAME.players.length > 2;
+const symPoints = (x, z) => sym4() ? [[x, z], [-z, x], [-x, -z], [z, -x]] : [[x, z], [-x, -z]];
 const MAP_TYPES = {
   arabia: { name: 'Aràbia', icon: '🏜️', desc: 'Terreny obert amb boscos petits: partides ràpides i agressives' },
   blackforest: { name: 'Bosc Negre', icon: '🌲', desc: 'Boscos immensos i tancats: només uns quants camins porten a l\'enemic' },
   lakes: { name: 'Llacs', icon: '🏞️', desc: 'Un gran llac al centre i altres de petits, amb peixos a la riba' },
   rivers: { name: 'Rius', icon: '🌊', desc: 'Un riu parteix el mapa: només es pot creuar pels guals' },
 };
-const WORLD = { type: 'arabia', seed: MAP_SEED };
+const WORLD = { type: 'arabia', seed: MAP_SEED, layout: '1v1' };
 let townCenter = null, enemyTC = null;
 
 /* Proporció d'àrea respecte del mapa Mitjà (per escalar quantitats a la mida triada) */
@@ -188,11 +200,12 @@ function mirroredRandom(fn, count, { baseGap = 45, gap = 24, margin = 4 } = {}) 
     for (let k = 0; k < 120; k++) {
       const x = randRange(-L, L), z = randRange(-L, L);
       if (Math.hypot(x, z) * 2 < gap) continue;                      // la parella no pot quedar enganxada
-      if (!farFromBases(x, z) || !farFromBases(-x, -z)) continue;
-      if (placed.some(([px, pz]) => Math.hypot(px - x, pz - z) < gap || Math.hypot(px + x, pz + z) < gap)) continue;
-      if (isNearObstacle(x, z, margin) || isNearObstacle(-x, -z, margin)) continue;
-      fn(x, z); fn(-x, -z);
-      placed.push([x, z], [-x, -z]);
+      const pts = symPoints(x, z);
+      if (sym4() && Math.hypot(x, z) * Math.SQRT2 < gap) continue;
+      if (!pts.every(([a, b]) => farFromBases(a, b))) continue;
+      if (placed.some(([px, pz]) => pts.some(([a, b]) => Math.hypot(px - a, pz - b) < gap))) continue;
+      if (pts.some(([a, b]) => isNearObstacle(a, b, margin))) continue;
+      for (const [a, b] of pts) { fn(a, b); placed.push([a, b]); }
       break;
     }
   }
@@ -203,9 +216,10 @@ function placeWolves(n) {
     for (let k = 0; k < 40; k++) {
       const lim = CONFIG.MAP_LIMIT - 15;
       const x = randRange(-lim, lim), z = randRange(-lim, lim);
-      if (Object.values(BASES).some(B => Math.hypot(x - B.x, z - B.z) < 60 || Math.hypot(-x - B.x, -z - B.z) < 60)) continue;
-      if (isNearObstacle(x, z, 2) || isNearObstacle(-x, -z, 2)) continue;
-      createAnimal('wolf', x, z); createAnimal('wolf', -x, -z);
+      const pts = symPoints(x, z);
+      if (pts.some(([a, b]) => Object.values(BASES).some(B => Math.hypot(a - B.x, b - B.z) < 60))) continue;
+      if (pts.some(([a, b]) => isNearObstacle(a, b, 2))) continue;
+      for (const [a, b] of pts) createAnimal('wolf', a, b);
       break;
     }
   }
@@ -282,11 +296,16 @@ const GENERATORS = {
     // Primer els recursos (a les clarianes) i després el bosc, que ho omple tot menys camins i clarianes
     neutralResources();
     const B1 = BASES[PLAYER.id], B2 = BASES[ENEMY.id];
-    const paths = [
+    const paths = (!sym4() ? [
       [[B1.x, B1.z], [0, 0], [B2.x, B2.z]],
       [[B1.x, B1.z], [-84 * MS, 18 * MS], [-18 * MS, 84 * MS], [B2.x, B2.z]],
       [[B2.x, B2.z], [84 * MS, -18 * MS], [18 * MS, -84 * MS], [B1.x, B1.z]],
-    ].map(pts => pts.map(([x, z]) => [x + randRange(-4, 4), z + randRange(-4, 4)]));
+    ] : [
+      // 3 o 4 jugadors: cada cantonada porta al centre i a les dues cantonades veïnes (per un camí vora el marge)
+      ...Object.values(BASE_POS).map(([x, z]) => [[x * MS, z * MS], [x * MS * 0.45, z * MS * 0.45], [0, 0]]),
+      ...[[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]].map(([ax, az, bx, bz]) =>
+        [[ax * 72 * MS, az * 72 * MS], [(ax + bx) * 30 * MS + (ax === bx ? ax * 18 * MS : 0), (az + bz) * 30 * MS + (az === bz ? az * 18 * MS : 0)], [bx * 72 * MS, bz * 72 * MS]]),
+    ]).map(pts => pts.map(([x, z]) => [x + randRange(-4, 4), z + randRange(-4, 4)]));
     const segDist = (x, z, a, b) => {
       const vx = b[0] - a[0], vz = b[1] - a[1], wx = x - a[0], wz = z - a[1];
       const t = Math.max(0, Math.min(1, (wx * vx + wz * vz) / (vx * vx + vz * vz)));
@@ -338,6 +357,8 @@ function buildWorld(type, seed = MAP_SEED) {
   WORLD.type = type;
   WORLD.seed = seed >>> 0;
   WORLD.forestAt = null;
+  WORLD.layout = GAME.layout;
+  setupBases();
   reseedRand((WORLD.seed ^ { arabia: 0x1111, blackforest: 0x2222, lakes: 0x3333, rivers: 0x4444 }[type]) >>> 0);
   setupWater(type, WORLD.seed);
   setupHeights(type, WORLD.seed);
@@ -346,12 +367,13 @@ function buildWorld(type, seed = MAP_SEED) {
   FORESTS.length = 0;
   townCenter = createStartingBase(PLAYER.id);
   enemyTC = createStartingBase(ENEMY.id);
+  for (const id of GAME.players) if (id > 2) createStartingBase(id);
   GENERATORS[type]();
   rebuildNav();                // (les relíquies han de quedar on s'hi pugui arribar)
   placeRelics();
   createDecorations();
   // Tres aldeans inicials per jugador (com als RTS clàssics)
-  for (const team of [PLAYER.id, ENEMY.id]) {
+  for (const team of GAME.players) {
     const B = BASES[team];
     [[-2.5, 9.5], [0, 10.2], [2.5, 9.5]].forEach(([dx, dz]) => createVillager(B.x + dx * B.s, B.z + dz * B.s, team));
     // I un explorador a cavall, com a l'AoE II

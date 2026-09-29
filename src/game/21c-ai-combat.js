@@ -14,8 +14,8 @@ const aiNearBuf = [];
 /* Força rival a prop d'un punt: unitats militars i edificis que disparen */
 function aiFoeStrengthAt(A, pos, r) {
   let s = 0;
-  for (const u of unitsNear(pos.x, pos.z, r, aiNearBuf)) if (u.team === A.foe && !u.dead && (u.isMilitary || u.category === 'monk') && hDist(u.position, pos) <= r) s += unitStrength(u);
-  for (const b of state.buildings) if (b.team === A.foe && hDist(b.position, pos) <= r) s += buildingStrength(b);
+  for (const u of unitsNear(pos.x, pos.z, r, aiNearBuf)) if (hostile(u.team, A.team) && !u.dead && (u.isMilitary || u.category === 'monk') && hDist(u.position, pos) <= r) s += unitStrength(u);
+  for (const b of state.buildings) if (hostile(b.team, A.team) && hDist(b.position, pos) <= r) s += buildingStrength(b);
   return s;
 }
 const centroidOf = (units) => {
@@ -30,7 +30,7 @@ const aiHomeArmy = (A, C) => C.army.filter(u => !u.aiRole && !u.garrisoned);
 function aiDefense(A, C) {
   const threats = [];
   for (const f of state.units) {
-    if (f.team !== A.foe || f.dead || f.garrisoned || f.naval || !(f.isMilitary || f.category === 'monk')) continue;
+    if (!hostile(f.team, A.team) || f.dead || f.garrisoned || f.naval || !(f.isMilitary || f.category === 'monk')) continue;
     if (C.tcs.some(tc => hDist(tc.position, f.position) < 32) || C.blds.some(b => hDist(b.position, f.position) < 16)
         || C.villagers.some(v => !v.garrisoned && hDist(v.position, f.position) < 8 && hDist(v.position, C.home) < 70)) threats.push(f);
   }
@@ -146,7 +146,7 @@ function aiAttacks(A, C) {
         if (hDist(u.position, R.point) > 16) continue;
         let v = null, bd = 18;
         for (const o of unitsNear(u.position.x, u.position.z, 18, aiNearBuf)) {
-          if (o.team !== A.foe || o.dead || o.garrisoned || o.subtype !== 'villager') continue;
+          if (!hostile(o.team, A.team) || o.dead || o.garrisoned || o.subtype !== 'villager') continue;
           const d = hDist(o.position, u.position);
           if (d < bd) { bd = d; v = o; }
         }
@@ -191,6 +191,8 @@ function aiAttacks(A, C) {
       W.phase = 'attack';
       A.attackCount++;
       if (A.foe === PLAYER.id) toast(`⚠️ L'enemic (${civOf(C.T).name}) ataca amb ${W.units.length} unitats!`);
+      else if (allied(A.foe, PLAYER.id)) toast(`⚠️ ${teamOf(C.T).name} ataca el teu aliat amb ${W.units.length} unitats`);
+      else if (allied(A.team, PLAYER.id)) toast(`⚔️ El teu aliat ataca ${teamOf(A.foe).name} amb ${W.units.length} unitats`);
     }
     return;
   }
@@ -252,7 +254,7 @@ function aiMicro(A, C) {
       const c = centroidOf(shooters);
       let best = null, bh = Infinity;
       for (const o of unitsNear(c.x, c.z, 16, aiNearBuf)) {
-        if (o.team !== A.foe || o.dead || o.garrisoned || !(o.isMilitary || o.subtype === 'villager')) continue;
+        if (!hostile(o.team, A.team) || o.dead || o.garrisoned || !(o.isMilitary || o.subtype === 'villager')) continue;
         const inRange = shooters.filter(s => inAttackRange(s, o)).length;
         if (inRange < shooters.length / 2) continue;
         if (o.hp < bh) { bh = o.hp; best = o; }
@@ -315,8 +317,8 @@ function aiNaval(A, C) {
     if (w.state !== STATE.IDLE) continue;
     let tgt = null, bd = Infinity;
     // (només el que pot atacar des de la seva aigua: un vaixell d'un altre llac no)
-    for (const u of state.units) if (u.team === A.foe && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd && canReach(w, u, w.range)) { bd = d; tgt = u; } }
-    if (!tgt) for (const b of state.buildings) if (b.team === A.foe && b.subtype === 'dock') { const d = hDist(b.position, w.position); if (d < bd && canReach(w, b, w.range)) { bd = d; tgt = b; } }
+    for (const u of state.units) if (hostile(u.team, A.team) && u.naval && !u.garrisoned) { const d = hDist(u.position, w.position); if (d < bd && canReach(w, u, w.range)) { bd = d; tgt = u; } }
+    if (!tgt) for (const b of state.buildings) if (hostile(b.team, A.team) && b.subtype === 'dock') { const d = hDist(b.position, w.position); if (d < bd && canReach(w, b, w.range)) { bd = d; tgt = b; } }
     if (tgt) { orderAttack(w, tgt, false); w.forcedTarget = true; }
   }
 }
@@ -333,6 +335,6 @@ function aiSpecial(A, C) {
   if (state.victory === 'standard' && C.age >= 3 && C.D !== DIFFICULTY.easy && !C.has('wonder') && C.villagers.length >= 40
       && canAfford({ wood: 1300, gold: 1300, stone: 1100 }, C.T)) aiBuild(A, 'wonder', C.home, 16, 45, 8);
   // Contra una Meravella o totes les relíquies del rival: atac immediat
-  A.urgent = (state.relicWin && state.relicWin.team === A.foe) || state.buildings.some(b => b.team === A.foe && b.subtype === 'wonder' && b.wonderEnd);
+  A.urgent = (state.relicWin && hostile(state.relicWin.team, A.team)) || state.buildings.some(b => hostile(b.team, A.team) && b.subtype === 'wonder' && b.wonderEnd);
   if (A.urgent) A.nextAttackAt = Math.min(A.nextAttackAt, C.now);
 }

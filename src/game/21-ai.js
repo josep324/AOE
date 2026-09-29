@@ -29,14 +29,14 @@ function aiReset(A, diff = A.diff) {
 /* Posa una IA a jugar per un equip (p. ex. el del jugador, per provar la IA contra ella mateixa) */
 function enableAIFor(team, diff = DIFFICULTY.normal) {
   let A = aiOf(team);
-  if (!A) { A = makeAI(team, team === PLAYER.id ? ENEMY.id : PLAYER.id, diff); AIS.push(A); }
+  if (!A) { A = makeAI(team, GAME.players.find(t => hostile(t, team)) || (team === PLAYER.id ? ENEMY.id : PLAYER.id), diff); AIS.push(A); }
   A.diff = diff; A.enabled = true;
   return A;
 }
 /* Algú ataca una unitat o edifici d'un equip de la IA: ho apunta per defensar-se */
 function aiAlert(attacker, victimTeam = ENEMY.id) {
   const A = aiOf(victimTeam);
-  if (!A || !attacker || attacker.dead) return;
+  if (!A || !A.enabled || !attacker || attacker.dead || !hostile(attacker.team, victimTeam)) return;
   A.alert = attacker;
   A.alertTime = state.elapsed;
 }
@@ -100,9 +100,66 @@ function aiHighSpot(pos, r) {
 /* ---------- Coneixement del rival ---------- */
 /* On és la base rival: el Centre que ha vist, o on sap que comença */
 function aiFoeHome(A) {
-  for (const { b } of A.seenBld.values()) if (!b.dead && b.subtype === 'towncenter') return b.position;
+  for (const { b } of A.seenBld.values()) if (!b.dead && b.subtype === 'towncenter' && b.team === A.foe) return b.position;
   const B = BASES[A.foe];
   return B ? new THREE.Vector3(B.x, 0, B.z) : new THREE.Vector3();
+}
+/* ---------- Diversos jugadors (fase 20) ---------- */
+/* Rival principal: el més proper que segueix viu (en un 2 contra 2, cada IA rival té el seu costat);
+   quan cau, va a ajudar un aliat contra el seu. En un 1 contra 1 sempre és l'únic rival. */
+function aiNearestFoe(team, home) {
+  let pick = null, bd = Infinity;
+  for (const t of GAME.players) {
+    if (!hostile(t, team) || GAME.defeated.has(t) || !teamAlive(t)) continue;
+    const tc = state.buildings.find(b => b.team === t && b.subtype === 'towncenter' && !b.dead);
+    const p = tc ? tc.position : BASES[t] ? new THREE.Vector3(BASES[t].x, 0, BASES[t].z) : null;
+    const d = p && home ? hDist(p, home) : 1e9;
+    if (d < bd - 0.5) { bd = d; pick = t; }
+  }
+  return pick;
+}
+function aiPickFoe(A, C) {
+  const alive = GAME.players.filter(t => hostile(t, A.team) && !GAME.defeated.has(t) && teamAlive(t));
+  if (!alive.length || alive.includes(A.foe)) return;
+  const mate = AIS.find(o => o !== A && o.enabled && allied(o.team, A.team) && alive.includes(o.foe));
+  const pick = mate ? mate.foe : aiNearestFoe(A.team, C.home);
+  if (pick === A.foe) return;
+  A.foe = pick;
+  A.foeSince = C.now;
+}
+/* Ajuda als aliats: si un enemic ataca la base d'un aliat (també la del jugador), les tropes que
+   són a casa sense feina hi van (com els aliats de l'AoE II) */
+function aiHelpAllies(A, C) {
+  if (C.now < (A.helpAt || 0) || A.threatened) return;
+  A.helpAt = C.now + 5;
+  for (const t of GAME.players) {
+    if (t === A.team || !allied(t, A.team) || GAME.defeated.has(t)) continue;
+    for (const tc of state.buildings) {
+      if (tc.team !== t || tc.dead || (tc.subtype !== 'towncenter' && tc.subtype !== 'castle')) continue;
+      let s = 0;
+      for (const u of unitsNear(tc.position.x, tc.position.z, 30, aiNearBuf)) if (hostile(u.team, A.team) && u.isMilitary && !u.dead) s += unitStrength(u);
+      if (s < 3) continue;
+      const helpers = aiHomeArmy(A, C).filter(u => u.state === STATE.IDLE && u.category !== 'siege');
+      if (helpers.length >= 3) {
+        commandAttackMove(helpers, tc.position.clone());
+        if (t === PLAYER.id && C.now > (A.helpToast || 0)) { A.helpToast = C.now + 60; toast(`🤝 El teu aliat (${civOf(A.team).name}) envia ${helpers.length} unitats a ajudar-te`); }
+      }
+      return;
+    }
+  }
+}
+/* Tribut: si a un aliat li falta un recurs que a la IA li sobra, n'hi envia (cada 90 s com a màxim) */
+function aiTribute(A, C) {
+  if (C.now < (A.tributeAt || 0)) return;
+  A.tributeAt = C.now + 20;
+  for (const t of GAME.players) {
+    if (t === A.team || !allied(t, A.team) || GAME.defeated.has(t) || !teamAlive(t)) continue;
+    const R = resOf(t);
+    for (const r of ['food', 'wood', 'gold', 'stone']) {
+      if (R[r] >= 100 || C.res[r] < (r === 'stone' ? 600 : 1200)) continue;
+      if (sendTribute(A.team, t, r, 200)) { A.tributeAt = C.now + 90; return; }
+    }
+  }
 }
 /* L'objectiu rival més proper (amb prioritat per a la Meravella i el Monestir de les relíquies).
    Compta sobretot el que la IA ha vist; si no ha vist res, va cap a la base rival. */
@@ -158,10 +215,15 @@ function aiCheckResign(A, C) {
   if (A.resigned || state.elapsed < 300) return false;
   const strength = (team, hasTC, vills, arm) => vills + arm * 2 + (hasTC ? 15 : 0)
     + state.buildings.filter(b => b.team === team && !b.underConstruction && !b.isWall && b.def && b.def.trains).length * 4;
-  const pUnits = state.units.filter(u => u.team === A.foe);
-  const pTC = state.buildings.some(b => b.team === A.foe && b.subtype === 'towncenter');
   const me = strength(A.team, C.tcs.length > 0, C.villagers.length, C.army.length);
-  const them = strength(A.foe, pTC, pUnits.filter(u => u.subtype === 'villager').length, pUnits.filter(u => u.isMilitary).length);
+  // (amb diversos rivals, compta el més fort)
+  let them = 0;
+  for (const t of GAME.players) {
+    if (!hostile(t, A.team) || GAME.defeated.has(t)) continue;
+    const pUnits = state.units.filter(u => u.team === t);
+    const pTC = state.buildings.some(b => b.team === t && b.subtype === 'towncenter');
+    them = Math.max(them, strength(t, pTC, pUnits.filter(u => u.subtype === 'villager').length, pUnits.filter(u => u.isMilitary).length));
+  }
   const broke = !C.tcs.length && (C.villagers.length < 3 || !canAfford({ wood: 275, stone: 100 }, A.team)) && C.army.length < 4;
   const crushed = state.elapsed > 600 && them > me * 6 && C.army.length < 3;
   if (!broke && !crushed) return false;
@@ -212,6 +274,7 @@ function aiThink(A) {
   const C = aiContext(A);
   if (++A.resignTimer % 10 === 0 && aiCheckResign(A, C)) return;
   if (!A.strategy) A.strategy = aiPickStrategy(A);
+  aiPickFoe(A, C);
   aiIntel(A, C);
   if (!C.tcs.length) {
     // Sense Centre de Ciutat: en torna a fer un si pot; si no, tot l'exèrcit a l'atac
@@ -228,6 +291,8 @@ function aiThink(A) {
   aiProduction(A, C);
   aiScout(A, C);
   aiDefense(A, C);
+  aiHelpAllies(A, C);
+  aiTribute(A, C);
   aiAttacks(A, C);
   aiMicro(A, C);
   aiMonks(A, C);
