@@ -20,7 +20,7 @@
     <h1>IMPERIS 3D</h1>
     <h2>Tria la teva civilització</h2>
     <div class="civ-grid" id="civ-choices"></div>
-    <div class="row enemy-civ" id="enemy-civ-choices"><span>Rival:</span></div>
+    <details class="civ-info" id="civ-info"><summary>Característiques</summary><div class="civ-info-body"></div></details>
     <div class="row opt-row" id="layout-choices"><span class="opt-lbl">Jugadors:</span></div>
     <div class="row opt-row slot-row" id="slot-choices"></div>
     <p>Recull recursos, construeix la teva ciutat, entrena un exèrcit i derrota l'enemic.</p>
@@ -31,6 +31,7 @@
       <button class="choice" data-victory="conquest" title="Només es guanya destruint tots els edificis i unitats de l'enemic">⚔️ Conquesta</button>
       <button class="choice" data-victory="regicide" title="Cada bàndol té un rei: si mor, perd la partida">👑 Regicidi</button>
     </div>
+    <div class="row opt-row" id="pop-choices"><span class="opt-lbl">Població:</span></div>
     <div class="row opt-row" id="diff-choices"><span class="opt-lbl">Dificultat:</span>
       <button class="choice" data-diff="easy">Fàcil</button>
       <button class="choice on" data-diff="normal">Normal</button>
@@ -153,6 +154,7 @@
   <span class="sep"></span>
   <span class="stat">⏱ <b id="clock">00:00</b></span>
   <span class="sep"></span>
+ <span class="stat" id="vill-stat" title="Aldeans">👨‍🌾 <b id="vill-count">0</b> <small id="vill-split"></small></span>
   <span class="stat idle" id="idle-btn" title="Aldeans inactius: clic o (.) per seleccionar-ne un">💤 Inactius <b id="idle-count">0</b></span>
   <span class="stat idle" id="idle-mil-btn" title="Soldats inactius: clic o (,) per seleccionar-ne un">⚔️ <b id="idle-mil-count">0</b></span>
   <span class="sep"></span>

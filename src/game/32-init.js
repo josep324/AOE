@@ -33,7 +33,7 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
   commandMove, setFormation, formationSlots, setSelection, updateSelectionUI,
   buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, canPlaceDock, findDockSpot, orderUnload, spawnUnit, orderAttack, orderGarrison, createAnimal, createFish, waterCell,
   commandAttackMove, TERRAIN, groundY, flattenArea, slopeIn, canPlace, hitDamage, pickGround, aiHighSpot, MAP_SIZE, MAP_SIZES, AIS, enableAIFor, aiReset, RNG, commandPatrol, commandFollow, commandStop, queueFarm, unqueueFarm, teamOf,
-  STATS, statsScore, statsReset, setGateLocked, updateWallPlacement, wallCellClosed, createTree, rebuildNav,
+  TROOPS, STATS, statsScore, statsReset, setGateLocked, updateWallPlacement, wallCellClosed, createTree, rebuildNav,
   orderConvert, orderHeal, orderPickRelic, orderDepositRelic, createRelic, convertEntity, checkGameOver, createKings, victoryCheck, issueRightClick, unitDropRelic, pickEntity };
 
 // Acció pendent després de canviar la mida del mapa (recàrrega): començar o carregar la partida
@@ -43,10 +43,10 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
     const P = pending.start;
     pickChoice('map-choices', 'map', P.map);
     pickChoice('civ-choices', 'civ', P.civ);
-    pickChoice('enemy-civ-choices', 'civ', P.enemyCiv);
     pickChoice('victory-choices', 'victory', P.victory);
     pickChoice('diff-choices', 'diff', P.diff);
     if (P.layout) pickChoice('layout-choices', 'layout', P.layout);
+    if (P.pop) pickChoice('pop-choices', 'pop', String(P.pop));
     if (P.slots) { Object.assign(chosenSlotCiv, P.slots); renderSlots(); }
     document.getElementById('fog-toggle').checked = P.fog !== false;
     document.getElementById('start-btn').click();

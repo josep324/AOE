@@ -268,6 +268,9 @@ function aiContext(A) {
   const C = {
     T, D: A.diff, E: teamOf(T), res: teamOf(T).res, now: state.elapsed, blds, tcs, units,
     villagers: units.filter(u => u.subtype === 'villager'),
+    // Límit de població triat: amb menys de 200, la IA fa menys aldeans i els seus llindars (pujar d'edat,
+    // castell, mercat…) es comparen amb el nombre d'aldeans escalat, com si jugués a 200
+    popScale: Math.min(1, CONFIG.POP_CAP / 200),
     army: units.filter(u => u.isMilitary && !u.naval && u.category !== 'monk' && u.category !== 'king'),
     monks: units.filter(u => u.category === 'monk' && !u.garrisoned),
     ships: units.filter(u => u.naval),
@@ -284,6 +287,8 @@ function aiContext(A) {
   const fc = nearestFreeCell(navCell(hr.x), navCell(hr.z), 10);        // una cel·la lliure (no a sobre d'una casa)
   C.homeRally = fc ? new THREE.Vector3(navCenter(fc[0]), 0, navCenter(fc[1])) : hr;
   C.age = C.E.age;
+  C.vn = C.villagers.length / C.popScale;
+  C.maxVills = Math.max(8, Math.round(C.D.villagers * CONFIG.POP_CAP / 200));
   return C;
 }
 function aiThink(A) {

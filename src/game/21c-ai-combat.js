@@ -199,7 +199,8 @@ function aiAttacks(A, C) {
   // Atacant: reforços, setge contra edificis, retirada si perd
   const c = centroidOf(W.units);
   const reinf = homeArmy;
-  if (reinf.length >= 3) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
+  // (els reforços hi van en grup, no un a un a mesura que surten dels edificis)
+  if (reinf.length >= Math.max(4, Math.round(need * 0.3))) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
   const near = W.units.filter(u => hDist(u.position, c) < 28);
   const myStr = near.reduce((s, u) => s + unitStrength(u), 0);
   const foeStr = aiFoeStrengthAt(A, c, 24);
@@ -267,7 +268,7 @@ function aiMicro(A, C) {
 /* ---------- Monjos i relíquies ---------- */
 function aiMonks(A, C) {
   const D = C.D;
-  if (C.age >= 2 && D !== DIFFICULTY.easy && !C.has('monastery') && C.villagers.length >= 30 && C.res.wood >= 200 && !A.saving) aiBuild(A, 'monastery', C.home, 12, 32, 2);
+  if (C.age >= 2 && D !== DIFFICULTY.easy && !C.has('monastery') && C.vn >= 30 && C.res.wood >= 200 && !A.saving) aiBuild(A, 'monastery', C.home, 12, 32, 2);
   const mon = C.blds.find(b => b.subtype === 'monastery' && !b.underConstruction);
   if (mon && mon.trainQueue.length < 1 && C.monks.length < (D.micro >= 2 ? 4 : 3) && aiAffords(A, C, { gold: 200 })) queueUnit(mon, 'monk');
   if (mon && aiAffords(A, C, { gold: 500 })) for (const k of ['fervor', 'sanctity', 'redemption', 'atonement', 'illumination', 'blockprinting']) if (aiTryTech(A, C, k)) break;
@@ -332,7 +333,7 @@ function aiSpecial(A, C) {
       if (safe && (!safe.garrison || safe.garrison.length < garrisonCap(safe))) orderGarrison(king, safe);
     }
   }
-  if (state.victory === 'standard' && C.age >= 3 && C.D !== DIFFICULTY.easy && !C.has('wonder') && C.villagers.length >= 40
+  if (state.victory === 'standard' && C.age >= 3 && C.D !== DIFFICULTY.easy && !C.has('wonder') && C.vn >= 40
       && canAfford({ wood: 1300, gold: 1300, stone: 1100 }, C.T)) aiBuild(A, 'wonder', C.home, 16, 45, 8);
   // Contra una Meravella o totes les relíquies del rival: atac immediat
   A.urgent = (state.relicWin && hostile(state.relicWin.team, A.team)) || state.buildings.some(b => hostile(b.team, A.team) && b.subtype === 'wonder' && b.wonderEnd);

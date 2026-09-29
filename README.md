@@ -81,6 +81,12 @@ els seus edificis importants quan no té enemics a prop.
 transport (10 unitats: clic dret sobre el vaixell per embarcar, clic dret a terra per desembarcar), Galera → Galera de guerra → Galió,
 Brulot (foc, fort contra vaixells), Vaixell de demolició (explota) i Galió artiller (amb Química). Tecnologies: Xarxes, Carenatge, Dic sec.
 
+**Grups grans** (com a l'AoE II): un grup que va lluny marxa com una tropa, en formació, al pas de la unitat més
+lenta i esperant els que queden enrere; en arribar, cadascú ocupa el seu lloc. Quan una unitat del grup troba
+l'enemic (o l'ataquen), les companyes properes també s'hi llancen. La IA també ataca així, amb l'exèrcit junt.
+**Límit de població** triable a l'inici (de 25 a 500; 200 per defecte). Comptador d'aldeans a la barra superior
+(amb el detall per recurs).
+
 **Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 

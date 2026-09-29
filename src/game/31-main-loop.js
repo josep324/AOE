@@ -24,6 +24,7 @@ function simulate(dt) {
   state.elapsed += dt;
   spatialRebuild();
   separateUnits();
+  updateTroops(dt);
   for (const u of state.units) updateUnit(u, dt);
   updateResourceNodes(dt);
   updateTraining(dt);
@@ -90,9 +91,11 @@ function animate() {
   if (uiTimer >= 0.2) {
     uiTimer = 0;
     const techSig = `${PLAYER.age}:${PLAYER.techs.size}:${state.buildings.filter(b => b.isOwn && !b.underConstruction).length}`;
-    if (techSig !== lastTechSig) { lastTechSig = techSig; updateSelectionUI(); }
+    if (hudPressed) { /* (s'espera que es deixi anar el ratolí) */ }
+    else if (techSig !== lastTechSig) { lastTechSig = techSig; updateSelectionUI(); }
     else if (selectionSignature() !== lastSelSignature) updateSelectionUI(true);
     idleCountEl.textContent = state.units.filter(u => u.isOwn && u.subtype === 'villager' && u.state === STATE.IDLE).length;
+    updateVillagerCount();
     idleMilCountEl.textContent = state.units.filter(isIdleMilitary).length;
     updatePopulationUI();
     updatePlayersPanel();

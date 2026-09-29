@@ -101,6 +101,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
 }
 
 function orderMove(u, point) {
+  u.troop = null;
   u.anchor = point.clone ? point.clone() : null;
   u.convTarget = null; u.healTarget = null; u.relicTarget = null; u.relicDrop = null; u.unloadAt = null;
   u.forcedTarget = false;

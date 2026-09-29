@@ -150,7 +150,7 @@ function aiTryTech(A, C, kind, reserved = false) {
   return at ? queueUnit(at, kind) : false;
 }
 function aiAgesAndTechs(A, C) {
-  const D = C.D, vills = C.villagers.length;
+  const D = C.D, vills = C.vn;
   const thr = (AI_AGE_VILLS[A.strategy] || AI_AGE_VILLS.boom).map(v => v + (D === DIFFICULTY.easy ? 4 : 0));
   // Edifici que falta per poder pujar d'edat (se'n fan quan ja s'hi acosta)
   const next = C.age + 1;
@@ -281,7 +281,7 @@ function aiProduction(A, C) {
     }
     // Castell (i així la unitat única i els trabucs)
     // (després dels Centres nous: primer l'economia, com la IA de l'AoE II en «boom»)
-    A.wantCastle = C.age >= 2 && D !== DIFFICULTY.easy && !C.has('castle') && C.villagers.length >= 32 && C.count('towncenter') >= Math.min(D.tcs, 2);
+    A.wantCastle = C.age >= 2 && D !== DIFFICULTY.easy && !C.has('castle') && C.vn >= 32 && C.count('towncenter') >= Math.min(D.tcs, 2);
     if (A.wantCastle && canAfford(costFor('castle', C.T), C.T)) {
       const dir = new THREE.Vector3(C.foeHome.x - C.home.x, 0, C.foeHome.z - C.home.z).normalize();
       aiBuild(A, 'castle', aiHighSpot(C.home.clone().addScaledVector(dir, 22), 14), 0, 18, 4);
@@ -291,7 +291,7 @@ function aiProduction(A, C) {
     const tower = C.E.techs.has('bombardtowertech') ? 'bombardtower' : 'watchtower';
     const isTower = (t) => t.subtype === 'watchtower' || t.subtype === 'bombardtower';
     if (C.age >= 1 && !A.wantTC && C.count('watchtower') + C.count('bombardtower') < D.towers + (tower === 'bombardtower' ? 1 : 0)
-        && C.res.stone >= 150 && C.villagers.length >= 20 && canAfford(costFor(tower, C.T), C.T)) {
+        && C.res.stone >= 150 && C.vn >= 20 && canAfford(costFor(tower, C.T), C.T)) {
       const camps = C.blds.filter(b => (b.subtype === 'miningcamp' || b.subtype === 'lumbercamp') && !b.underConstruction)
         .sort((a, b) => hDist(a.position, C.foeHome) - hDist(b.position, C.foeHome));
       const camp = camps.find(c => !C.blds.some(t => isTower(t) && hDist(t.position, c.position) < 14));

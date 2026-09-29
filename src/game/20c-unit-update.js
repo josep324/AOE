@@ -92,7 +92,7 @@ function updateUnit(u, dt) {
         if (u.scanTimer <= 0) {
           u.scanTimer = 0.4;
           const t = findTargetNear(u, u.los);
-          if (t) { orderAttack(u, t); break; }
+          if (t) { orderAttack(u, t); rallyGroup(u, t); break; }
         }
       }
       const bt = u.buildTarget;
@@ -128,7 +128,10 @@ function updateUnit(u, dt) {
         } else if (u.garrisonTarget) {
           if (++u.approachTries > 4) { u.garrisonTarget = null; setUnitState(u, STATE.IDLE); }
           else setMoveTarget(u, approachPoint(u.garrisonTarget, u.position, 0.6 * u.approachTries));
+        } else if (u.troop && u.troop.alive) {
+          walking = false;                          // tropa: s'espera al seu lloc fins que el guia avança
         } else {
+          u.troop = null;
           u.attackMove = null;
           setUnitState(u, STATE.IDLE);
         }
@@ -278,7 +281,7 @@ function updateUnit(u, dt) {
         if (u.scanTimer <= 0) {
           u.scanTimer = 0.5;
           const t = findTargetNear(u, acquireRadius(u));
-          if (t) orderAttack(u, t);
+          if (t) { orderAttack(u, t); rallyGroup(u, t); }
         }
       }
       break;

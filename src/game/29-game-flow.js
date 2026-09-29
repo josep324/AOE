@@ -61,6 +61,21 @@ function pickChoice(rowId, attr, value) {
   const b = [...document.querySelectorAll(`#${rowId} .choice`)].find(x => x.dataset[attr] === value);
   if (b) b.click();
 }
+/* ---------- Límit de població (com a l'AoE II: de 25 a 500) ---------- */
+let chosenPop = 200;
+const popChoices = document.getElementById('pop-choices');
+for (const n of [25, 50, 75, 100, 150, 200, 250, 300, 400, 500]) {
+  const b = document.createElement('button');
+  b.className = 'choice' + (n === chosenPop ? ' on' : '');
+  b.dataset.pop = String(n);
+  b.textContent = String(n);
+  b.title = `Cada jugador pot tenir com a màxim ${n} unitats`;
+  b.addEventListener('click', () => {
+    chosenPop = n;
+    popChoices.querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
+  });
+  popChoices.appendChild(b);
+}
 let chosenVictory = 'standard';
 document.querySelectorAll('#victory-choices .choice').forEach(btn => btn.addEventListener('click', () => {
   chosenVictory = btn.dataset.victory;
@@ -77,35 +92,38 @@ function createKings() {
     k.stance = 'stand';
   }
 }
-/* ---------- Tria de civilització ---------- */
-let chosenCiv = 'franks', chosenEnemyCiv = 'random';
+/* ---------- Tria de civilització ----------
+   Targetes compactes (icona i nom); les característiques de la triada, en un desplegable a sota */
+let chosenCiv = 'franks';
 const civChoices = document.getElementById('civ-choices');
-const enemyCivChoices = document.getElementById('enemy-civ-choices');
+const civInfo = document.getElementById('civ-info');
+function renderCivInfo() {
+  const C = CIVS[chosenCiv];
+  civInfo.querySelector('summary').textContent = `Característiques: ${C.icon} ${C.name}`;
+  const body = civInfo.querySelector('.civ-info-body');
+  body.textContent = '';
+  const d = document.createElement('p'); d.textContent = C.desc; body.appendChild(d);
+  const ul = document.createElement('ul');
+  for (const t of C.bonuses) { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }
+  body.appendChild(ul);
+}
 for (const [id, C] of Object.entries(CIVS)) {
   const b = document.createElement('button');
   b.className = 'choice civ-card' + (id === chosenCiv ? ' on' : '');
   b.dataset.civ = id;
-  b.innerHTML = `<b>${C.icon} ${C.name}</b><small>${C.desc}</small><ul>${C.bonuses.map(t => `<li>${t}</li>`).join('')}</ul>`;
+  b.innerHTML = `<b>${C.icon} ${C.name}</b>`;
+  b.title = `${C.desc}\n• ${C.bonuses.join('\n• ')}`;
   b.addEventListener('click', () => {
     chosenCiv = id;
     civChoices.querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
+    renderCivInfo();
   });
   civChoices.appendChild(b);
 }
-for (const [id, label] of [['random', '🎲 Aleatòria'], ...Object.entries(CIVS).map(([k, C]) => [k, `${C.icon} ${C.name}`])]) {
-  const b = document.createElement('button');
-  b.className = 'choice' + (id === chosenEnemyCiv ? ' on' : '');
-  b.textContent = label;
-  b.dataset.civ = id;
-  b.addEventListener('click', () => {
-    chosenEnemyCiv = id;
-    enemyCivChoices.querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
-  });
-  enemyCivChoices.appendChild(b);
-}
+renderCivInfo();
 /* ---------- Jugadors i equips (fase 20) ---------- */
 let chosenLayout = '1v1';
-const chosenSlotCiv = { 3: 'random', 4: 'random' };
+const chosenSlotCiv = { 2: 'random', 3: 'random', 4: 'random' };      // civilització de cada altre jugador
 const layoutChoices = document.getElementById('layout-choices'), slotChoices = document.getElementById('slot-choices');
 const LAYOUT_TIPS = {
   '1v1': 'Tu contra una IA', '1v2': 'Tu sol contra dues IA aliades entre elles', '2v2': 'Tu i una IA aliada contra dues IA',
@@ -114,12 +132,9 @@ const LAYOUT_TIPS = {
 const DOT = (id) => `<span class="pdot" style="background:#${TEAMS[id].color.toString(16).padStart(6, '0')}"></span>`;
 function renderSlots() {
   const L = LAYOUTS[chosenLayout];
-  enemyCivChoices.querySelector('span').innerHTML = Object.keys(L.side).length > 2 ? `${DOT(2)} Rival (vermell):` : 'Rival:';
-  const extra = Object.keys(L.side).map(Number).filter(id => id > 2);
+  const extra = Object.keys(L.side).map(Number).filter(id => id > 1);
   slotChoices.innerHTML = '';
-  slotChoices.classList.toggle('hidden', !extra.length);
-  if (!extra.length) return;
-  slotChoices.insertAdjacentHTML('beforeend', `<span class="opt-lbl">Altres:</span>`);
+  slotChoices.insertAdjacentHTML('beforeend', `<span class="opt-lbl">Altres jugadors:</span>`);
   for (const id of extra) {
     const lab = document.createElement('label');
     lab.className = 'slot';
@@ -180,7 +195,7 @@ updateCivLabels();
 
 document.getElementById('start-btn').addEventListener('click', () => {
   if (chosenSize !== MAP_SIZE) {
-    reloadWithSize(chosenSize, { start: { map: chosenMap, civ: chosenCiv, enemyCiv: chosenEnemyCiv, victory: chosenVictory, layout: chosenLayout, slots: { ...chosenSlotCiv },
+    reloadWithSize(chosenSize, { start: { map: chosenMap, civ: chosenCiv, enemyCiv: chosenSlotCiv[2], victory: chosenVictory, layout: chosenLayout, pop: chosenPop, slots: { ...chosenSlotCiv },
       diff: chosenDiff, fog: document.getElementById('fog-toggle').checked } });
     return;
   }
@@ -193,10 +208,11 @@ document.getElementById('start-btn').addEventListener('click', () => {
   const others = Object.keys(CIVS).filter(k => k !== chosenCiv);
   const pick = (c) => c === 'random' ? others[Math.floor(Math.random() * others.length)] : c;   // atzar-ui
   setTeamCiv(PLAYER, chosenCiv);
-  setTeamCiv(ENEMY, pick(chosenEnemyCiv));
+  setTeamCiv(ENEMY, pick(chosenSlotCiv[2]));
   for (const id of GAME.players) if (id > 2) setTeamCiv(TEAMS[id], pick(chosenSlotCiv[id]));
   updateCivLabels();
   state.victory = chosenVictory;
+  CONFIG.POP_CAP = chosenPop;
   if (state.victory === 'regicide') createKings();
   updateVictoryUI();
   // Una IA per a cada altre jugador (també per a l'aliat), totes amb la dificultat triada

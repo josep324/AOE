@@ -65,7 +65,9 @@ function orderAttackMove(u, point) {
 }
 /* Moviment amb atac en formació (onades de la IA) */
 function commandAttackMove(units, point) {
-  for (const [u, slot] of formationSlots(units, point, groupFormation(units))) { u.orderQueue.length = 0; orderAttackMove(u, slot); }
+  const slots = formationSlots(units, point, groupFormation(units));
+  if (makeTroop(units, point, slots, true)) return;
+  for (const [u, slot] of slots) { u.orderQueue.length = 0; orderAttackMove(u, slot); }
 }
 
 /* Busca l'enemic més proper dins d'un radi (prioritza unitats militars) */
@@ -120,6 +122,7 @@ function applyDamage(target, amount, attacker) {
       && (target.state === STATE.IDLE || (target.state === STATE.ATTACKING && target.attackTarget && target.attackTarget.kind === 'building'))
       && (target.stance !== 'stand' || inAttackRange(target, attacker))) {
     orderAttack(target, attacker);
+    rallyGroup(target, attacker);
   }
   if (attacker) aiAlert(attacker, target.team);
   if (target.isOwn && state.elapsed - lastAttackAlert > 12) {

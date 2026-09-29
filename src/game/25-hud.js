@@ -81,7 +81,7 @@ function carryLine(u) {
 function selectionSignature() {
   return state.selected.map(e => e.kind === 'unit'
     ? `${e.id}:${e.state}:${Math.ceil(e.hp)}:${e.carry.amount}:${Math.floor((e.faith || 0) / 4)}:${e.relic ? 1 : 0}:${e.gatherNode ? e.gatherNode.id : 0}:${e.buildTarget ? e.buildTarget.id : 0}`
-    : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${state.units.length}:${e.garrison ? e.garrison.length : 0}:${Math.ceil(e.hp / 50)}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
+    : `${e.id}:${e.kind}:${e.amount ?? ''}:${e.name}:${e.garrison ? e.garrison.length : 0}:${Math.ceil(e.hp / 50)}:${e.trainQueue ? e.trainQueue.length : ''}:${e.underConstruction ? Math.floor(e.progress * 50) : 'c'}:${popCap()}`).join('|');
 }
 let lastSelSignature = '';
 let buildPage = 0;
@@ -480,6 +480,12 @@ function updateTrainingUI() {
   } else if (status) status.textContent = '';
   actionsEl.querySelectorAll('[data-item]').forEach(btn => btn.classList.toggle('cant', !!itemBlockReason(btn.dataset.item)));
 }
+/* Mentre el ratolí està premut sobre el panell, no es refà (un clic que comença en un botó i acaba en
+   un de nou, redibuixat pel camí, es perdia: p. ex. cancel·lar una millora de la cua) */
+let hudPressed = false;
+document.getElementById('hud').addEventListener('pointerdown', () => { hudPressed = true; });
+window.addEventListener('pointerup', () => { hudPressed = false; });
+window.addEventListener('pointercancel', () => { hudPressed = false; });
 // Delegació: clic sobre un element de la cua = cancel·lar-lo
 selContent.addEventListener('click', (e) => {
   const q = e.target.closest('.q-item');
@@ -533,3 +539,26 @@ playersEl.addEventListener('click', (ev) => {
   const [t, r] = b.dataset.trib.split(':');
   sendTribute(PLAYER.id, +t, r);
 });
+
+/* ---------- Comptador d'aldeans (barra superior): total i, al detall, què fa cadascun ---------- */
+const villCountEl = document.getElementById('vill-count'), villSplitEl = document.getElementById('vill-split'), villStatEl = document.getElementById('vill-stat');
+let villSig = '';
+function updateVillagerCount() {
+  const n = { food: 0, wood: 0, gold: 0, stone: 0, build: 0, idle: 0, other: 0 };
+  let total = 0;
+  for (const u of state.units) {
+    if (!u.isOwn || u.subtype !== 'villager') continue;
+    total++;
+    const r = u.gatherNode ? u.gatherNode.resourceType : (u.state === STATE.RETURNING && u.carry.type) || null;
+    if (u.state === STATE.BUILDING || u.buildTarget) n.build++;
+    else if (r && n[r] !== undefined) n[r]++;
+    else if (u.state === STATE.IDLE) n.idle++;
+    else n.other++;
+  }
+  const sig = total + ':' + Object.values(n).join(',');
+  if (sig === villSig) return;
+  villSig = sig;
+  villCountEl.textContent = total;
+  villSplitEl.textContent = `${RES_ICON.food}${n.food} ${RES_ICON.wood}${n.wood} ${RES_ICON.gold}${n.gold} ${RES_ICON.stone}${n.stone}`;
+  villStatEl.title = `Aldeans: ${total}\nAliment ${n.food} · Fusta ${n.wood} · Or ${n.gold} · Pedra ${n.stone}\nConstruint ${n.build} · Inactius ${n.idle}${n.other ? ` · Altres ${n.other}` : ''}`;
+}

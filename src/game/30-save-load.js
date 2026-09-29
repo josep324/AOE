@@ -45,7 +45,7 @@ function serializeGame() {
     v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE, rng: RNG.s,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: Object.fromEntries(GAME.players.map(id => [id, team(TEAMS[id])])),
-    layout: GAME.layout, defeated: [...GAME.defeated],
+    layout: GAME.layout, defeated: [...GAME.defeated], popCap: CONFIG.POP_CAP,
     ai: { diff: diffKey(AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
     ais: serializeAIs(idx),
     stats: statsSerialize(),
@@ -95,6 +95,7 @@ function loadGame(data) {
   WORLD.seed = (data.mapSeed ?? MAP_SEED) >>> 0;
   // Jugadors i equips de la partida (les desades abans de la fase 20 són 1 contra 1)
   setLayout(data.layout || '1v1');
+  CONFIG.POP_CAP = data.popCap || 200;
   for (const t of data.defeated || []) GAME.defeated.add(t);
   WORLD.layout = GAME.layout;
   setupBases();

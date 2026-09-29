@@ -192,6 +192,8 @@ function commandMove(units, point, queued = false) {
   // Marxa agrupada: un grup militar avança al pas de la unitat més lenta per no desfer la formació
   const grouped = units.length > 1 && units[0].isOwn && units.some(u => u.isMilitary);
   const slow = grouped ? Math.min(...units.map(u => u.speed)) : null;
+  // Lluny i amb un grup militar: marxa en formació (tropa); si no, cadascú directe al seu lloc
+  if (!queued && grouped && makeTroop(units, point, slots)) return;
   for (const [u, slot] of slots) {
     if (queued) enqueueOrder(u, { type: 'move', point: slot });
     else { u.orderQueue.length = 0; orderMove(u, slot); }

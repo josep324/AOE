@@ -28,7 +28,7 @@ function aiVillagerProduction(A, C) {
   let total = C.villagers.length;
   for (const tc of C.tcs) total += tc.trainQueue.filter(q => q.kind === 'villager').length;
   for (const tc of C.tcs) {
-    if (total >= C.D.villagers) break;
+    if (total >= C.maxVills) break;
     if (tc.trainQueue.some(it => isTech(it.kind)) || tc.trainQueue.length >= (A.saving ? 1 : 2)) continue;   // investigant una edat: ocupat
     if (queueUnit(tc, 'villager')) total++;
   }
@@ -49,7 +49,7 @@ function aiHouses(A, C) {
   if (cap >= CONFIG.POP_CAP) return;
   const producers = C.tcs.length + C.blds.filter(b => b.def && b.def.trains && !b.underConstruction && b.subtype !== 'dock').length;
   const building = C.blds.filter(b => b.subtype === 'house' && b.underConstruction).length;
-  const maxAtOnce = C.villagers.length > 40 ? 3 : C.villagers.length > 18 ? 2 : 1;
+  const maxAtOnce = C.vn > 40 ? 3 : C.vn > 18 ? 2 : 1;
   if (used + 3 + producers * 2 >= cap && building < maxAtOnce) {
     const tc = C.tcs[(A.resignTimer + building) % C.tcs.length];
     aiBuild(A, 'house', tc.position, 12, 36);
@@ -68,7 +68,7 @@ function aiEcoTargets(A, C) {
   // Pujada ràpida a Castells: més menjar i or
   if (C.age === 1 && A.strategy === 'fastcastle') t = { food: 0.52, wood: 0.24, gold: 0.24, stone: 0 };
   // Rush de la Fosca a Feudal amb arquers o homes d'armes: una mica d'or abans de pujar
-  if (C.age === 0 && (A.strategy === 'archers' || A.strategy === 'maa') && C.villagers.length >= 18) t = { food: 0.6, wood: 0.32, gold: 0.08, stone: 0 };
+  if (C.age === 0 && (A.strategy === 'archers' || A.strategy === 'maa') && C.vn >= 18) t = { food: 0.6, wood: 0.32, gold: 0.08, stone: 0 };
   // Pedra per a Centres nous i Castells
   if (C.age >= 2 && (A.wantTC || A.wantCastle)) { t.stone += 0.07; t.food -= 0.04; t.wood -= 0.03; }
   // Sense mines d'or o pedra a l'abast: aquests aldeans van a la resta
@@ -207,7 +207,7 @@ const aiObsBuf = [];
 /* ---------- Més Centres de Ciutat (Edat dels Castells), al costat de l'or o d'un bosc ---------- */
 function aiExpand(A, C) {
   const all = C.count('towncenter');
-  A.wantTC = C.age >= 2 && all < C.D.tcs && C.villagers.length >= 24 + 12 * (all - 1);
+  A.wantTC = C.age >= 2 && all < C.D.tcs && C.vn >= 24 + 12 * (all - 1);
   if (!A.wantTC || C.blds.some(b => b.subtype === 'towncenter' && b.underConstruction) || A.saving) return;
   if (!canAfford(costFor('towncenter', C.T), C.T)) return;
   const tcs = C.blds.filter(b => b.subtype === 'towncenter');
@@ -229,7 +229,7 @@ function aiMarket(A, C) {
   if (C.age < 2) return;
   const R = C.res;
   // Sense mercat i amb un recurs que sobra i l'or esgotat (p. ex. les mines de casa s'han acabat): en fa un
-  if (!C.has('market') && C.villagers.length >= 40 && R.gold < 150 && Math.max(R.food, R.wood) > 900) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
+  if (!C.has('market') && C.vn >= 40 && R.gold < 150 && Math.max(R.food, R.wood) > 900) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
   if (!hasCompleted('market', C.T) || C.now - A.lastTrade < 3) return;
   for (const r of ['food', 'wood', 'stone']) {
     if (R[r] > 1600 || (R[r] > 1000 && R.gold < 300)) { marketTrade(C.T, r, false); A.lastTrade = C.now; return; }
