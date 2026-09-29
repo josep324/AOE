@@ -3,7 +3,7 @@
    walk[]  → cel·les no transitables per les unitats
    build[] → cel·les ocupades (no s'hi pot construir)
    ===================================================================== */
-const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, gate: null, team: 0, version: 0, stampId: 0, need: 1, clr: null };
+const NAV = { cell: 1, N: 0, x0: 0, walk: null, build: null, gate: null, team: 0, version: 0, blockVersion: 0, stampId: 0, need: 1, clr: null };
 function navInit() {
   const N = Math.ceil((CONFIG.MAP_LIMIT * 2) / NAV.cell);
   NAV.N = N;
@@ -84,6 +84,9 @@ function stampArea(ci0, ci1, cj0, cj1, local = false) {
   }
   if (local && NAV.label) regionsLocal(ci0, ci1, cj0, cj1); else labelRegions();
   NAV.version++;
+  // Un canvi local (un arbre talat, una granja) només obre pas o no toca el pas: els camins fets continuen
+  // sent bons. Només els canvis de tot el mapa (edificis) obliguen a refer-los.
+  if (!local) NAV.blockVersion++;
   rebuildObstacleGrid();
 }
 /* Zones connectades de la graella de terra (les portes compten com a pas): si l'origen i el destí
@@ -244,19 +247,37 @@ function nearestCellInRegion(gi, gj, id, maxR = 60) {
   return null;
 }
 /* Índex espacial dels obstacles (cel·les de 8 unitats): la col·lisió només mira els propers.
-   Els obstacles grans (edificis) van en una llista a part que es comprova sempre. */
-/* Graella d'obstacles: els petits (arbres, mines…) per cel·les; els grans i els mòbils, en una llista a part.
+   Cada obstacle va a totes les cel·les que toca el seu requadre (un edifici gran, a unes quantes); només
+   els mòbils (ovelles) van en una llista a part que es comprova sempre. Abans els edificis anaven tots a
+   la llista a part: amb centenars d'edificis, cada unitat els havia de mirar tots a cada pas.
    Si només s'han afegit obstacles (el cas habitual en generar el mapa o construir) s'hi afegeixen
    sense refer-la; si se n'han tret (la llista es refà amb filter), es refà sencera. */
-const OBS_GRID = { cell: 8, map: new Map(), big: [], count: -1, src: null };
+const OBS_GRID = { cell: 4, map: new Map(), big: [], count: -1, src: null, q: 0 };
 const OBS_REACH = 5;                     // marge màxim que es pot consultar amb la graella
 function obstacleGridInsert(o) {
-  const ext = o.rect ? Math.max(o.hw, o.hd) : o.r;
-  if (ext > 2.6 || (o.entity && o.entity.mobile)) { OBS_GRID.big.push(o); return; }
-  const c = OBS_GRID.cell, k = spatialKey(Math.floor(o.x / c), Math.floor(o.z / c));
-  let arr = OBS_GRID.map.get(k);
-  if (!arr) OBS_GRID.map.set(k, arr = []);
-  arr.push(o);
+  if (o.entity && o.entity.mobile) { OBS_GRID.big.push(o); return; }
+  const ext = o.rect ? Math.hypot(o.hw, o.hd) : Math.max(o.r, o.ext || 0);
+  const c = OBS_GRID.cell;
+  const i0 = Math.floor((o.x - ext) / c), i1 = Math.floor((o.x + ext) / c), j0 = Math.floor((o.z - ext) / c), j1 = Math.floor((o.z + ext) / c);
+  o.multiCell = i0 !== i1 || j0 !== j1;
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+    const k = spatialKey(i, j);
+    let arr = OBS_GRID.map.get(k);
+    if (!arr) OBS_GRID.map.set(k, arr = []);
+    arr.push(o);
+  }
+}
+function obstacleGridRemove(o) {
+  const drop = (arr) => { const i = arr.indexOf(o); if (i >= 0) arr.splice(i, 1); };
+  if (o.entity && o.entity.mobile) { drop(OBS_GRID.big); return; }
+  const ext = o.rect ? Math.hypot(o.hw, o.hd) : Math.max(o.r, o.ext || 0);
+  const c = OBS_GRID.cell;
+  for (let i = Math.floor((o.x - ext) / c); i <= Math.floor((o.x + ext) / c); i++)
+    for (let j = Math.floor((o.z - ext) / c); j <= Math.floor((o.z + ext) / c); j++) {
+      const arr = OBS_GRID.map.get(spatialKey(i, j));
+      if (arr) drop(arr);
+    }
+  drop(OBS_GRID.big);
 }
 function rebuildObstacleGrid() {
   const list = state.obstacles;
@@ -270,15 +291,19 @@ function rebuildObstacleGrid() {
   OBS_GRID.src = list;
   OBS_GRID.count = list.length;
 }
-function obstaclesNear(x, z, out) {
+/* Obstacles el requadre dels quals queda a menys de R del punt (i alguns de més: el que diu la graella) */
+function obstaclesNear(x, z, out, R = 8) {
   if (OBS_GRID.count !== state.obstacles.length || OBS_GRID.src !== state.obstacles) rebuildObstacleGrid();
   out.length = 0;
   for (const o of OBS_GRID.big) out.push(o);
-  const c = OBS_GRID.cell;
-  const i0 = Math.floor(x / c), j0 = Math.floor(z / c);
-  for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) {
+  const c = OBS_GRID.cell, q = ++OBS_GRID.q;
+  const i0 = Math.floor((x - R) / c), i1 = Math.floor((x + R) / c), j0 = Math.floor((z - R) / c), j1 = Math.floor((z + R) / c);
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
     const arr = OBS_GRID.map.get(spatialKey(i, j));
-    if (arr) for (const o of arr) out.push(o);
+    if (arr) for (const o of arr) {
+      if (o.multiCell) { if (o.gridQ === q) continue; o.gridQ = q; }     // (un obstacle a diverses cel·les, un sol cop)
+      out.push(o);
+    }
   }
   return out;
 }
@@ -430,7 +455,7 @@ function smoothPath(start, pts) {
 function setMoveTarget(u, p) {
   u.target = p;
   u.path = null;
-  u.pathVersion = NAV.version;
+  u.pathVersion = NAV.blockVersion;
   if (!p) return;
   NAV.team = u.team;                  // les portes només deixen passar el seu equip
   // Els vaixells fan servir la graella naval (només aigua fonda)

@@ -60,11 +60,22 @@ function piece(part, geo, color, o = {}) {
   part.userData.pieces.push({ geo: g, color: new THREE.Color(color), metal: !!o.metal });
   return g;
 }
-/* Converteix les peces de cada part en malles fusionades (mat / metàl·lic) */
+/* Converteix les peces de la unitat en malles. Tot el cos va en una sola malla amb esquelet per material
+   (mat / metàl·lic): cada part (braç, cama, tors…) és un os, de manera que tota la unitat es dibuixa amb
+   una o dues crides en lloc d'una per part. Les parts que s'amaguen i es mostren (eines, càrrega, trabuc
+   muntat o desmuntat) queden com a malles pròpies de la seva part. */
+const RIG_TOGGLE = new Set(['tool', 'axeHead', 'pickHead', 'hammerHead', 'cargo', 'packedPart', 'deployedPart']);
 function bakeRig(root) {
+  root.updateMatrixWorld(true);
+  const toRoot = new THREE.Matrix4().copy(root.matrixWorld).invert(), rel = new THREE.Matrix4();
+  const skinned = { false: [], true: [] }, bones = [];
   root.traverse(o => {
     const pcs = o.userData.pieces;
     if (!pcs) return;
+    let toggle = false;
+    for (let a = o; a && a !== root; a = a.parent) if (RIG_TOGGLE.has(a.name)) { toggle = true; break; }
+    let bone = -1;
+    if (!toggle) { bone = bones.length; bones.push(o); rel.multiplyMatrices(toRoot, o.matrixWorld); }
     for (const metal of [false, true]) {
       const list = pcs.filter(p => p.metal === metal);
       if (!list.length) continue;
@@ -82,8 +93,16 @@ function bakeRig(root) {
           col[i * 3] = p.color.r * f; col[i * 3 + 1] = p.color.g * f; col[i * 3 + 2] = p.color.b * f;
         }
         g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        if (bone >= 0) {
+          g.applyMatrix4(rel);                                   // a l'espai de la unitat (postura de repòs)
+          const si = new Uint16Array(pos.count * 4), sw = new Float32Array(pos.count * 4);
+          for (let i = 0; i < pos.count; i++) { si[i * 4] = bone; sw[i * 4] = 1; }
+          g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+          g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+        }
         return g;
       });
+      if (bone >= 0) { skinned[metal].push(...geos); continue; }
       const merged = mergeGeometries(geos, false);
       merged.computeBoundingSphere();
       const mesh = new THREE.Mesh(merged, metal ? UNIT_MATS.metal : UNIT_MATS.matte);
@@ -92,7 +111,36 @@ function bakeRig(root) {
     }
     delete o.userData.pieces;
   });
+  if (!bones.length) return root;
+  const skeleton = new THREE.Skeleton(bones);
+  for (const metal of [false, true]) {
+    if (!skinned[metal].length) continue;
+    const geo = mergeGeometries(skinned[metal], false);
+    geo.computeBoundingSphere();
+    const mesh = new THREE.SkinnedMesh(geo, metal ? UNIT_MATS.metal : UNIT_MATS.matte);
+    mesh.name = metal ? 'skin:metal' : 'skin:matte';
+    root.add(mesh);
+    mesh.updateMatrixWorld(true);
+    mesh.bind(skeleton, mesh.matrixWorld);
+    // Esfera per descartar-la si no surt a la pantalla (la de repòs, amb marge per als moviments)
+    mesh.boundingSphere = geo.boundingSphere.clone();
+    mesh.boundingSphere.radius *= 1.25;
+  }
   return root;
+}
+/* Còpia d'un model amb esquelet: les malles de la còpia han de moure's amb els ossos de la còpia */
+function cloneRig(src) {
+  const dst = src.clone(true);
+  const a = [], b = [];
+  src.traverse(o => a.push(o));
+  dst.traverse(o => b.push(o));
+  const idx = new Map(a.map((o, i) => [o, i]));
+  for (let i = 0; i < b.length; i++) {
+    if (!b[i].isSkinnedMesh) continue;
+    const sk = a[i].skeleton;
+    b[i].bind(new THREE.Skeleton(sk.bones.map(x => b[idx.get(x)]), sk.boneInverses), a[i].bindMatrix);
+  }
+  return dst;
 }
 
 /* Geometries base (unitàries; es transformen a cada peça) */

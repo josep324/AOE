@@ -10,7 +10,7 @@ const pushObsBuf = [];
 function pushOutOfObstacles(p, margin) {
   for (let iter = 0; iter < 3; iter++) {
     let moved = false;
-    for (const o of margin <= OBS_REACH ? obstaclesNear(p.x, p.z, pushObsBuf) : state.obstacles) if (pushOutOf(p, o, margin)) moved = true;
+    for (const o of margin <= OBS_REACH ? obstaclesNear(p.x, p.z, pushObsBuf, margin + 0.5) : state.obstacles) if (pushOutOf(p, o, margin)) moved = true;
     if (!moved) break;
   }
   return p;

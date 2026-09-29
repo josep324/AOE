@@ -43,7 +43,7 @@ function unitTemplate(kind, team, arch, variant) {
 function buildUnitVisual(e, kind, team) {
   const arch = e.visArch || archOf(team);
   const variant = Math.floor(unitRng() * UNIT_VARIANTS);
-  const model = unitTemplate(kind, team, arch, variant).clone(true);
+  const model = cloneRig(unitTemplate(kind, team, arch, variant));
   const get = (n) => model.getObjectByName(n);
   e.model = model;
   const d = CONFIG.UNITS[kind];

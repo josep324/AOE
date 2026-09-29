@@ -25,8 +25,9 @@ function setUnitState(u, st) {
 }
 
 function hDist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
-function inReach(u, ent) {
-  const d = entSurfaceDist(ent, u.position.x, u.position.z);
+/* slack: marge extra per a qui ja hi treballa (una empenta d'un company no l'ha de fer tornar a caminar) */
+function inReach(u, ent, slack = 0) {
+  const d = entSurfaceDist(ent, u.position.x, u.position.z) - slack;
   if (ent.def && ent.def.dock && !u.naval) return d - u.radius <= 2.4;   // el moll es construeix des de la riba
   if (ent.animal && ent.alive) return d - u.radius <= HUNT_RANGE;     // caça: llança des de lluny
   if (ent.subtype === 'farm') return d <= 0.25;          // el granger treballa a sobre de la granja
@@ -61,7 +62,7 @@ function approachPointAt(ent, angle, naval = false) {
     p = new THREE.Vector3(ent.position.x + sx * r, 0, ent.position.z + sz * r);
   }
   // Evitem que el punt quedi dins d'un altre obstacle (p. ex. un arbre veí)
-  for (const o of obstaclesNear(p.x, p.z, approachObsBuf)) {
+  for (const o of obstaclesNear(p.x, p.z, approachObsBuf, m + 0.5)) {
     if (o.entity === ent && !o.link) continue;         // el propi tronc no, però sí el farciment cap als veïns
     pushOutOf(p, o, CONFIG.VILLAGER.radius + 0.1);
   }
@@ -297,7 +298,7 @@ function updateCarryVisual(u) {
 function stepTowardsTarget(u, dt) {
   if (!u.target) return true;
   // Si el mapa ha canviat (nou edifici, recurs esgotat) es recalcula el camí
-  if (!u.path || u.pathVersion !== NAV.version) setMoveTarget(u, u.target);
+  if (!u.path || u.pathVersion !== NAV.blockVersion) setMoveTarget(u, u.target);
   let step = Math.min(u.speed, u.speedCap || Infinity) * dt;
   while (step > 1e-6 && u.path.length) {
     const wp = u.path[0];
@@ -328,7 +329,7 @@ function stepTowardsTarget(u, dt) {
 function gatherTick(u, dt) {
   const node = u.gatherNode;
   if (!node || node.depleted) { findNextResource(u); return; }
-  if (!inReach(u, node)) { goToResource(u); return; }
+  if (!inReach(u, node, 0.7)) { goToResource(u); return; }
 
   // Mirar cap al recurs
   const face = Math.atan2(node.position.x - u.position.x, node.position.z - u.position.z);

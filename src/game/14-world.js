@@ -39,7 +39,7 @@ function forestBlocked(x, z, keep) {
   const L = CONFIG.MAP_LIMIT - 2.5;
   if (Math.abs(x) > L || Math.abs(z) > L) return true;
   if (WATER.any && waterNear(x, z, 1.2)) return true;
-  for (const o of obstaclesNear(x, z, nearObsBuf)) {
+  for (const o of obstaclesNear(x, z, nearObsBuf, 4)) {
     const d = obstacleSurface(o, x, z).d;
     if (d < (o.entity && o.entity.subtype === 'tree' ? 0.75 : 3.5)) return true;
   }

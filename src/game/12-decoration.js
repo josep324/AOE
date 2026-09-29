@@ -30,7 +30,7 @@ function pushOutOf(p, o, margin) {
 const nearObsBuf = [];
 function isNearObstacle(x, z, margin) {
   if (WATER.any && waterNear(x, z, Math.max(0.5, margin))) return true;
-  const list = margin <= OBS_REACH ? obstaclesNear(x, z, nearObsBuf) : state.obstacles;
+  const list = margin <= OBS_REACH ? obstaclesNear(x, z, nearObsBuf, margin + 0.5) : state.obstacles;
   for (const o of list) if (obstacleSurface(o, x, z).d < margin) return true;
   return false;
 }

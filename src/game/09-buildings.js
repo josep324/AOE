@@ -144,7 +144,7 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
   else if (def.wall || def.gate) groundPaintRect(x, z, sw + 0.6, sd + 0.6, 'dirt', 0.35);
   else groundPaintRect(x, z, sw + 1.2, sd + 1.2, 'dirt', type === 'farm' ? 0.4 : 0.65);
   applyConstructionVisual(e);
-  if (!createBuilding.batch) rebuildNav();
+  if (!createBuilding.batch) { if (type === 'farm') rebuildNavArea(x, z, 5); else rebuildNav(); }   // (una granja no tanca cap pas)
   if (complete) completeBuilding(e, true);
   return e;
 }

@@ -11,10 +11,10 @@ const obsBuf = [], nearObsList = [];
 /* Mig costat de la caixa que conté l'obstacle (per descartar ràpidament els llunyans) */
 const obsReach = (o) => o.reachB ?? (o.reachB = o.rect ? Math.hypot(o.hw, o.hd) : (o.ext || o.r));
 function resolveObstacleCollision(u, dt) {
-  const all = obstaclesNear(u.position.x, u.position.z, obsBuf);
   // Només els obstacles que poden tocar la unitat (o el tram que ha fet des de l'últim pas)
   const px0 = u.position.x, pz0 = u.position.z;
   const slack = u.radius + 0.1 + (u.safeX !== undefined ? Math.min(4, Math.abs(px0 - u.safeX) + Math.abs(pz0 - u.safeZ)) : 0);
+  const all = obstaclesNear(px0, pz0, obsBuf, slack);
   const list = nearObsList;
   list.length = 0;
   for (const o of all) { const e = obsReach(o) + slack; if (Math.abs(o.x - px0) <= e && Math.abs(o.z - pz0) <= e) list.push(o); }
@@ -52,7 +52,7 @@ function resolveObstacleCollision(u, dt) {
 
 /* ---------- Índex espacial: graella de cel·les de 8 unitats amb les unitats de cada cel·la ----------
    Evita comparar cada unitat amb totes les altres (clau per a centenars d'unitats). */
-const SPATIAL = { cell: 8, map: new Map() };
+const SPATIAL = { cell: 5, map: new Map() };
 const spatialKey = (i, j) => (i + 4096) * 8192 + (j + 4096);
 function spatialRebuild() {
   SPATIAL.map.clear();
@@ -82,6 +82,7 @@ function unitsNear(x, z, r, out = []) {
 
 const nearBuf = [];
 const SEP_MAX = 0.35;             // desplaçament màxim per separació en un pas (evita catapultar unitats)
+const sepWeight = (u) => (u.state === STATE.GATHERING || u.state === STATE.BUILDING) ? 2 : u.target ? 1 : 0;
 function separateUnits() {
   for (const a of state.units) { a.sepX = a.position.x; a.sepZ = a.position.z; }
   for (const a of state.units) {
@@ -96,10 +97,13 @@ function separateUnits() {
       const d = Math.sqrt(d2) || 0.001;
       const overlap = (min - d);
       const nx = d2 > 0 ? dx / d : 1, nz = d2 > 0 ? dz / d : 0;
-      if (!a.target && !b.target) {
+      // Qui s'aparta: el quiet davant del que camina, i el que camina davant del que treballa (un aldeà que
+      // talla o construeix no l'aparten els que arriben; si no, tornaria a caminar i empentaria els altres)
+      const wa = sepWeight(a), wb = sepWeight(b);
+      if (wa === wb) {
         a.position.x -= nx * overlap * 0.5; a.position.z -= nz * overlap * 0.5;
         b.position.x += nx * overlap * 0.5; b.position.z += nz * overlap * 0.5;
-      } else if (!a.target) {
+      } else if (wa < wb) {
         a.position.x -= nx * overlap; a.position.z -= nz * overlap;
       } else {
         b.position.x += nx * overlap; b.position.z += nz * overlap;

@@ -290,6 +290,9 @@ function updateUnit(u, dt) {
   u.position.y = u.naval ? 0 : groundY(u.position.x, u.position.z);
 
   // ---------- Animació procedimental ----------
+  // Només es mouen els ossos de les unitats que surten a la pantalla (markOnScreen, a cada fotograma);
+  // la resta només avança el ritme de la feina, que sí que compta per al joc (cops de destral)
+  if (!u.onScreen) { animationClock(u, dt); return; }
   if (u.category === 'siege') { animateSiege(u, dt, walking); return; }
   if (u.category === 'ship') { animateShip(u, dt, walking); return; }
   const k = 1 - Math.exp(-12 * dt);
@@ -364,6 +367,20 @@ function updateUnit(u, dt) {
   }
 }
 
+/* Unitat fora de la pantalla: el mateix rellotge de feina que l'animació (els cops de destral o de
+   martell que fan la feina), sense tocar el model */
+function animationClock(u, dt) {
+  u.fireT = Math.max(0, (u.fireT || 0) - dt);
+  if (u.category === 'siege' || u.category === 'ship') return;
+  if ((u.state === STATE.GATHERING && u.gatherNode) || (u.state === STATE.BUILDING && u.buildTarget)) {
+    const prev = u.workPhase;
+    u.workPhase = (u.workPhase + dt * 1.5) % 1;
+    if (u.workPhase < prev) {
+      if (u.state === STATE.BUILDING) onBuildStrike(u, u.buildTarget);
+      else onToolStrike(u, u.gatherNode);
+    }
+  }
+}
 /* Animació de les màquines de setge: rodes, braç del mangonell, cop de l'ariet, corda de l'escorpí */
 function animateSiege(u, dt, walking) {
   if (walking && u.wheels) for (const w of u.wheels) w.rotation.x += dt * u.speed * 1.6;

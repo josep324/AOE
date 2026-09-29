@@ -127,6 +127,12 @@ node tests/run.mjs --bench   # bancs de proves: la IA sola i IA contra IA durant
 node tests/run.mjs --bench soak   # cerca d'errors: IA contra IA 15 min a cada mapa comprovant que no passa res impossible
 ```
 
+**Rendiment** (partides grans, 4 jugadors i més de 500 unitats): cada unitat es dibuixa amb una sola malla amb
+esquelet (braços, cames i tors són ossos) i només s'animen les que surten a la pantalla; els obstacles són en una
+graella fina on cada edifici ocupa les cel·les que toca; talar un arbre no obliga a refer els camins de ningú (només
+obre pas) i els aldeans que treballen no els aparten els que passen. La simulació d'una partida de 4 jugadors a 25
+minuts costa la meitat que abans i les unitats fan unes tres vegades menys crides de dibuix.
+
 La simulació és **reproduïble**: amb la mateixa llavor (`?seed=123` a l'adreça) i les mateixes ordres, la partida
 és idèntica (la IA inclosa). La lògica del joc fa servir `rand()` i els efectes visuals `vrand()`.
 La IA és un «cervell» per equip: `RTS.enableAIFor(1)` posa una IA a jugar pel jugador (IA contra IA).

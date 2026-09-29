@@ -171,7 +171,8 @@ function aiAgesAndTechs(A, C) {
     // Les obertures agressives ataquen abans de pujar a Castells
     const rushWait = next === 2 && (A.strategy === 'scoutrush' || A.strategy === 'archers' || A.strategy === 'maa') && A.attackCount === 0 && vills < need + 6;
     // Amb un exèrcit rival clarament més fort a prop de casa, primer tropes i després l'edat
-    const danger = (A.foeStr || 0) > (A.myStr || 0) * 1.2 + 2;
+    // (o un exèrcit rival gran vist fa poc, més del doble del propi: primer els contraris, com a l'AoE II)
+    const danger = (A.foeStr || 0) > (A.myStr || 0) * 1.2 + 2 || (A.foeComp && A.foeComp.mil >= 8 && C.army.length < A.foeComp.mil * 0.5);
     const ready = vills >= need && distinctBuilt(C.T, req) >= 2 && !rushWait && !danger && (next < 3 || D !== DIFFICULTY.easy || vills >= need + 5);
     if (ready) {
       if (C.age === 0 && D.micro > 0) aiTryTech(A, C, 'loom');

@@ -1,8 +1,9 @@
 /* =====================================================================
    RECURSOS: IMPACTES, PARTÍCULES I ESGOTAMENT
    ===================================================================== */
+/* (efectes només visuals: si l'aldeà no surt a la pantalla, no cal fer-los) */
 function onBuildStrike(u, b) {
-  if (!b) return;
+  if (!b || !u.onScreen) return;
   const fp = b.footprint;
   const cx = THREE.MathUtils.clamp(u.position.x, b.position.x - fp.hw, b.position.x + fp.hw);
   const cz = THREE.MathUtils.clamp(u.position.z, b.position.z - fp.hd, b.position.z + fp.hd);
@@ -10,7 +11,7 @@ function onBuildStrike(u, b) {
 }
 
 function onToolStrike(u, node) {
-  if (!node || node.depleted) return;
+  if (!node || node.depleted || !u.onScreen) return;
   if (node.inst) treeDetach(node);
   if (node.subtype !== 'farm') { node.shakeT = 0.25; SHAKING.add(node); }
   // Punt d'impacte entre l'aldeà i el recurs
@@ -48,7 +49,9 @@ function depleteResource(node) {
   if (node.subtype === 'gold') toast("⛏️ Una Veta d'Or s'ha esgotat");
   if (node.subtype === 'stone') toast('🪨 Una Mina de Pedra s\'ha esgotat');
   // Només cal refer la graella al voltant (un arbre té farciment fins a uns 7 m)
-  if (node.subtype === 'tree' || node.subtype === 'berries') rebuildNavArea(node.position.x, node.position.z, 9); else rebuildNav();
+  if (node.subtype === 'tree' || node.subtype === 'berries') rebuildNavArea(node.position.x, node.position.z, 9);
+  else if (node.subtype === 'farm') rebuildNavArea(node.position.x, node.position.z, 5);      // (una granja no tanca cap pas)
+  else rebuildNav();
   if (node.subtype === 'farm') {
     const T = teamOf(node.team);
     const farmers = state.units.filter(u => u.gatherNode === node && !u.dead);
@@ -68,7 +71,10 @@ function depleteResource(node) {
 
 /* Recursos que es sacsegen en recollir-los (els altres arbres no cal mirar-los a cada pas) */
 const SHAKING = new Set();
+const CLAIMED = new Set();         // recursos que algun aldeà té triats (es calcula un cop per pas)
 function updateResourceNodes(dt) {
+  CLAIMED.clear();
+  for (const u of state.units) if (u.gatherNode) CLAIMED.add(u.gatherNode);
   for (const n of state.resourceNodes) {
     if (n.subtype === 'tree') continue;
     if (n.subtype === 'sheep') { updateSheep(n, dt); n.position.y = groundY(n.position.x, n.position.z); }

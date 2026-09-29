@@ -66,7 +66,7 @@ function iconURL(kind, team = PLAYER.id, arch = null) {
   const T = team || 0;
   if (CONFIG.UNITS[kind]) {
     const portrait = !['siege', 'trade'].includes(CONFIG.UNITS[kind].cat) && !CONFIG.UNITS[kind].mounted && CONFIG.UNITS[kind].cat !== 'cavalry';
-    return renderIcon(`u:${kind}:${T}:${a}`, () => unitTemplate(kind, T || PLAYER.id, a, 0).clone(true), portrait ? { zoom: 0.5, lift: 0.3 } : { zoom: 0.78, lift: 0.08 });
+    return renderIcon(`u:${kind}:${T}:${a}`, () => cloneRig(unitTemplate(kind, T || PLAYER.id, a, 0)), portrait ? { zoom: 0.5, lift: 0.3 } : { zoom: 0.78, lift: 0.08 });
   }
   if (kind === 'towncenter' || CONFIG.BUILDINGS[kind]) {
     return renderIcon(`b:${kind}:${T}:${a}`, () => {

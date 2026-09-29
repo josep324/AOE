@@ -313,12 +313,15 @@ function cancelQueued(building, idx) {
 
 const CONSCRIPTION_AT = new Set(['barracks', 'archeryrange', 'stable', 'castle']);
 function updateTraining(dt) {
+  // Població i límit de cada equip: es compten un sol cop per pas (no per a cada edifici amb cua)
+  const used = {}, cap = {};
   for (const b of state.buildings) {
     if (!b.trainQueue || !b.trainQueue.length) continue;
     const item = b.trainQueue[0];
     const def = itemDef(item.kind);
     if (b.underConstruction || b.dead) continue;
-    item.blocked = !isTech(item.kind) && unitCount(b.team) >= popCap(b.team);
+    if (!isTech(item.kind) && used[b.team] === undefined) { used[b.team] = unitCount(b.team); cap[b.team] = popCap(b.team); }
+    item.blocked = !isTech(item.kind) && used[b.team] >= cap[b.team];
     if (item.blocked) {
       if (!item.warned && b.isOwn) { item.warned = true; toast('🏠 Població plena: construeix més cases'); }
       continue;
@@ -328,7 +331,7 @@ function updateTraining(dt) {
     if (item.t >= def.time) {
       b.trainQueue.shift();
       if (isTech(item.kind)) completeTech(b.team, item.kind);
-      else spawnUnit(b, item.kind);
+      else { spawnUnit(b, item.kind); if (used[b.team] !== undefined) used[b.team]++; }
     }
   }
 }

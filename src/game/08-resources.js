@@ -186,7 +186,7 @@ function updateSheep(n, dt) {
     return;
   }
   // Si algun aldeà l'ha triada, s'està quieta
-  const claimed = state.units.some(u => u.gatherNode === n);
+  const claimed = CLAIMED.has(n);
   let moving = false;
   if (!claimed) {
     n.wanderTimer -= dt;
@@ -208,7 +208,7 @@ function updateSheep(n, dt) {
       }
     }
     // Col·lisió amb els obstacles (excepte ella mateixa)
-    for (const o of obstaclesNear(n.position.x, n.position.z, sheepObsBuf)) {
+    for (const o of obstaclesNear(n.position.x, n.position.z, sheepObsBuf, 2)) {
       if (o.entity === n || o.entity2 === n) continue;
       if (pushOutOf(n.position, o, n.radius)) n.wanderTarget = null;
     }

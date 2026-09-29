@@ -40,11 +40,24 @@ function simulate(dt) {
   if (overTimer >= 1) { overTimer = 0; checkGameOver(); }
 }
 
+/* Quines unitats surten a la pantalla (només aquestes s'animen): prova de l'esfera contra el con de la càmera */
+const _frustum = new THREE.Frustum(), _projM = new THREE.Matrix4(), _sph = new THREE.Sphere(new THREE.Vector3(), 3);
+function markOnScreen() {
+  camera.updateMatrixWorld();
+  _projM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  _frustum.setFromProjectionMatrix(_projM);
+  for (const u of state.units) {
+    if (!u.group.visible || u.garrisoned) { u.onScreen = false; continue; }
+    _sph.center.copy(u.position);
+    u.onScreen = _frustum.intersectsSphere(_sph);
+  }
+}
 function animate() {
   requestAnimationFrame(animate);
   const realDt = Math.min(clock.getDelta(), 0.1);
   const frameDt = state.paused ? 0 : realDt * CONFIG.TIME_SCALE;
   // Passos fixos de simulació (amb límit per no quedar bloquejats si el navegador s'alenteix)
+  markOnScreen();
   simAccumulator += frameDt;
   const maxSteps = Math.ceil(6 * Math.max(1, CONFIG.TIME_SCALE));
   let steps = 0;

@@ -16,7 +16,11 @@ function linkObstacle(ax, az, bx, bz, r, e1, e2, kind) {
 }
 /* Treu els obstacles d'una entitat (i els farciments que la toquen) */
 function dropObstaclesOf(e) {
-  state.obstacles = state.obstacles.filter(o => o.entity !== e && o.entity2 !== e);
+  const old = state.obstacles, synced = OBS_GRID.src === old && OBS_GRID.count === old.length;
+  const gone = [];
+  state.obstacles = old.filter(o => (o.entity !== e && o.entity2 !== e) || (gone.push(o), false));
+  // La graella d'obstacles es corregeix al moment (refer-la sencera a cada arbre talat és car)
+  if (synced) { for (const o of gone) obstacleGridRemove(o); OBS_GRID.src = state.obstacles; OBS_GRID.count = state.obstacles.length; }
 }
 const isTreeObs = (o) => !o.link && o.entity && o.entity.subtype === 'tree';
 const isWallObs = (o) => !o.link && o.entity && o.entity.kind === 'building' && (o.entity.isWall || (o.entity.def && o.entity.def.gate));
