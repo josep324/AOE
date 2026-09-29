@@ -121,6 +121,17 @@ function aiComposition(A, C) {
     }
     if (tot) for (const [u, v] of Object.entries(counter)) w[u] = (w[u] || 0) + k * v / tot;
   }
+  // Sense or (mines esgotades i ningú no en recull): com la IA de l'AoE II, unitats que no en costen
+  // (llancers, escaramussadors i genets lleugers) en lloc de les que en necessiten
+  if (C.res.gold < 120 && C.age >= 1 && (!C.gath || (C.gath.gold || 0) < 3)) {
+    let moved = 0;
+    for (const u of Object.keys(w)) {
+      const kind = u === '@unique' ? uniqueUnitOf(C.T) : currentKind(C.T, u);
+      const d = CONFIG.UNITS[kind];
+      if (d && d.cost && d.cost.gold) { moved += w[u]; delete w[u]; }
+    }
+    if (moved) for (const [u, f] of [['spearman', 0.4], ['skirmisher', 0.35], ['scout', 0.25]]) w[u] = (w[u] || 0) + moved * f;
+  }
   // Només el que es pot fer ara (edat i civilització)
   for (const u of Object.keys(w)) {
     const kind = u === '@unique' ? uniqueUnitOf(C.T) : currentKind(C.T, u);
@@ -191,10 +202,11 @@ function aiAgesAndTechs(A, C) {
       return d.civ === C.E.civ && !d.elite && !C.E.techs.has(k) && !techQueued(C.T, k) && (d.age || 0) <= C.age; });
     const cost = uniq && costFor(uniq, C.T);
     if (uniq && canAfford(cost, C.T) && aiTryTech(A, C, uniq, true)) A.uniqSince = null;
-    else if (uniq && calm) {
+    else if (uniq) {
+      // (el compte de 2 minuts no es reinicia si perd la calma: si no, la reserva no s'acabava mai)
       A.uniqSince = A.uniqSince ?? C.now;
       if (C.now - A.uniqSince > 120) { A.uniqSince = null; A.uniqPause = C.now + 180; }
-      else A.reserve = cost;
+      else if (calm) A.reserve = cost;
     } else A.uniqSince = null;
   }
   // Economia (a temps, com la IA de l'AoE II)

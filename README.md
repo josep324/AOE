@@ -91,8 +91,9 @@ l'enemic (o l'ataquen), les companyes properes també s'hi llancen. La IA també
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 
 **IA** com la de l'AoE II (Fàcil, Normal, Difícil sense trampes; Extrem amb avantatge de recursos):
-aldeans sense parar (fins a 35/70/100/120), cases amb marge, campaments on hi ha la feina, granges, dos o tres Centres
-de Ciutat a l'Edat dels Castells i mercat. Tria una obertura segons la civilització (exploradors, arquers, homes
+aldeans sense parar (fins a 45/90/115/130 amb població 200), cases amb marge, campaments on hi ha la feina (també
+lluny de la base quan s'acaba l'or o la fusta de prop), granges amb molins nous, dos o tres Centres de Ciutat a l'Edat
+dels Castells i mercat per vendre el que li sobra quan no té or (i, mentrestant, unitats que no en gasten). Tria una obertura segons la civilització (exploradors, arquers, homes
 d'armes, Castells ràpid o boom), explora la teva base i fa l'exèrcit que contraresta el que ha vist. Fa incursions
 contra els aldeans, ataca amb l'exèrcit reunit (reforços, ariets, retirada si perd), toca la campana quan l'ataquen
 i, en Difícil, fa kiting amb els tiradors i concentra el foc. Tothom comença amb un explorador i a l'Edat dels

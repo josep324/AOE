@@ -71,9 +71,11 @@ function aiEcoTargets(A, C) {
   if (C.age === 0 && (A.strategy === 'archers' || A.strategy === 'maa') && C.vn >= 18) t = { food: 0.6, wood: 0.32, gold: 0.08, stone: 0 };
   // Pedra per a Centres nous i Castells
   if (C.age >= 2 && (A.wantTC || A.wantCastle)) { t.stone += 0.07; t.food -= 0.04; t.wood -= 0.03; }
+  // Amb pedra de sobres (i sense Centre ni Castell a fer), aquests aldeans van a l'or i al menjar
+  if (t.stone > 0 && C.res.stone > 650 && !A.wantTC && !A.wantCastle) { t.gold += t.stone * 0.5; t.food += t.stone * 0.5; t.stone = 0; }
   // Sense mines d'or o pedra a l'abast: aquests aldeans van a la resta
   for (const r of ['gold', 'stone']) {
-    if (t[r] > 0 && !nearestResource(r, C.home, 140)) { t.food += t[r] * 0.6; t.wood += t[r] * 0.4; t[r] = 0; }
+    if (t[r] > 0 && !nearestResource(r, C.home, 400)) { t.food += t[r] * 0.6; t.wood += t[r] * 0.4; t[r] = 0; }
   }
   return t;
 }
@@ -98,7 +100,8 @@ function aiAssign(A, C, u, type) {
     return aiBuildFarm(A, C, u);
   }
   const drop = nearestDropoff(u.position, type, C.T);
-  const n = (drop && nearestResource(type, drop.position, 55, u)) || nearestResource(type, u.position, 120, u);
+  // (a prop d'un campament; si no, a prop de l'aldeà; i si prop de casa ja s'ha esgotat, on n'hi hagi: s'hi farà un campament)
+  const n = (drop && nearestResource(type, drop.position, 55, u)) || nearestResource(type, u.position, 120, u) || nearestResource(type, C.home, 400, u);
   if (!n) return false;
   orderGather(u, n, null);
   return true;
@@ -131,6 +134,9 @@ function aiBuildFarm(A, C, u) {
   const sites = [...C.tcs, ...C.blds.filter(b => b.subtype === 'mill' && !b.underConstruction)];
   sites.sort((a, b) => hDist(a.position, u.position) - hDist(b.position, u.position));
   for (const s of sites) if (aiBuild(A, 'farm', s.position, s.subtype === 'towncenter' ? 8 : 4, s.subtype === 'towncenter' ? 20 : 12, 1, [u])) return true;
+  // Sense lloc per a més granges: un molí nou en un lloc obert a prop de casa (i les granges al seu voltant)
+  if (!C.blds.some(b => b.subtype === 'mill' && b.underConstruction) && canAfford({ wood: 100 + 60 }, C.T))
+    for (const tc of C.tcs) if (aiBuild(A, 'mill', tc.position, 18, 45, 1, [u])) return true;
   return false;
 }
 function aiVillagerWork(A, C) {
@@ -181,7 +187,8 @@ function aiDropsites(A, C) {
       if (n.subtype !== 'tree' || n.depleted || served(n.position, 'wood', 12)) continue;
       let d = Infinity;
       for (const tc of C.tcs) d = Math.min(d, hDist(n.position, tc.position));
-      if (d > 75 || d >= bd) continue;
+      if (d > 220 || d >= bd) continue;             // (si prop de casa ja no hi ha bosc, més lluny)
+      if (d > 75 && hDist(n.position, C.foeHome) < d) continue;   // (però no cap a la base rival)
       // Només boscos de veritat (prou arbres a prop)
       let k = 0;
       for (const o of obstaclesNear(n.position.x, n.position.z, aiObsBuf)) if (o.entity && o.entity.subtype === 'tree' && hDist(o.entity.position, n.position) < 7) k++;
@@ -197,7 +204,8 @@ function aiDropsites(A, C) {
       if (n.subtype !== r || n.depleted) continue;
       let d = Infinity;
       for (const tc of C.tcs) d = Math.min(d, hDist(n.position, tc.position));
-      if (d < bd && d < 95) { bd = d; best = n; }
+      if (d > 95 && hDist(n.position, C.foeHome) < d) continue;   // (lluny de casa, però no cap a la base rival)
+      if (d < bd && d < 230) { bd = d; best = n; }
     }
     if (best && !served(best.position, r, 7) && aiBuild(A, 'miningcamp', best.position, 4, 9)) return;
   }
@@ -229,10 +237,12 @@ function aiMarket(A, C) {
   if (C.age < 2) return;
   const R = C.res;
   // Sense mercat i amb un recurs que sobra i l'or esgotat (p. ex. les mines de casa s'han acabat): en fa un
-  if (!C.has('market') && C.vn >= 40 && R.gold < 150 && Math.max(R.food, R.wood) > 900) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
+  if (!C.has('market') && C.vn >= 30 && R.gold < 150 && Math.max(R.food, R.wood, R.stone) > 600) { aiBuild(A, 'market', C.home, 14, 36, 2); return; }
   if (!hasCompleted('market', C.T) || C.now - A.lastTrade < 3) return;
-  for (const r of ['food', 'wood', 'stone']) {
-    if (R[r] > 1600 || (R[r] > 1000 && R.gold < 300)) { marketTrade(C.T, r, false); A.lastTrade = C.now; return; }
+  // Ven el que sobra; si falta or (mines esgotades), ven abans, deixant-ne una reserva
+  const keep = { food: 500, wood: 450, stone: 250 };
+  for (const r of ['stone', 'food', 'wood']) {
+    if (R[r] > 1600 || (R.gold < 300 && R[r] > keep[r] + 100)) { marketTrade(C.T, r, false); A.lastTrade = C.now; return; }
   }
   if (R.gold > 1300) for (const r of ['food', 'wood']) {
     if (R[r] < 200) { marketTrade(C.T, r, true); A.lastTrade = C.now; return; }
