@@ -289,6 +289,22 @@ document.getElementById('menu-continue').addEventListener('click', () => openMen
 document.getElementById('menu-save').addEventListener('click', () => { saveGame(); refreshSaveInfo(); });
 document.getElementById('menu-load').addEventListener('click', () => { if (loadGame(readSave())) openMenu(false); });
 document.getElementById('menu-new').addEventListener('click', () => location.reload());
+/* Rendir-se (com a l'AoE II): cal prémer-ho dues vegades (la segona, per confirmar) */
+const resignBtn = document.getElementById('menu-resign');
+let resignArm = 0;
+function resignPlayer() {
+  if (state.over) return;
+  GAME.playerResigned = true;
+  defeatTeam(PLAYER.id, "s'ha rendit");
+  openMenu(false);
+  checkGameOver();
+}
+resignBtn.addEventListener('click', () => {
+  if (performance.now() - resignArm < 4000) { resignArm = 0; resignBtn.textContent = '🏳️ Rendir-se'; resignPlayer(); return; }
+  resignArm = performance.now();
+  resignBtn.textContent = '🏳️ Segur? Torna-hi a prémer';
+  setTimeout(() => { if (resignArm && performance.now() - resignArm >= 3900) { resignArm = 0; resignBtn.textContent = '🏳️ Rendir-se'; } }, 4000);
+});
 const codePanel = document.getElementById('code-panel');
 const codeText = document.getElementById('code-text');
 document.getElementById('menu-code').addEventListener('click', () => codePanel.classList.toggle('hidden'));
@@ -435,6 +451,7 @@ function checkGameOver() {
     if (w) { if (allied(w.team, PLAYER.id)) win = true; else lose = true; how = 'wonder'; winner = w.team; }
     if (state.relicWin && state.elapsed >= state.relicWin.end) { if (allied(state.relicWin.team, PLAYER.id)) win = true; else lose = true; how = 'relics'; winner = state.relicWin.team; }
   }
+  if (GAME.playerResigned) { lose = true; win = false; how = 'resign'; }
   if (!win && !lose) return;
   if (win && lose) win = false;
   state.over = true;
@@ -445,6 +462,7 @@ function checkGameOver() {
   const resigned = foes.every(t => aiOf(t) && aiOf(t).resigned);
   const team = GAME.players.some(t => t !== PLAYER.id && allied(t, PLAYER.id)) ? ' amb el teu aliat' : '';
   const WHY = {
+    resign: `T'has rendit després de ${T}. Guanyen els ${E}.`,
     conquest: win ? `${resigned ? `Els ${E} s'han rendit` : `Has derrotat els ${E}${team}`} en ${T} (dificultat ${AI.diff.label}).` : `La teva civilització (${P}) ha caigut després de ${T}.`,
     king: win ? `El rei dels ${E} ha mort: victòria per regicidi en ${T}.` : `El teu rei ha mort. Els ${E} guanyen per regicidi (${T}).`,
     wonder: win ? `${winner === PLAYER.id ? 'La teva Meravella' : 'La Meravella del teu aliat'} ha resistit! Victòria en ${T}.` : `La Meravella dels ${E} ha resistit. Derrota en ${T}.`,

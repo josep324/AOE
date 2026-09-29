@@ -31,7 +31,7 @@ function makeTroop(units, point, slots, attackMove = false) {
   const T = {
     id: ++troopSeq, members: land, off: new Map(), final: slots, attackMove, team: big.team,
     path: probe.path.map(p => p.clone()), pos: c.clone(), speed: Math.min(...land.map(u => u.speed)) * 0.9,
-    heading: Math.atan2(probe.path[0].x - c.x, probe.path[0].z - c.z), retarget: 0, alive: true,
+    heading: Math.atan2(probe.path[0].x - c.x, probe.path[0].z - c.z), retarget: 0, alive: true, formUp: true, t0: state.elapsed, curSpeed: 0,
   };
   for (const u of land) {
     const s = slots.get(u) || point;
@@ -57,7 +57,7 @@ function updateTroops(dt) {
     // Qui ha rebut una altra ordre o ha entrat en combat surt de la tropa (i ja no hi torna)
     T.members = T.members.filter(u => {
       const keep = !u.dead && u.troop === T && u.state === STATE.MOVING;
-      if (!keep && u.troop === T) u.troop = null;
+      if (!keep && u.troop === T) { u.troop = null; u.speedCap = null; }
       return keep;
     });
     if (!T.members.length) { T.alive = false; TROOPS.splice(t, 1); continue; }
@@ -65,11 +65,14 @@ function updateTroops(dt) {
     let lag = 0;
     for (const u of T.members) lag += hDist(u.position, troopWorld(T, T.off.get(u), troopTmp));
     lag /= T.members.length;
-    const v = T.speed * (lag < 2.5 ? 1 : lag > 8 ? 0.12 : 1 - (lag - 2.5) / 5.5 * 0.88);
+    // Primer es formen: el guia no arrenca fins que el grup és al seu lloc (com a molt 8 s)
+    if (T.formUp && (lag < 2 || state.elapsed - T.t0 > 8)) T.formUp = false;
+    const v = T.formUp ? 0 : T.speed * (lag < 2.5 ? 1 : lag > 8 ? 0.12 : 1 - (lag - 2.5) / 5.5 * 0.88);
+    T.curSpeed = v;
     let step = v * dt;
     while (step > 0 && T.path.length) {
       const wp = T.path[0], dx = wp.x - T.pos.x, dz = wp.z - T.pos.z, d = Math.hypot(dx, dz);
-      if (d > 0.05) T.heading = lerpAngle(T.heading, Math.atan2(dx, dz), 1 - Math.exp(-1.5 * dt));
+      if (d > 0.05) T.heading = lerpAngle(T.heading, Math.atan2(dx, dz), 1 - Math.exp(-1 * dt));
       if (d <= step) { T.pos.x = wp.x; T.pos.z = wp.z; step -= d; T.path.shift(); }
       else { T.pos.x += dx / d * step; T.pos.z += dz / d * step; step = 0; }
     }
@@ -77,6 +80,7 @@ function updateTroops(dt) {
       // Arribada: cadascú al seu lloc final de la formació
       for (const u of T.members) {
         u.troop = null;
+        u.speedCap = null;
         setMoveTarget(u, T.final.get(u) || T.pos.clone());
         if (T.attackMove) u.attackMove = (T.final.get(u) || T.pos).clone();
       }
@@ -84,15 +88,23 @@ function updateTroops(dt) {
       TROOPS.splice(t, 1);
       continue;
     }
-    // Cada 0,2 s, el lloc de cada unitat es mou amb el guia
+    // Seguiment continu (cada 0,1 s): mentre el guia avança, cada unitat apunta una mica per davant del
+    // seu lloc i, quan hi és a prop, camina a la velocitat del guia; així el grup avança seguit, sense
+    // parar i arrencar a batzegades
     T.retarget -= dt;
     if (T.retarget > 0) continue;
-    T.retarget = 0.2;
+    T.retarget = 0.1;
+    const moving = v > 0.05, fx = Math.sin(T.heading), fz = Math.cos(T.heading);
     for (const u of T.members) {
       const spot = clampToMap(pushOutOfObstacles(troopWorld(T, T.off.get(u), troopTmp).clone(), u.radius + 0.2));
-      if (u.target && hDist(u.target, spot) < 0.3) continue;
-      if (segmentWalkable(u.position.x, u.position.z, spot.x, spot.z)) {
-        u.target = spot; u.path = [spot]; u.pathVersion = NAV.blockVersion;
+      const d = hDist(u.position, spot);
+      // Velocitat segons si va endarrerida (+) o avançada (−) respecte del seu lloc en el sentit de la marxa
+      const along = (spot.x - u.position.x) * fx + (spot.z - u.position.z) * fz;
+      u.speedCap = moving && d < 4 ? Math.min(u.speed, Math.max(v * 0.25, v + along * 1.2)) : null;
+      const aim = moving ? clampToMap(pushOutOfObstacles(new THREE.Vector3(spot.x + fx * 6, 0, spot.z + fz * 6), u.radius + 0.2)) : spot;
+      if (u.target && u.path && u.path.length && hDist(u.target, aim) < 0.15) continue;
+      if (segmentWalkable(u.position.x, u.position.z, aim.x, aim.z)) {
+        u.target = aim; u.path = [aim]; u.pathVersion = NAV.blockVersion;
       } else if (state.elapsed >= (u.troopPathAt || 0)) {
         u.troopPathAt = state.elapsed + 1;             // (camí complet com a molt un cop per segon)
         setMoveTarget(u, spot);

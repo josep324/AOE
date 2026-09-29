@@ -122,6 +122,7 @@ function setLayout(id) {
   GAME.side = { ...L.side };
   GAME.players = Object.keys(L.side).map(Number).sort();
   GAME.defeated = new Set();
+  GAME.playerResigned = false;
 }
 function defaultMods() {
   return {
