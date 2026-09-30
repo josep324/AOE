@@ -344,6 +344,17 @@ function segmentWalkable(ax, az, bx, bz) {
   return true;
 }
 
+/* Línia recta lliure per a una unitat concreta: amb el seu equip (portes) i la seva amplada
+   (un ariet o un galió no passen per on passa un aldeà) */
+function unitSegmentWalkable(u, bx, bz) {
+  NAV.team = u.team;
+  NAV.clr = u.naval ? NAV.nclear : NAV.clear;
+  NAV.need = u.radius > (u.naval ? 1.25 : 0.9) && NAV.clr ? 2 : 1;
+  const landWalk = NAV.walk;
+  if (u.naval) { NAV.walk = NAV.naval; NAV.navalMode = true; }
+  try { return segmentWalkable(u.position.x, u.position.z, bx, bz); }
+  finally { NAV.walk = landWalk; NAV.navalMode = false; NAV.need = 1; }
+}
 /* A* sobre la graella (8 direccions, sense tallar cantonades). ASTAR_W > 1 (A* ponderat) seria més ràpid,
    però amb 1,15 els camins subòptims deixaven unitats encallades vora els llacs: es manté l'A* exacte */
 const ASTAR_W = 1;

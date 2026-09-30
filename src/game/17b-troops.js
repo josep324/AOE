@@ -41,6 +41,7 @@ function makeTroop(units, point, slots, attackMove = false) {
   const tmp = new THREE.Vector3();
   for (const u of land) {
     u.orderQueue.length = 0;
+    u.troopProg = null;
     const spot = clampToMap(pushOutOfObstacles(troopWorld(T, T.off.get(u), tmp).clone(), u.radius + 0.2));
     if (attackMove) orderAttackMove(u, spot); else orderMove(u, spot);
     u.troop = T;
@@ -98,12 +99,22 @@ function updateTroops(dt) {
     for (const u of T.members) {
       const spot = clampToMap(pushOutOfObstacles(troopWorld(T, T.off.get(u), troopTmp).clone(), u.radius + 0.2));
       const d = hDist(u.position, spot);
+      // Encallada (no avança en 6 s i és lluny del seu lloc): surt de la tropa i hi va pel seu compte
+      const pr = u.troopProg || (u.troopProg = { x: u.position.x, z: u.position.z, t: state.elapsed });
+      if (Math.hypot(u.position.x - pr.x, u.position.z - pr.z) > 0.8) { pr.x = u.position.x; pr.z = u.position.z; pr.t = state.elapsed; }
+      else if (d > 4 && state.elapsed - pr.t > 6) {
+        u.troop = null; u.speedCap = null; u.troopProg = null;
+        const fin = (T.final.get(u) || T.pos).clone();
+        setMoveTarget(u, fin);
+        if (T.attackMove) u.attackMove = fin.clone();
+        continue;
+      }
       // Velocitat segons si va endarrerida (+) o avançada (−) respecte del seu lloc en el sentit de la marxa
       const along = (spot.x - u.position.x) * fx + (spot.z - u.position.z) * fz;
       u.speedCap = moving && d < 4 ? Math.min(u.speed, Math.max(v * 0.25, v + along * 1.2)) : null;
       const aim = moving ? clampToMap(pushOutOfObstacles(new THREE.Vector3(spot.x + fx * 6, 0, spot.z + fz * 6), u.radius + 0.2)) : spot;
       if (u.target && u.path && u.path.length && hDist(u.target, aim) < 0.15) continue;
-      if (segmentWalkable(u.position.x, u.position.z, aim.x, aim.z)) {
+      if (unitSegmentWalkable(u, aim.x, aim.z)) {
         u.target = aim; u.path = [aim]; u.pathVersion = NAV.blockVersion;
       } else if (state.elapsed >= (u.troopPathAt || 0)) {
         u.troopPathAt = state.elapsed + 1;             // (camí complet com a molt un cop per segon)
