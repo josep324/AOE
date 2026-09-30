@@ -314,7 +314,8 @@ function aiSpecial(A, C) {
       if (safe && (!safe.garrison || safe.garrison.length < garrisonCap(safe))) orderGarrison(king, safe);
     }
   }
-  if (state.victory === 'standard' && C.age >= 3 && C.D !== DIFFICULTY.easy && !C.has('wonder') && C.vn >= 40
+  // (Meravella només a la part final de la partida, com la IA de l'AoE II)
+  if (state.victory === 'standard' && C.age >= 3 && C.D !== DIFFICULTY.easy && !C.has('wonder') && C.vn >= 60 && C.now >= 2100
       && canAfford({ wood: 1300, gold: 1300, stone: 1100 }, C.T)) aiBuild(A, 'wonder', C.home, 16, 45, 8);
   // Contra una Meravella o totes les relíquies del rival: atac immediat
   A.urgent = (state.relicWin && hostile(state.relicWin.team, A.team)) || state.buildings.some(b => hostile(b.team, A.team) && b.subtype === 'wonder' && b.wonderEnd);

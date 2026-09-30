@@ -8,7 +8,7 @@ const HEAL_RATE = 2.2;           // punts de vida per segon
 const RELIC_GOLD = 0.5;          // or per segon i relíquia
 const RELIC_COUNT = 5;
 const RELIC_WIN_TIME = 200;      // segons amb totes les relíquies per guanyar
-const WONDER_WIN_TIME = 300;     // segons que ha de resistir la Meravella
+const WONDER_WIN_TIME = 600;     // segons que ha de resistir la Meravella (a l'AoE II, el compte enrere també és llarg)
 const NO_CONVERT = ['towncenter', 'castle', 'wonder', 'gate', 'farm'];
 
 function isMonk(u) { return !!u && u.kind === 'unit' && u.category === 'monk'; }

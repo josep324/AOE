@@ -41,7 +41,7 @@ i recullen les **relíquies** del mapa: cada relíquia guardada en un Monestir d
 Tecnologies: Redempció (convertir edificis i setge), Expiació (convertir monjos), Fervor, Santedat, Il·luminació, Impremta i Fe.
 
 **Condicions de victòria** (es trien a l'inici):
-- 🏆 **Estàndard**: conquesta, o bé mantenir una **Meravella** 5 minuts, o bé tenir **totes les relíquies** 200 segons.
+- 🏆 **Estàndard**: conquesta, o bé mantenir una **Meravella** 10 minuts, o bé tenir **totes les relíquies** 200 segons.
 - ⚔️ **Conquesta**: només destruint l'enemic.
 - 👑 **Regicidi**: cada bàndol té un rei; si mor, perd.
 
