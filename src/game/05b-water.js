@@ -29,7 +29,14 @@ function keepOnLand(e) {
   if (!WATER.any) return;
   if (e.naval) {
     // Els vaixells no poden sortir de l'aigua fonda
-    if (waterCell(e.position.x, e.position.z) !== 1) { if (e.lastWet) { e.position.x = e.lastWet.x; e.position.z = e.lastWet.z; } }
+    if (waterCell(e.position.x, e.position.z) !== 1) {
+      if (e.lastWet) { e.position.x = e.lastWet.x; e.position.z = e.lastWet.z; }
+      else {
+        // (un vaixell que ha aparegut a terra: a l'aigua lliure més propera)
+        const w = nearestCellWhere(e.position, (x, z) => waterCell(x, z) === 1, 30);
+        if (w) { e.position.x = w.x; e.position.z = w.z; }
+      }
+    }
     else (e.lastWet || (e.lastWet = new THREE.Vector3())).copy(e.position);
     return;
   }

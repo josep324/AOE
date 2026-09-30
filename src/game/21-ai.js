@@ -68,6 +68,9 @@ function aiPickBuilders(A, n, near, prefer = null) {
   const vills = state.units.filter(u => u.team === A.team && u.subtype === 'villager' && !u.garrisoned
     && u.state !== STATE.BUILDING && !u.buildTarget && u.carry.amount < 5 && u.aiRole !== 'fight');
   vills.sort((a, b) => hDist(a.position, near) - hDist(b.position, near));
+  // (només els que hi poden arribar: a les Illes, el més proper pot ser a l'altra banda de l'aigua)
+  const site = { position: near, radius: 3 };
+  for (let i = vills.length - 1; i >= 0; i--) if (WATER.any && !canReach(vills[i], site, 4)) vills.splice(i, 1);
   const out = prefer ? prefer.slice(0, n) : [];
   for (const v of vills) { if (out.length >= n) break; if (!out.includes(v)) out.push(v); }
   return out;

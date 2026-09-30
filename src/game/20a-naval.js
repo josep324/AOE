@@ -44,6 +44,9 @@ function findWaterSpot(b) {
       return { x, z, angle: a };
     }
   }
+  // Tot ple de vaixells: el lloc d'aigua lliure més proper, encara que sigui més lluny (mai a terra)
+  const w = nearestCellWhere(b.position, isOpenWater, 30);
+  if (w) return { x: w.x, z: w.z, angle: Math.atan2(w.x - b.position.x, w.z - b.position.z) };
   return { x: b.position.x, z: b.position.z + base, angle: 0 };
 }
 
