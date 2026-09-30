@@ -230,7 +230,8 @@ function goToDropoff(u, building = null) {
   const tc = acceptsDropoff(building, u.carry.type, u.team, nv) ? building : nearestDropoff(u.position, u.carry.type, u.team, nv);
   if (!tc) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); if (nv && u.isOwn) toast('⚓ Cal un Moll acabat perquè el vaixell hi descarregui'); return; }
   u.dropTarget = tc;
-  setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06, nv));
+  // (en cada nou intent, un altre costat de l'edifici: el d'abans el tapen els companys que hi descarreguen)
+  setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06 + (building ? (u.approachTries || 0) * 0.8 : 0), nv));
   setUnitState(u, STATE.RETURNING);
 }
 

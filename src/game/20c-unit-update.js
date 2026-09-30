@@ -223,11 +223,13 @@ function updateUnit(u, dt) {
     case STATE.RETURNING: {
       const tc = u.dropTarget;
       if (!acceptsDropoff(tc, u.carry.type, u.team, !!u.naval)) { goToDropoff(u); break; }
-      if (inReach(u, tc)) { depositCarry(u); break; }
+      // (si ja ha hagut de tornar-ho a provar per la gentada, n'hi ha prou d'arribar-hi a tocar)
+      const slack = Math.min(1.5, 0.5 * (u.approachTries || 0));
+      if (inReach(u, tc, slack)) { depositCarry(u); break; }
       const arrived = stepTowardsTarget(u, dt);
       walking = !arrived;
       if (arrived) {
-        if (inReach(u, tc)) depositCarry(u);
+        if (inReach(u, tc, slack + 0.3)) depositCarry(u);
         else if (++u.approachTries > 6) { u.approachTries = 0; setUnitState(u, STATE.IDLE); }
         else goToDropoff(u, tc);
       }
