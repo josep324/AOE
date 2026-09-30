@@ -35,7 +35,7 @@ function createTree(x, z, scale = 1) {
 function createGoldMine(x, z) {
   const e = new Entity({ kind: 'resource', subtype: 'gold', name: "Veta d'Or", icon: '⛏️', radius: 2.3, selRadius: 3.1 });
   e.resourceType = 'gold';
-  e.amount = 800; e.maxAmount = 800;
+  e.amount = 2000; e.maxAmount = 2000;         // (com una veta de diverses caselles de l'AoE II: amb 800 el mapa es quedava sense or a mitja partida)
   e.depleted = false;
   e.shakeT = 0;
   e.particleColor = 0xffd24a;
@@ -62,7 +62,7 @@ function createGoldMine(x, z) {
 function createStoneMine(x, z) {
   const e = new Entity({ kind: 'resource', subtype: 'stone', name: 'Mina de Pedra', icon: '🪨', radius: 2.2, selRadius: 3.0 });
   e.resourceType = 'stone';
-  e.amount = 350; e.maxAmount = 350;
+  e.amount = 1000; e.maxAmount = 1000;
   e.depleted = false;
   e.shakeT = 0;
   e.particleColor = 0xb4b4b4;

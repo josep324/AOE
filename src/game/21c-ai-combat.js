@@ -164,7 +164,9 @@ function aiAttacks(A, C) {
   // --- Exèrcit principal ---
   const homeArmy = aiHomeArmy(A, C);
   const rush = (A.strategy === 'scoutrush' || A.strategy === 'archers' || A.strategy === 'maa') && C.age === 1;
-  const need = Math.round((rush ? D.attackBase * 0.7 : D.attackBase + C.age * 3) + A.attackCount * 2);
+  // (cada atac en demana una mica més, fins a un límit: amb els atacs d'urgència contra una Meravella el comptador
+  //  s'enfilava a 60 i després ja no n'hi havia prou mai)
+  const need = Math.round((rush ? D.attackBase * 0.7 : D.attackBase + C.age * 3) + Math.min(A.attackCount, 8) * 2);
   const waitCastle = (A.strategy === 'fastcastle' || A.strategy === 'boom') && C.age < 2 && !A.urgent;
   // Rival a una altra illa: l'exèrcit hi va amb vaixells de transport (21d)
   aiFerryTick(A, C);

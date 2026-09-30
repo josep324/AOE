@@ -155,9 +155,12 @@ function aiVillagerWork(A, C) {
   // Aldeans inactius → al recurs que més en falta
   for (const u of workers) {
     if (u.state !== STATE.IDLE || u.orderQueue.length || u.buildTarget) continue;
+    let done = false;
     for (const r of deficits()) {
-      if (aiAssign(A, C, u, r)) { counts[r]++; break; }
+      if (aiAssign(A, C, u, r)) { counts[r]++; done = true; break; }
     }
+    // (el que volia s'ha esgotat, p. ex. la fusta al final de la partida: qualsevol altra feina abans que quedar-se quiet)
+    if (!done) for (const r of ['gold', 'stone', 'food', 'wood']) if (want[r] <= 0 && aiAssign(A, C, u, r)) { counts[r]++; break; }
   }
   // Cada 10 s: si un recurs en té de sobres i un altre en falta, en mou un parell
   if (C.now - A.lastRebalance < 10) return;
