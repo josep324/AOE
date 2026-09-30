@@ -5,7 +5,7 @@ export default async ({ open, assert, log }) => {
     const R = window.RTS, S = R.state, P = R.PLAYER.id, E = R.ENEMY.id;
     const run = (s) => { for (let i = 0; i < s * 20; i++) R.simulate(0.05); };
     R.enableAIFor(P, R.DIFFICULTY.normal);
-    run(360);                                                       // 6 minuts
+    run(600);                                                       // 10 minuts (ritme de l'AoE II: la IA Normal arriba a Feudal cap als 8-9)
     const o = {};
     const st = R.STATS;
     o.samples = st.series.length;
@@ -40,10 +40,10 @@ export default async ({ open, assert, log }) => {
     return o;
   });
   log(JSON.stringify(r));
-  assert(r.samples === 13 && r.lastT === 360, 'no es fan les mostres cada 30 segons');
+  assert(r.samples === 21 && r.lastT === 600, 'no es fan les mostres cada 30 segons');
   assert(r.gathered > 1500 && r.villTrained >= 10 && r.trained >= r.villTrained, 'no es compten els recursos o les unitats');
   assert(r.feudal >= 1, 'no es compta el pas d\'edat');
-  assert(r.kill === 1 && r.loss === 1, 'no es compten les baixes');
+  assert(r.kill >= 1 && r.loss === r.kill, 'no es compten les baixes');
   assert(r.score.total > 0 && r.score.eco > 0 && r.score.mil > 0, 'la puntuació no surt');
   assert(r.restored, 'desar i carregar no conserva les estadístiques');
   assert(r.tabs.every(Boolean) && r.svg, 'alguna pestanya de la pantalla no es mostra');

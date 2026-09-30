@@ -30,6 +30,8 @@ export default async ({ open, assert, log }) => {
     o.follow = [Math.round(g.position.distanceTo(v.position)), !!g.follow];
     // Cua de granges: es paguen ara i una granja esgotada es resembra sola
     R.PLAYER.res.wood = 1000;
+    // (lloc lliure per al Molí i la granja: sense mines ni arbres que impedeixin resembrar-la)
+    for (const n of S.resourceNodes.slice()) if (n.subtype !== 'farm' && Math.hypot(n.position.x - (tc.x - 16), n.position.z - (tc.z + 19)) < 14) R.depleteResource(n);
     const mill = R.createBuilding('mill', tc.x - 16, tc.z + 14, true, P);
     const farm = R.createBuilding('farm', tc.x - 16, tc.z + 24, true, P);
     const f = S.units.filter(u => u.team === P && u.subtype === 'villager')[1];
@@ -37,10 +39,10 @@ export default async ({ open, assert, log }) => {
     const w0 = R.PLAYER.res.wood;
     o.queued = R.queueFarm(P, 2);
     o.woodPaid = w0 - R.PLAYER.res.wood;
-    run(5);
+    run(15);
     const node = S.resourceNodes.find(n => n.subtype === 'farm' && n.team === P);
     if (node) node.amount = 1;
-    run(20);
+    run(30);
     o.afterQueue = [R.PLAYER.farmQueue, S.buildings.filter(b2 => b2.subtype === 'farm' && b2.team === P).length + S.resourceNodes.filter(n => n.subtype === 'farm' && n.team === P).length, R.PLAYER.res.wood === w0 - o.woodPaid];
     // Soldats inactius
     R.createSoldierAt('militia', tc.x - 20, tc.z - 20, P);

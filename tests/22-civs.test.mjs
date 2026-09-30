@@ -43,7 +43,7 @@ export default async ({ open, assert, log }) => {
     o.mongolPaladin = R.itemBlockReason('up_paladin', P);
     civ('chinese'); o.chinesePop = R.popCap(P);
     civ('catalans');
-    const m = R.createSoldierAt('militia', ...spot(i++), P); o.catInf = +m.speed.toFixed(2);
+    const m = R.createSoldierAt('militia', ...spot(i++), P); o.catInf = +(m.speed / R.CONFIG.UNITS.militia.speed).toFixed(2);   // (+10%)
     o.catDock = R.costFor('dock', P).wood;
     o.catCamel = R.itemBlockReason('camel', P);
     // Chu Ko Nu: diversos virots per tret
@@ -74,6 +74,6 @@ export default async ({ open, assert, log }) => {
   assert(o.byzSpear[0] === 26 && o.byzSpear[1] === 26 && o.byzAge3 === 670 && o.byzHouse === 660, 'bonificacions dels Bizantins');
   assert(o.mongolScout[0] === 59 && o.mongolScout[1] === 20 && /arbre/.test(o.mongolPaladin), 'bonificacions dels Mongols');
   assert(o.chinesePop === 20, 'el Centre dels Xinesos no dona +10 de població');   // (Centre 15 + la casa bizantina 5)
-  assert(o.catInf > 5.7 && o.catDock === 113 && /arbre/.test(o.catCamel), 'bonificacions dels Catalans');
+  assert(o.catInf >= 1.09 && o.catDock === 113 && /arbre/.test(o.catCamel), 'bonificacions dels Catalans');
   assert(o.chukonuShots >= 3, 'el Chu Ko Nu no dispara diversos virots');
 };

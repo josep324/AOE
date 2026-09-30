@@ -21,6 +21,8 @@ export default async ({ open, assert, log }) => {
       const cx = Math.round(t.position.x + ox * 6), cz = Math.round(t.position.z + oz * 6);
       if (tn(cx, cz, 3.5) > 0 || Math.hypot(cx - R.townCenter.position.x, cz - R.townCenter.position.z) < 25) continue;
       if (o.closures.some(c => Math.hypot(c.at[0] - cx, c.at[1] - cz) < 20)) continue;
+      // (sense mines a la vora: una mina rodona trenca la muralla i deixa escletxes que no són del bosc)
+      if (S.resourceNodes.some(n => (n.subtype === 'gold' || n.subtype === 'stone') && Math.max(Math.abs(n.position.x - cx), Math.abs(n.position.z - cz)) < 11)) continue;
       const h = 7, placed = new Set();
       for (let i = -h; i <= h; i++) for (const [x, z] of [[cx + i, cz - h], [cx + i, cz + h], [cx - h, cz + i], [cx + h, cz + i]]) {
         const X = x + 0.5, Z = z + 0.5, key = X + ',' + Z;

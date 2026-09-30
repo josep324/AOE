@@ -114,8 +114,12 @@ function updateTroops(dt) {
       u.speedCap = moving && d < 4 ? Math.min(u.speed, Math.max(v * 0.25, v + along * 1.2)) : null;
       const aim = moving ? clampToMap(pushOutOfObstacles(new THREE.Vector3(spot.x + fx * 6, 0, spot.z + fz * 6), u.radius + 0.2)) : spot;
       if (u.target && u.path && u.path.length && hDist(u.target, aim) < 0.15) continue;
-      if (unitSegmentWalkable(u, aim.x, aim.z)) {
-        u.target = aim; u.path = [aim]; u.pathVersion = NAV.blockVersion;
+      // (si hi ha un obstacle 6 m endavant, un punt més a prop o el mateix lloc: una unitat que es queda
+      //  sense destí mentre espera el camí complet para i arrenca)
+      const near = moving ? clampToMap(pushOutOfObstacles(new THREE.Vector3(spot.x + fx * 2, 0, spot.z + fz * 2), u.radius + 0.2)) : spot;
+      const go = unitSegmentWalkable(u, aim.x, aim.z) ? aim : unitSegmentWalkable(u, near.x, near.z) ? near : unitSegmentWalkable(u, spot.x, spot.z) ? spot : null;
+      if (go) {
+        u.target = go; u.path = [go]; u.pathVersion = NAV.blockVersion;
       } else if (state.elapsed >= (u.troopPathAt || 0)) {
         u.troopPathAt = state.elapsed + 1;             // (camí complet com a molt un cop per segon)
         setMoveTarget(u, spot);

@@ -60,6 +60,8 @@ export default async ({ open, assert, log }) => {
     // Muralla arrossegada per un bosc amb un forat: només es fan els trams que tanquen el forat
     const fz = cz + 30, fx0 = cx - 12;
     const trees = [];
+    // (la franja, lliure: sense mines ni arbres del mapa que tanquin el forat per un altre costat)
+    for (const n of S.resourceNodes.slice()) if (!n.depleted && Math.abs(n.position.x - (fx0 + 12)) < 18 && Math.abs(n.position.z - fz) < 8) R.depleteResource(n);
     for (let x = fx0; x <= fx0 + 24; x += 2.2) if (Math.abs(x - (fx0 + 12)) > 2.6) for (const dz of [-2.2, 0, 2.2]) trees.push([x, fz + dz]);
     for (const [x, z] of trees) R.createTree(x, z, 1.1).dense = true;
     R.rebuildNav();

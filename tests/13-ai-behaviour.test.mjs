@@ -34,7 +34,10 @@ export default async ({ open, assert, log }) => {
     knights.forEach(k => { if (!k.dead) R.kill(k); });
     run(20);
     o.backToWork = S.units.filter(u => u.team === E && u.subtype === 'villager' && u.garrisoned).length;
-    // 3) Contrarestar: la IA veu molta cavalleria nostra
+    // 3) Contrarestar: la IA veu molta cavalleria nostra (a l'Edat Feudal, per poder fer llancers: amb el ritme de
+    //    l'AoE II i la campana d'abans, potser encara no hi ha arribat)
+    if (R.ENEMY.age < 1) R.completeTech(E, 'age1');
+    R.ENEMY.res.wood += 300; R.ENEMY.res.food += 200;          // (l'atac d'abans li ha buidat el magatzem)
     const cav = Array.from({ length: 12 }, (_, i) => R.createSoldierAt('knight', etc.x + 15 + (i % 4) * 1.6, etc.z + 15 + Math.floor(i / 4) * 1.6, P));
     cav.forEach(k => { k.stance = 'stand'; k.hp = k.maxHp = 1e6; });
     run(4);
@@ -43,7 +46,7 @@ export default async ({ open, assert, log }) => {
     // (se'n van de la base: la IA se'n recorda)
     cav.forEach((k, i) => k.position.set(R.townCenter.position.x + 10 + (i % 4) * 1.6, 0, R.townCenter.position.z + 10 + Math.floor(i / 4) * 1.6));
     const before = S.units.filter(u => u.team === E && u.spearLine).length;
-    run(120);
+    run(180);
     o.spears = [before, S.units.filter(u => u.team === E && u.spearLine).length];
     o.strategy = A.strategy; o.age = R.ENEMY.age; o.res = Object.values(R.ENEMY.res).map(Math.round);
     o.queues = S.buildings.filter(b => b.team === E && b.trainQueue && b.trainQueue.length).map(b => b.subtype + ':' + b.trainQueue.map(q => q.kind).join('+'));

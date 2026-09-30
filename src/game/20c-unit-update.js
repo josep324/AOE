@@ -29,7 +29,8 @@ function kiteStep(u, dt) {
    la riba, un edifici al punt de destí…), primer torna a calcular el camí, després se salta el tram
    i, si tot i així no avança, deixa l'ordre (i la IA o el jugador en donen una altra). */
 function unstick(u, dt, walking) {
-  if (!walking || !u.target) { u.stuckT = 0; u.stuckN = 0; u.stuckRef = null; u.stuckLong = null; return; }
+  // (dins d'una tropa el destí avança amb el guia, i qui s'encalla ja en surt sol als 6 s: 17b-troops)
+  if (!walking || !u.target || (u.troop && u.troop.alive)) { u.stuckT = 0; u.stuckN = 0; u.stuckRef = null; u.stuckLong = null; return; }
   // Progrés: s'ha acostat al destí o s'ha desplaçat de debò (una unitat que tremola endavant i
   // enrere contra un obstacle no fa ni una cosa ni l'altra)
   const x = u.position.x, z = u.position.z, dNow = Math.hypot(u.target.x - x, u.target.z - z);

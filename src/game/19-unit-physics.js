@@ -100,6 +100,9 @@ function separateUnits() {
       // Qui s'aparta: el quiet davant del que camina, i el que camina davant del que treballa (un aldeà que
       // talla o construeix no l'aparten els que arriben; si no, tornaria a caminar i empentaria els altres)
       const wa = sepWeight(a), wb = sepWeight(b);
+      // (un que camina i ja porta estona encallat entre els que treballen hi passa pel mig: a la velocitat de
+      //  l'AoE II, un aldeà que va a 2,9 m/s no pot vèncer les empentes d'un grup de pastors o llenyataires)
+      if ((wa < wb && a.stuckN && wa > 0) || (wb < wa && b.stuckN && wb > 0)) continue;
       if (wa === wb) {
         a.position.x -= nx * overlap * 0.5; a.position.z -= nz * overlap * 0.5;
         b.position.x += nx * overlap * 0.5; b.position.z += nz * overlap * 0.5;

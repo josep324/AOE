@@ -17,7 +17,7 @@ function aiPickStrategy(A) {
   return opts[Math.floor(rand() * opts.length)];
 }
 /* Aldeans per pujar a cada edat segons l'obertura (Feudal, Castells, Imperial) */
-const AI_AGE_VILLS = { scoutrush: [21, 30, 55], archers: [22, 31, 55], maa: [20, 30, 55], fastcastle: [24, 27, 55], boom: [26, 34, 60] };
+const AI_AGE_VILLS = { scoutrush: [20, 30, 55], archers: [21, 31, 55], maa: [19, 30, 55], fastcastle: [23, 27, 55], boom: [24, 34, 60] };
 /* Edifici que entrena cada tipus d'unitat (línia base) */
 const AI_TRAINER = { militia: 'barracks', spearman: 'barracks', archer: 'archeryrange', skirmisher: 'archeryrange', cavarcher: 'archeryrange',
   handcannon: 'archeryrange', scout: 'stable', knight: 'stable', camel: 'stable', ram: 'siegeworkshop', mangonel: 'siegeworkshop', scorpion: 'siegeworkshop',

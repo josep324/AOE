@@ -9,7 +9,7 @@ export default async ({ open, assert, log }) => {
     // Punteria: arquers contra genets que es mouen, sense i amb Balística
     const volley = () => {
       const tgt = R.createSoldierAt('scout', 30, 0, E);
-      tgt.hp = tgt.maxHp = 100000; tgt.stance = 'stand';
+      tgt.hp = tgt.maxHp = 100000; tgt.stance = 'stand'; tgt.speed = 8;   // (un genet ràpid que esquiva)
       const archers = Array.from({ length: 8 }, (_, i) => R.createSoldierAt('archer', 20 + (i % 4), -12 + Math.floor(i / 4), P));
       R.setStance(archers, 'stand');
       let dealt = 0;
