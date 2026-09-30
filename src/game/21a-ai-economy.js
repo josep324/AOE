@@ -126,7 +126,7 @@ function aiWildFood(A, C, u) {
     if (n.subtype === 'deer' && n.alive && d > 30) continue;          // cérvols massa lluny: no val la pena
     if (d > 42) continue;
     d += hDist(n.position, u.position) * 0.3;
-    if (u.avoidNode === n && state.elapsed < u.avoidUntil) continue;   // no hi ha pogut arribar fa poc
+    if (isAvoided(u, n)) continue;   // no hi ha pogut arribar fa poc
     if (d < bd && canReach(u, n)) { bd = d; best = n; }              // (un cérvol mort dins del bosc, no)
   }
   return best;

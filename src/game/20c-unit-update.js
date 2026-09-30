@@ -48,7 +48,7 @@ function unstick(u, dt, walking) {
     else if (u.gatherNode && u.state === STATE.MOVING) {
       // No arriba al recurs (p. ex. un banc de peixos arran del moll): el deixa estar un minut i en busca un altre
       const node = u.gatherNode;
-      u.avoidNode = node; u.avoidUntil = state.elapsed + 60;
+      avoidNode(u, node);
       const next = nearestResource(node.resourceType, u.position, 60, u);
       if (next) orderGather(u, next, null);
       else { u.gatherNode = null; setMoveTarget(u, null); setUnitState(u, STATE.IDLE); }

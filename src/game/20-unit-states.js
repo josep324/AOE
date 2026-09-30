@@ -88,6 +88,19 @@ function nearestDropoff(pos, type = null, team = PLAYER.id, naval = false) {
   }
   return best || any;
 }
+/* Recursos on una unitat no ha pogut arribar: no hi torna durant un minut (se'n recorden diversos:
+   amb un de sol, dos cadàvers inabastables al costat d'un bosc la feien anar de l'un a l'altre sense parar) */
+function avoidNode(u, n) {
+  if (!u.avoid) u.avoid = new Map();
+  u.avoid.set(n, state.elapsed + 60);
+}
+function isAvoided(u, n) {
+  const t = u.avoid && u.avoid.get(n);
+  if (t === undefined) return false;
+  if (state.elapsed < t) return true;
+  u.avoid.delete(n);
+  return false;
+}
 function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
   let best = null, bestD = maxDist;
   for (const n of state.resourceNodes) {
@@ -95,7 +108,7 @@ function nearestResource(type, pos, maxDist = Infinity, forUnit = null) {
     if (n.subtype === 'boar' && n.alive) continue;          // els senglars només si l'ordena el jugador
     if (forUnit && forUnit.naval ? !(n.subtype === 'fish' || n.subtype === 'deepfish') : n.subtype === 'deepfish') continue;
     if (farmTaken(n, forUnit)) continue;
-    if (forUnit && forUnit.avoidNode === n && state.elapsed < forUnit.avoidUntil) continue;   // no hi ha pogut arribar fa poc
+    if (forUnit && isAvoided(forUnit, n)) continue;   // no hi ha pogut arribar fa poc
     if (n.subtype === 'farm' && forUnit && n.team !== forUnit.team) continue;
     const d = hDist(n.position, pos);
     if (d < bestD && (!forUnit || canReach(forUnit, n))) { bestD = d; best = n; }   // (no, si és en un altre llac o dins d'un bosc tancat)
@@ -168,7 +181,7 @@ function retryApproach(u) {
   u.approachTries++;
   if (u.approachTries > 6) {
     // No hi arriba: no hi torna a anar durant un minut (si no, la IA li tornaria a manar)
-    if (u.gatherNode) { u.avoidNode = u.gatherNode; u.avoidUntil = state.elapsed + 60; }
+    if (u.gatherNode) avoidNode(u, u.gatherNode);
     u.buildTarget = null;
     u.gatherNode = null;
     setUnitState(u, STATE.IDLE);
