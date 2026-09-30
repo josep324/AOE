@@ -152,3 +152,28 @@ recursos negatius, població per sobre del límit i si la IA puja d'edat, invest
 estratègica, com a l'AoE II); algun aldeà que torna d'una caça llunyana pesca des de la riba lluny del
 magatzem. El cost de la simulació amb 4 jugadors al final de la partida (500+ unitats) és d'uns 10–13 s per
 minut de joc en aquest ordinador sense GPU.
+
+---
+
+## 6. Ritme, or i pedra, comerç (igualats a l'AoE II DE)
+
+Abans el joc anava gairebé al doble de l'AoE II: l'aldeà caminava a 5,5 m/s (a l'AoE II, 0,8 caselles/s ≈ 2,9 m/s a
+velocitat Normal) i recollia prop del doble. Ara tot surt de les taules de l'AoE II DE (`src/data/tempo.js`), passades a
+temps real amb el factor de la velocitat Normal (1,7 segons de joc per segon real):
+
+| | Abans | Ara (AoE II DE) |
+|---|---|---|
+| Aldeà: temps / velocitat | 12 s / 5,5 m/s | 14,7 s / 2,9 m/s |
+| Cavaller | 28 s / 7,4 m/s | 17,6 s / 4,9 m/s |
+| Edat Feudal / Castells / Imperial | 40 / 60 / 75 s | 76 / 94 / 112 s |
+| Tallar fusta / or | 1,25 / 0,95 per s | 0,66 / 0,65 per s |
+| Veta d'or a casa | 2 × 2.000 | 5.600 + 3.200 + 3.200 |
+| Pedra a casa | 1.000 | 1.750 + 1.400 |
+| Carro de comerç (mapa Mitjà, mercats a 150 m) | ~3 d'or/s | ~0,56 d'or/s (fórmula de l'AoE II DE) |
+
+**Ritme Ràpid ×1,5** (menú, es desa amb la partida): multiplica recol·lectar, entrenar, investigar i construir. El
+moviment, les recàrregues i els projectils no canvien, perquè el combat i el micro no siguin ofegants.
+
+Efectes secundaris corregits: a 2,9 m/s un aldeà no podia travessar un grup de pastors (les empentes guanyaven);
+ara qui porta estona encallat hi passa pel mig. Les unitats d'una tropa ja no «s'encallen» per anar al pas del guia.
+La IA puja a Feudal amb 19–24 aldeans, com a l'AoE II.

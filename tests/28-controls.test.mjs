@@ -45,7 +45,27 @@ export default async ({ open, assert, log }) => {
   const del0 = await page.evaluate(() => { const R = window.RTS; const u = R.state.units.filter(x => x.isOwn && x.unitKind === 'militia').slice(0, 2); R.setSelection(u); return R.state.units.length; });
   await page.keyboard.press('Delete');
   const del1 = await page.evaluate(() => window.RTS.state.units.length);
-  log(JSON.stringify({ q1, q6, hk, r, sp1, sp2, jumped, del: del0 - del1 }));
+  // Ritme Ràpid ×1,5: entrenar i recol·lectar més de pressa; caminar, igual
+  const pace = await page.evaluate(() => {
+    const R = window.RTS, b = window.__bar, C = R.CONFIG;
+    const measure = () => {
+      b.trainQueue.length = 0; b.autoQueue = null;
+      R.queueUnit(b, 'militia');
+      const v = R.state.units.find(u => u.isOwn && u.subtype === 'villager');
+      const w = R.state.units.find(u => u.isOwn && u.isMilitary);
+      const p0 = w.position.clone(); R.commandMove([w], p0.clone().add(new R.THREE.Vector3(30, 0, 0)));
+      const t0 = b.trainQueue[0] ? b.trainQueue[0].t : 0;
+      for (let i = 0; i < 40; i++) R.simulate(0.05);
+      return { train: b.trainQueue[0] ? b.trainQueue[0].t - t0 : -1, walk: w.position.distanceTo(p0) };
+    };
+    const n = measure(); C.PACE = 1.5; const f = measure(); C.PACE = 1;
+    const saved = (() => { C.PACE = 1.5; const d = R.serializeGame(); C.PACE = 1; return d.pace; })();
+    return { n, f, saved, fastBtn: !!document.querySelector('#pace-choices [data-pace=fast]') };
+  });
+  log(JSON.stringify({ q1, q6, hk, r, sp1, sp2, jumped, del: del0 - del1, pace }));
+  assert(pace.fastBtn && pace.saved === 1.5, 'no hi ha l\'opció de ritme o no es desa');
+  assert(pace.n.train > 0 && Math.abs(pace.f.train / pace.n.train - 1.5) < 0.05, 'el ritme Ràpid no accelera l\'entrenament');
+  assert(Math.abs(pace.f.walk - pace.n.walk) < 0.3, 'el ritme Ràpid no hauria de canviar el moviment');
   assert(del0 - del1 === 2, 'Supr no elimina les unitats seleccionades');
   assert(q1 === 1 && q6 === 6, 'les tecles d\'entrenament (i Shift = 5) no funcionen');
   assert(hk === 'Q', 'el botó no mostra la lletra');
