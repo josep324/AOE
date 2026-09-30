@@ -40,11 +40,25 @@ export default async ({ open, assert, log }) => {
     for (let i = 0; i < 3 * 20; i++) R.simulate(0.05);
     o.bigArmy = A.army ? A.army.units.length : 0;
     o.bigTarget = A.army && A.army.target && A.army.target.subtype;
+    // 3) Sense urgència: un exèrcit que ha perdut dos terços davant les torres no rep reforços de 10 en 10
+    //    (es perdien pel camí): es retira i s'ajunta amb els nous
+    S.relicWin = null; mon.relics = []; S.relics.forEach(rl => { rl.holder = null; });
+    S.units.filter(u => u.team === E && u.isMilitary).forEach(u => R.kill(u));
+    for (let i = 0; i < 20; i++) R.simulate(0.05);
+    const left = Array.from({ length: 4 }, (_, i) => R.createSoldierAt('manatarms', tc.x + 20 + i, tc.z + 20, E));
+    left.forEach(u => { u.aiRole = 'army'; });
+    A.army = { units: left, rally: C0.homeRally.clone(), phase: 'attack', t0: S.elapsed, target: R.townCenter, str0: 40 };
+    A.urgent = false; A.wasUrgent = false;
+    const home = mk(10);
+    for (let i = 0; i < 3 * 20; i++) R.simulate(0.05);
+    o.reinforced = home.filter(u => !u.dead && u.aiRole === 'army').length;
+    o.retreated = !A.army || A.army.units !== left;
     return o;
   });
   log(JSON.stringify(r));
   assert(r.defTC > 12 && r.defBar < 3, 'la IA no veu la defensa de les torres');
   assert(r.target1 !== 'towncenter' && r.target1 !== 'watchtower', 'la IA envia un grup petit contra les torres');
   assert(!r.smallArmy, 'la IA ataca amb un grup de 6 per recuperar les relíquies');
+  assert(r.reinforced === 0 && r.retreated, 'la IA envia reforços a un exèrcit que ja ha perdut (onades de 10)');
   assert(r.bigArmy >= 14 && r.bigTarget === 'monastery', 'la IA no hi va amb un exèrcit de debò contra el Monestir');
 };

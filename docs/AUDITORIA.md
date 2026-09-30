@@ -193,3 +193,13 @@ contra les torres del jugador (898 baixes contra 69). Causes i correccions:
   tot està més ben defensat que el que porta, espera i creix (o hi va amb la població plena).
 - Els reforços només s'afegeixen si, junts, poden guanyar; si no, esperen el proper atac. Després de perdre
   l'exèrcit, espera 90 s.
+
+**Segona ronda — onades de ~10 també sense urgència.** Reproduït amb un jugador defensat amb torres: la IA llançava
+un exèrcit, i després enviava els reforços (9–10 unitats cada ~30 s) cap a la mitjana de posicions del seu exèrcit.
+Amb l'exèrcit escampat, aquest punt quedava enmig del no-res (força pròpia 0, rival 0), i ni es retirava ni deixava
+d'enviar reforços, que arribaven sols a les torres. Ara:
+- La IA mira el **nucli** de l'exèrcit (el grup més dens), no la mitjana.
+- Si el que queda és menys d'un terç del que va sortir, **es retira** i s'ajunta amb els nous; si l'exèrcit és gran però
+  s'ha partit, primer es reagrupa al nucli.
+- Els reforços només hi van si l'exèrcit encara conserva la meitat de la força i, junts, poden guanyar.
+Resultat en la mateixa simulació: atacs de 41, 70, 106 i 82 unitats en lloc d'onades de 10.

@@ -23,6 +23,20 @@ const centroidOf = (units) => {
   units.forEach(u => c.add(u.position));
   return units.length ? c.divideScalar(units.length) : c;
 };
+/* Nucli de l'exèrcit: el grup més dens (la mitjana d'unes quantes que lluiten i d'altres que tornen o
+   s'endarrereixen queda enmig del no-res, on no hi ha ni amics ni enemics) */
+function aiArmyCore(units) {
+  let best = units[0], bn = -1;
+  const step = Math.max(1, Math.floor(units.length / 30));
+  for (let i = 0; i < units.length; i += step) {
+    const a = units[i];
+    let n = 0;
+    for (const b of units) if (hDist(a.position, b.position) < 18) n++;
+    if (n > bn) { bn = n; best = a; }
+  }
+  const core = units.filter(u => hDist(u.position, best.position) < 28);
+  return { core, c: centroidOf(core) };
+}
 /* Unitats de l'exèrcit que són a casa (sense cap altra feina) */
 const aiHomeArmy = (A, C) => C.army.filter(u => !u.aiRole && !u.garrisoned);
 
@@ -216,7 +230,7 @@ function aiAttacks(A, C) {
       const rally = clampToMap(aiHighSpot(C.home.clone().addScaledVector(dir, 24), 10));
       homeArmy.forEach(u => { u.aiRole = 'army'; u.speedCap = null; });
       commandMove(homeArmy, rally);
-      A.army = { units: homeArmy, rally, phase: 'gather', t0: now, target };
+      A.army = { units: homeArmy, rally, phase: 'gather', t0: now, target, str0: homeStr };
     }
   }
   const W = A.army;
@@ -234,6 +248,7 @@ function aiAttacks(A, C) {
       W.units.forEach(u => { u.speedCap = slow; });
       commandAttackMove(W.units, target.kind === 'unit' ? target.position.clone() : approachPoint(target, W.rally));
       W.phase = 'attack';
+      W.str0 = W.units.reduce((s, u) => s + unitStrength(u), 0);
       A.attackCount++;
       if (A.foe === PLAYER.id) toast(`⚠️ L'enemic (${civOf(C.T).name}) ataca amb ${W.units.length} unitats!`);
       else if (allied(A.foe, PLAYER.id)) toast(`⚠️ ${teamOf(C.T).name} ataca el teu aliat amb ${W.units.length} unitats`);
@@ -242,24 +257,32 @@ function aiAttacks(A, C) {
     return;
   }
   // Atacant: reforços, setge contra edificis, retirada si perd
-  const c = centroidOf(W.units);
-  const reinf = homeArmy;
-  // (els reforços hi van en grup, no un a un a mesura que surten dels edificis)
-  // (a una altra illa, els reforços hi van en una altra travessia)
-  const near = W.units.filter(u => hDist(u.position, c) < 28);
-  const myStr = near.reduce((s, u) => s + unitStrength(u), 0);
+  const { core, c } = aiArmyCore(W.units);
+  const myStr = core.reduce((s, u) => s + unitStrength(u), 0);
   const foeStr = aiFoeStrengthAt(A, c, 24);
-  // (els reforços només s'hi afegeixen si, junts, poden guanyar; si no, es queden per a l'atac següent:
-  //  un grup de reforços que arriba sol a les torres es perd sense fer res)
-  const reinfStr = reinf.reduce((s, u) => s + unitStrength(u), 0);
-  if (reinf.length >= Math.max(6, Math.round(need * 0.4)) && myStr + reinfStr >= foeStr * 0.9) {
-    if (!W.overseas) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
-    else if (!A.ferry) aiStartFerry(A, C, reinf, true);
-  }
+  W.str0 = Math.max(W.str0 || 0, 1);
+  // Es retira si perd el combat, o si del que va sortir en queda menys d'un terç: els que queden tornen i s'ajunten
+  // amb els nous per a un atac de debò (abans hi anaven grups de reforços de 10 cada mig minut, que es perdien)
   // (desembarcats no es poden retirar: lluiten fins al final; en una urgència, només si és inútil i encara hi ha temps)
   const U3 = A.urgent ? aiUrgentObjective(A) : null;
-  const lose = U3 ? U3.left > 75 && myStr < foeStr * 0.4 : myStr < foeStr * 0.65;
+  // (un exèrcit gran que s'ha partit primer es reagrupa al nucli; només es retira si en total ja no val prou)
+  const allStr = W.units.reduce((s, u) => s + unitStrength(u), 0);
+  if (myStr < W.str0 * 0.35 && allStr >= W.str0 * 0.5 && foeStr < myStr && C.now >= (W.regroupAt || 0)) {
+    W.regroupAt = C.now + 15;
+    const out = W.units.filter(u => !core.includes(u) && u.state !== STATE.ATTACKING);
+    if (out.length) commandAttackMove(out, c.clone());
+  }
+  const spent = allStr < W.str0 * 0.35 || (myStr < W.str0 * 0.2 && foeStr > 0);
+  const lose = U3 ? U3.left > 75 && (myStr < foeStr * 0.4 || spent) : myStr < foeStr * 0.65 || spent;
   if (!W.overseas && lose) { aiRetreat(A, C, W); A.nextAttackAt = now + 75; return; }
+  // Reforços: en grup i només si l'exèrcit encara és fort i, junts, poden guanyar; si no, es queden a casa per a
+  // l'atac següent (a una altra illa, hi van en una altra travessia)
+  const reinf = homeArmy;
+  const reinfStr = reinf.reduce((s, u) => s + unitStrength(u), 0);
+  if (reinf.length >= Math.max(6, Math.round(need * 0.4)) && myStr >= W.str0 * 0.5 && myStr + reinfStr >= foeStr * 1.1) {
+    if (!W.overseas) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); W.str0 += reinfStr; }
+    else if (!A.ferry) aiStartFerry(A, C, reinf, true);
+  }
   for (const u of W.units) {
     if (u.category !== 'siege') continue;
     const isRam = (CONFIG.UNITS[u.unitKind].line || u.unitKind) === 'ram';
