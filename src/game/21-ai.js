@@ -314,6 +314,7 @@ function aiThink(A) {
   aiEconomy(A, C);
   aiAgesAndTechs(A, C);
   aiProduction(A, C);
+  aiSpendSurplus(A, C);
   aiScout(A, C);
   aiDefense(A, C);
   aiHelpAllies(A, C);

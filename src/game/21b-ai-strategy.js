@@ -384,3 +384,46 @@ function aiScout(A, C) {
     P.t = C.now;
   }
 }
+
+/* ---------- Recursos que sobren (com la IA de l'AoE II a la part final de la partida) ----------
+   Amb molts recursos al banc, sobretot amb la població plena, la IA els fa servir: les tecnologies que
+   li queden (les més barates primer), més edificis militars, un altre castell i torres */
+const costSum = (c) => (c.food || 0) + (c.wood || 0) + (c.gold || 0) + (c.stone || 0);
+function aiSpendSurplus(A, C) {
+  if (A.saving || C.age < 2 || C.now < (A.surplusAt || 0)) return;
+  A.surplusAt = C.now + 4;
+  const R = C.res, bank = R.food + R.wood + R.gold, D = C.D;
+  if (bank < 3000) return;
+  const keep = { food: 400, wood: 400, gold: 300, stone: 200 };
+  const spare = (cost) => Object.entries(cost).every(([k, v]) => R[k] - v >= (keep[k] || 0));
+  // 1) Tecnologies que queden
+  const left = Object.entries(CONFIG.TECHS)
+    .filter(([k, d]) => !d.ageUp && !(d.civ && d.civ !== C.E.civ) && !C.E.techs.has(k) && (d.age || 0) <= C.age && !techQueued(C.T, k))
+    .map(([k]) => [k, costFor(k, C.T)]).sort((a, b) => costSum(a[1]) - costSum(b[1]));
+  let n = 0;
+  for (const [k, cost] of left) { if (n >= 2) break; if (spare(cost) && aiTryTech(A, C, k)) n++; }
+  // 2) Més edificis militars, si hi ha població per omplir-los
+  const room = popCap(C.T) - popUsed(C.T);
+  const mil = ['barracks', 'archeryrange', 'stable', 'siegeworkshop'];
+  if (bank > 5000 && room > 10 && !C.blds.some(b => b.underConstruction && mil.includes(b.subtype))) {
+    const comp = aiComposition(A, C), byB = {};
+    for (const [k, w] of Object.entries(comp)) { const b = AI_TRAINER[k]; if (b && b !== 'castle') byB[b] = (byB[b] || 0) + w; }
+    for (const [bt] of Object.entries(byB).sort((a, b) => b[1] - a[1])) {
+      if (C.count(bt) >= D.prodMax + 2 || (bt === 'siegeworkshop' && C.count(bt) >= 2)) continue;
+      if (spare(costFor(bt, C.T)) && aiBuild(A, bt, C.home, 13, 40, 2)) return;
+    }
+  }
+  // 3) Pedra que sobra: un altre castell (cap a la base rival) o torres als campaments
+  if (D !== DIFFICULTY.easy && R.stone >= 850 && C.has('castle', true) && C.count('castle') < (D.micro >= 2 ? 3 : 2) && !C.blds.some(b => b.subtype === 'castle' && b.underConstruction)) {
+    const tc = C.tcs[C.count('castle') % C.tcs.length] || C.tcs[0];
+    const dir = new THREE.Vector3(C.foeHome.x - tc.position.x, 0, C.foeHome.z - tc.position.z).normalize();
+    if (aiBuild(A, 'castle', aiHighSpot(tc.position.clone().addScaledVector(dir, 20), 12), 0, 20, 4)) return;
+  }
+  const tower = C.E.techs.has('bombardtowertech') ? 'bombardtower' : 'watchtower';
+  const towers = C.count('watchtower') + C.count('bombardtower');
+  if (R.stone >= 450 && towers < D.towers + 4 && spare(costFor(tower, C.T))) {
+    const spots = C.blds.filter(b => ['miningcamp', 'lumbercamp', 'mill', 'dock', 'towncenter'].includes(b.subtype) && !b.underConstruction
+      && !C.blds.some(t => (t.subtype === 'watchtower' || t.subtype === 'bombardtower') && hDist(t.position, b.position) < 16));
+    if (spots.length) aiBuild(A, tower, aiHighSpot(spots[0].position, 8), 3, 12);
+  }
+}

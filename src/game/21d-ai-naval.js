@@ -257,8 +257,12 @@ function aiNaval(A, C) {
   if (!WATER.any) return;
   const T = C.T, D = C.D, now = C.now, over = C.overseas;
   const docks = C.blds.filter(b => b.subtype === 'dock');
-  // (a les Illes el moll és el primer que cal: pesca i, després, transports i flota)
-  const wantDocks = over && C.age >= 1 && C.vn >= 30 ? 2 : 1;
+  // Flota rival a prop de casa (es calcula aquí: si en té més, calen més molls per refer-se)
+  const foeNear = state.units.filter(u => u.naval && u.isMilitary && !u.dead && !u.garrisoned && hostile(u.team, T)
+    && (hDist(u.position, C.home) < 130 || docks.some(d => hDist(u.position, d.position) < 70)));
+  const myFleet = C.ships.filter(u => u.isMilitary);
+  // (a les Illes el moll és el primer que cal: pesca i, després, transports i flota; si perd el mar, un tercer moll)
+  const wantDocks = over && C.age >= 1 && C.vn >= 30 ? (foeNear.length > myFleet.length && C.age >= 2 ? 3 : 2) : 1;
   // (a les Illes, el primer moll no s'espera a l'estalvi per a l'edat: sense moll no hi ha res a fer)
   if (docks.length < wantDocks && C.villagers.length >= (over ? 6 : 10) && C.res.wood >= 170 && (!A.saving || (over && !docks.length)) && now > (A.dockSearchAt || 0)) {
     A.dockSearchAt = now + 30;
@@ -274,8 +278,7 @@ function aiNaval(A, C) {
   const fishers = C.ships.filter(u => u.subtype === 'fishingship'), fleet = C.ships.filter(u => u.isMilitary);
   const transports = aiTransports(C);
   // Flota rival a prop de casa: si en té més, primer galeres (i no pesquers, que s'enfonsarien)
-  const foeFleet = state.units.filter(u => u.naval && u.isMilitary && !u.dead && !u.garrisoned && hostile(u.team, T)
-    && (hDist(u.position, C.home) < 130 || docks.some(d => hDist(u.position, d.position) < 70))).length;
+  const foeFleet = foeNear.length;
   const outgunned = foeFleet > fleet.length;
   const fleetMax = D === DIFFICULTY.easy ? 2 : Math.max(D.micro >= 2 ? (over ? 12 : 7) : (over ? 7 : 4), Math.min(15, foeFleet + 2));
   // Transports: prou per portar l'exèrcit que es reuneix (fins a 3), a partir de l'Edat Feudal
@@ -300,14 +303,40 @@ function aiNaval(A, C) {
     }
   }
   const dock = built[0];
-  if (dock && C.age >= 2 && C.res.gold > 300 && !A.saving) for (const k of ['up_wargalley', 'gillnets', 'careening']) aiTryTech(A, C, k);
+  // (perdent el mar, les millores de la flota passen al davant)
+  if (dock && C.age >= 2 && C.res.gold > (outgunned ? 150 : 300) && (!A.saving || outgunned)) for (const k of ['up_wargalley', 'careening', 'gillnets']) aiTryTech(A, C, k);
+  // Torres a la riba, al costat dels molls, quan la flota rival ve a casa
+  if (outgunned && C.age >= 1 && foeFleet >= 2 && C.res.stone >= 125 && now > (A.coastTowerAt || 0)) {
+    A.coastTowerAt = now + 25;
+    const tower = C.E.techs.has('bombardtowertech') ? 'bombardtower' : 'watchtower';
+    const d = built.find(b => !C.blds.some(t => (t.subtype === 'watchtower' || t.subtype === 'bombardtower') && hDist(t.position, b.position) < 14));
+    if (d && canAfford(costFor(tower, T), T)) aiBuild(A, tower, d.position, 4, 12);
+  }
   if (dock && C.age >= 3 && C.res.gold > 700 && !A.saving) for (const k of ['up_galleon', 'drydock', 'up_fastfireship', 'heatedshot']) aiTryTech(A, C, k);
   for (const f of fishers) if (f.state === STATE.IDLE) { const n = nearestResource('food', f.position, 220, f); if (n) orderGather(f, n, null); }
   // Transports sense feina: esperen a prop de casa
   const inFerry = new Set(A.ferry ? A.ferry.ships : []);
   for (const s of transports) if (!inFerry.has(s) && s.state === STATE.IDLE && hDist(s.position, C.home) > 70) orderMove(s, fitToMedium(C.homeRally, true));
-  // Flota: quan n'hi ha prou, ataca els vaixells rivals o el seu moll
-  if (fleet.length >= 3) for (const w of fleet) {
+  // Flota: tota junta. Defensa sempre (vaixells rivals a prop de casa); a l'atac només amb una força semblant
+  // a la del rival (si no, les galeres anaven d'una en una a enfonsar-se i el mar no es recuperava mai)
+  const idleFleet = fleet.filter(w => w.state === STATE.IDLE);
+  if (foeNear.length && idleFleet.length) {
+    for (const w of idleFleet) {
+      let tgt = null, bd = Infinity;
+      for (const u of foeNear) { const d = hDist(u.position, w.position); if (d < bd && canReach(w, u, w.range)) { bd = d; tgt = u; } }
+      if (tgt) { orderAttack(w, tgt, false); w.forcedTarget = true; }
+    }
+    return;
+  }
+  const foeAll = state.units.filter(u => u.naval && u.isMilitary && !u.dead && !u.garrisoned && hostile(u.team, T)).length;
+  const strong = fleet.length >= 3 && fleet.length >= foeAll * 0.8;
+  if (!strong) {
+    // Esperen plegats a prop del moll
+    const home = dock && fitToMedium(dock.position.clone().add(new THREE.Vector3(0, 0, 0)), true);
+    if (home) for (const w of idleFleet) if (hDist(w.position, home) > 18) orderMove(w, home.clone().add(new THREE.Vector3((w.id % 5) - 2, 0, ((w.id * 3) % 5) - 2)));
+    return;
+  }
+  for (const w of fleet) {
     if (w.state !== STATE.IDLE) continue;
     let tgt = null, bd = Infinity;
     // (només el que pot atacar des de la seva aigua: un vaixell d'un altre llac no)
