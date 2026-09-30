@@ -290,14 +290,15 @@ function aiMonks(A, C) {
   for (const m of C.monks) {
     if (m.state !== STATE.IDLE) continue;
     if (m.relic) { orderDepositRelic(m); continue; }
-    const free = mon ? state.relics.filter(r => !r.carrier && !r.holder && !claimed.has(r))
+    // (només les que es poden abastar caminant: a les Illes, les d'una altra illa no)
+    const free = mon ? state.relics.filter(r => !r.carrier && !r.holder && !claimed.has(r) && canReach(m, r, 2))
       .sort((a, b) => hDist(a.position, m.position) - hDist(b.position, m.position))[0] : null;
     if (free) { orderPickRelic(m, free); claimed.add(free); continue; }
     // Si no hi ha relíquies: acompanyen l'exèrcit per curar i convertir
     const W = A.army;
     if (W && W.phase === 'attack' && W.units.length) {
       const c = centroidOf(W.units);
-      if (hDist(c, m.position) > 8) { orderMove(m, clampToMap(c)); m.attackMove = c.clone(); }
+      if (hDist(c, m.position) > 8 && canReach(m, { position: c, radius: 1 }, 4)) { orderMove(m, clampToMap(c)); m.attackMove = c.clone(); }
     }
   }
 }

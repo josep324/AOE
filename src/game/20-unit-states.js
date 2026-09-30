@@ -229,6 +229,12 @@ function goToDropoff(u, building = null) {
   const nv = !!u.naval;
   const tc = acceptsDropoff(building, u.carry.type, u.team, nv) ? building : nearestDropoff(u.position, u.carry.type, u.team, nv);
   if (!tc) { setMoveTarget(u, null); setUnitState(u, STATE.IDLE); if (nv && u.isOwn) toast('⚓ Cal un Moll acabat perquè el vaixell hi descarregui'); return; }
+  // Cap magatzem a l'abast (p. ex. en un illot sense campament): s'atura en lloc de caminar cap a l'aigua
+  if (!canReach(u, tc, 2)) {
+    setMoveTarget(u, null); setUnitState(u, STATE.IDLE);
+    if (u.isOwn && state.elapsed > (goToDropoff.warnAt || 0)) { goToDropoff.warnAt = state.elapsed + 20; toast('📦 Aquests aldeans no tenen cap magatzem a l\'abast: construeix-hi un campament'); }
+    return;
+  }
   u.dropTarget = tc;
   // (en cada nou intent, un altre costat de l'edifici: el d'abans el tapen els companys que hi descarreguen)
   setMoveTarget(u, approachPoint(tc, u.position, ((u.id % 7) - 3) * 0.06 + (building ? (u.approachTries || 0) * 0.8 : 0), nv));
