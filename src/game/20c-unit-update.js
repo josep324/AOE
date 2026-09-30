@@ -29,18 +29,40 @@ function kiteStep(u, dt) {
    la riba, un edifici al punt de destí…), primer torna a calcular el camí, després se salta el tram
    i, si tot i així no avança, deixa l'ordre (i la IA o el jugador en donen una altra). */
 function unstick(u, dt, walking) {
-  if (!walking || !u.target) { u.stuckT = 0; u.stuckN = 0; u.stuckRef = null; return; }
+  if (!walking || !u.target) { u.stuckT = 0; u.stuckN = 0; u.stuckRef = null; u.stuckLong = null; return; }
   // Progrés: s'ha acostat al destí o s'ha desplaçat de debò (una unitat que tremola endavant i
   // enrere contra un obstacle no fa ni una cosa ni l'altra)
   const x = u.position.x, z = u.position.z, dNow = Math.hypot(u.target.x - x, u.target.z - z);
   if (!u.stuckRef) { u.stuckRef = { x, z, d: dNow }; u.stuckT = 0; return; }
+  // A més llarg termini (6 s): el camí que li queda s'ha d'haver escurçat. Un vaixell que va i ve
+  // contra una punta de terra es desplaça prou per semblar que avança, però no s'acosta mai
+  // (el camí que queda de debò, tram a tram: fent una volta llarga per un bosc la distància en línia recta no baixa)
+  let rest = 0;
+  if (u.path && u.path.length) {
+    rest = hDist(u.position, u.path[0]);
+    for (let i = 1; i < u.path.length; i++) rest += hDist(u.path[i - 1], u.path[i]);
+  } else rest = dNow;
+  if (!u.stuckLong || u.stuckLong.tgt !== u.target) u.stuckLong = { t: state.elapsed, rest, tgt: u.target };
+  else if (state.elapsed - u.stuckLong.t >= 6) {
+    const moved = u.stuckLong.rest - rest > 1.5;
+    u.stuckLong = { t: state.elapsed, rest, tgt: u.target };
+    if (!moved && !(u.troop && u.troop.alive)) { u.stuckN = Math.max(u.stuckN || 0, 1); u.stuckT = 1.5; u.stuckForce = true; }
+  }
   u.stuckT += dt;
   if (u.stuckT < 1.5) return;
   const ref = u.stuckRef;
   u.stuckRef = { x, z, d: dNow }; u.stuckT = 0;
-  if (ref.d - dNow > 0.4 || Math.hypot(x - ref.x, z - ref.z) > 1.2) { u.stuckN = 0; return; }
+  const forced = u.stuckForce; u.stuckForce = false;
+  if (!forced && (ref.d - dNow > 0.4 || Math.hypot(x - ref.x, z - ref.z) > 1.2)) { u.stuckN = 0; return; }
   u.stuckN = (u.stuckN || 0) + 1;
   if (u.stuckN === 1) setMoveTarget(u, u.target);                        // camí nou
+  else if (u.stuckN === 2 && u.naval) {
+    // Vaixell encallat en una punta de terra: primer s'aparta cap a aigua oberta (lluny de la riba)
+    const N = NAV.N;
+    const open = nearestCellWhere(u.position, (x, z) => isOpenWater(x, z) && NAV.nclear[navCell(z) * N + navCell(x)] >= 2
+      && hDist({ x, z }, u.position) > 1.5, 6);
+    if (open) { if (!u.path) u.path = []; u.path.unshift(open); }
+  }
   else if (u.stuckN === 2 && u.path && u.path.length > 1) u.path.shift();  // se salta el tram
   else if (u.stuckN >= 3) {
     u.stuckN = 0;

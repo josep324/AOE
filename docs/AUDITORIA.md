@@ -120,3 +120,35 @@ oficials, Reddit r/aoe2, comentaris d'actualitzacions). Estat a Imperis:
 5. **Més civilitzacions** (amb bonificació d'equip i dues tecnologies úniques).
 6. **Multijugador en xarxa.**
 7. **So i música.**
+
+---
+
+## 5. Simulacions IA contra IA (soak)
+
+21 partides de 30 minuts sense jugador (IA a totes les posicions): els 5 mapes, totes les disposicions
+(1v1, 2v2, 1v2, 1v3, tots contra tots de 3 i 4) i les 4 dificultats. Cada minut es comprova: errors de
+JavaScript, posicions no vàlides, unitats a l'aigua o fora del mapa, unitats encallades, aldeans inactius,
+recursos negatius, població per sobre del límit i si la IA puja d'edat, investiga i ataca.
+
+**Resultat:** 0 errors de JavaScript, cap unitat fora del mapa ni valor no vàlid. Errors trobats i corregits:
+
+| Problema | Causa | Correcció |
+|---|---|---|
+| Ariets encallats minuts sencers | La tropa comprovava la línia recta com si fossin aldeans | Es té en compte l'amplada; qui s'encalla surt de la tropa |
+| Aldeans d'un cadàver inabastable a l'altre | Només es recordava l'últim recurs inabastable | Es recorden tots durant un minut |
+| Aldeans aturats a tocar del campament | El punt d'arribada, tapat pels companys | Un altre costat de l'edifici a cada intent |
+| Aldeans portant l'or 40 m | La IA només feia campament a la mina més propera | Campament al costat de les mines i boscos que es treballen |
+| Constructors intentant travessar el mar | La IA triava el més proper, encara que fos en una altra illa | Només els que hi poden arribar |
+| Vaixells nous a terra | Moll envoltat de vaixells | Van a l'aigua lliure més propera |
+| Monjos i aldeans caminant cap a l'aigua | Relíquies i magatzems d'una altra illa | Només el que és a l'abast |
+| Vaixells i unitats que van i venen sense avançar | La detecció d'encallat ho prenia per progrés | Comprovació a 6 s del camí que queda |
+| IA Fàcil sense Imperial i amb 20.000 recursos | El llindar d'aldeans superava el seu objectiu | Llindar limitat i edats més pausades |
+| Mapa sense or ni pedra al minut 30 (4 jugadors) | 800 d'or per mina (a l'AoE II, ~5.600 per veta) | 2.000 d'or i 1.000 de pedra per mina |
+| La IA deixava d'atacar després d'una Meravella | Els atacs d'urgència disparaven el comptador | Límit al comptador |
+| Victòries per Meravella al minut 25 | 5 minuts de compte enrere | 10 minuts i la IA només en fa al final |
+| Ariets encallats de camí a embarcar | Massa amples per al camí de la riba | La IA no embarca setge |
+
+**Encara obert (menor):** a les Illes, la IA que perd el control del mar no pot tornar a atacar (és una derrota
+estratègica, com a l'AoE II); algun aldeà que torna d'una caça llunyana pesca des de la riba lluny del
+magatzem. El cost de la simulació amb 4 jugadors al final de la partida (500+ unitats) és d'uns 10–13 s per
+minut de joc en aquest ordinador sense GPU.

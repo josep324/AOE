@@ -83,7 +83,8 @@ function aiStartFerry(A, C, units, join, colonyTarget = null) {
   }
   const cap = garrisonCap(ships[0]);
   const use = ships.slice(0, Math.ceil(units.length / cap));
-  const load = units.filter(u => u.category !== 'siege' || (CONFIG.UNITS[u.unitKind].line || u.unitKind) === 'ram').slice(0, use.length * cap);
+  // (sense setge: els ariets, massa amples, s'encallaven de camí a la riba d'embarcar)
+  const load = units.filter(u => u.category !== 'siege').slice(0, use.length * cap);
   if (!load.length) return false;
   load.forEach(u => { u.aiRole = 'ferry'; u.speedCap = null; });
   commandMove(load, shore);
