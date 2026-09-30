@@ -199,6 +199,19 @@ function aiDropsites(A, C) {
     }
     if (best && aiBuild(A, 'lumbercamp', best.position, 3.5, 12)) return;
   }
+  // Recursos que ja s'estan treballant lluny de qualsevol magatzem (p. ex. una mina nova quan s'ha acabat la de
+  // prop): un campament al costat, en lloc de fer caminar els aldeans 40 m a cada viatge
+  const worked = new Map();
+  for (const v of C.villagers) {
+    const n = v.gatherNode;
+    if (!n || n.depleted || n.subtype === 'farm' || n.animal || n.subtype === 'berries' || n.subtype === 'fish') continue;
+    worked.set(n, (worked.get(n) || 0) + 1);
+  }
+  for (const [n, k] of worked) {
+    const type = n.resourceType, camp = type === 'wood' ? 'lumbercamp' : 'miningcamp';
+    if (type === 'food' || k < 3 || served(n.position, type, type === 'wood' ? 14 : 10)) continue;
+    if (aiBuild(A, camp, n.position, type === 'wood' ? 3.5 : 4, type === 'wood' ? 12 : 9)) return;
+  }
   // Campaments miners: a l'or (i a la pedra) quan s'hi ha de treballar
   for (const r of ['gold', 'stone']) {
     if (!(C.wantGath[r] >= 1)) continue;
