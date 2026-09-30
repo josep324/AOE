@@ -17,7 +17,7 @@ function serializeGame() {
       k: 'bld', sub: b.subtype, team: b.team, x: r2(b.position.x), z: r2(b.position.z), rot: b.rot || 0,
       progress: b.subtype === 'towncenter' && !b.underConstruction ? 1 : b.progress, hp: Math.round(b.hp), amount: b.subtype === 'farm' ? b.amount : undefined,
       queue: b.trainQueue ? b.trainQueue.map(q => ({ kind: q.kind, t: r2(q.t) })) : null,
-      rally: b.rally ? { x: r2(b.rally.point.x), z: r2(b.rally.point.z) } : null, seen: !!b.seen,
+      rally: b.rally ? { x: r2(b.rally.point.x), z: r2(b.rally.point.z) } : null, seen: !!b.seen, autoQueue: b.autoQueue || undefined,
       arch: b.visArch, wonderEnd: b.wonderEnd ? r2(b.wonderEnd - state.elapsed) : undefined,
       locked: b.locked || undefined,
     });
@@ -150,6 +150,7 @@ function loadGame(data) {
       if (d.locked) { e.locked = true; if (e.obstacle) e.obstacle.gateTeam = -1; }
       if (d.queue && e.trainQueue) e.trainQueue = d.queue.map(q => ({ ...q }));
       if (d.rally) e.rally = { point: new THREE.Vector3(d.rally.x, 0, d.rally.z), node: null };
+      if (d.autoQueue) e.autoQueue = d.autoQueue;
       e.seen = d.seen;
     } else if (d.k === 'unit') {
       e = d.sub === 'villager' ? createVillager(d.x, d.z, d.team)

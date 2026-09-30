@@ -315,9 +315,13 @@ const GENERATORS = {
     const R = ISLAND_R();
     for (const id of GAME.players) {
       const B = BASES[id], back = Math.atan2(B.z, B.x);                // (cap a fora del mapa)
-      for (const [n, spread, dist] of [[70, 1.3, 50], [60, 2.4, 54], [55, 3.1, 48], [45, 3.1, 56]]) {
-        const a = back + randRange(-spread, spread), d = Math.min(R - 12, dist);
-        createForest(B.x + Math.cos(a) * d, B.z + Math.sin(a) * d, n, { elong: randRange(1.6, 2.4), angle: a + Math.PI / 2 });
+      // Boscos fins que l'illa té ~320 arbres (els boscos es poden trepitjar entre ells o amb la riba:
+      // es compta el que hi ha de debò, perquè totes les illes tinguin la mateixa fusta)
+      const onIsle = () => state.resourceNodes.filter(n => n.subtype === 'tree' && Math.hypot(n.position.x - B.x, n.position.z - B.z) < R * 1.25).length;
+      for (let k = 0, have = onIsle(); k < 14 && have < 320; k++) {
+        const a = back + randRange(-3.1, 3.1), d = randRange(40, R - 8);
+        createForest(B.x + Math.cos(a) * d, B.z + Math.sin(a) * d, Math.min(55, 320 - have + 5), { elong: randRange(1.6, 2.4), angle: a + Math.PI / 2 });
+        have = onIsle();
       }
       for (const [fn, dist] of [[createGoldMine, 36], [createGoldMine, 40], [createGoldMine, 46], [createGoldMine, 50], [createStoneMine, 38], [createStoneMine, 48]]) {
         const p = freeSpot(B, Math.min(R - 10, dist), randRange(0, Math.PI * 2), 1.2, 4);
@@ -325,8 +329,9 @@ const GENERATORS = {
       }
     }
     neutralResources();
-    scatterForests(Math.round(9 * AREA_F), 18, 45, 40);
-    scatterTrees(Math.round(26 * AREA_F));
+    // (els boscos i arbres a l'atzar, només als illots i a les illes lliures: cada illa de jugador, la mateixa fusta)
+    scatterForests(Math.round(9 * AREA_F), 18, 45, R + 8);
+    scatterTrees(Math.round(26 * AREA_F), R + 4);
     placeFish(18, 8);
     placeDeepFish(8);
     placeWolves(1);

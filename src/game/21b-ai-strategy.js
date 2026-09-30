@@ -319,6 +319,15 @@ function aiProduction(A, C) {
     count[k] = (count[k] || 0) + 1; total++;
   }
   const R = C.res, floating = R.food + R.wood + R.gold > 1500;
+  // A les Illes, sempre queda població per a la flota i els transports (si no, l'exèrcit no surt mai de l'illa)
+  if (C.overseas && popCap(C.T) - popUsed(C.T) <= 8) {
+    const tr = C.ships.filter(s => s.subtype === 'transport').length, war = C.ships.filter(s => s.isMilitary).length;
+    // Població plena sense transports: com faria un jugador, es desfà d'unes quantes unitats de terra de les més febles
+    if (tr === 0 && C.army.length >= 20 && popCap(C.T) - popUsed(C.T) < 2 && C.blds.some(b => b.subtype === 'dock' && !b.underConstruction)) {
+      [...C.army].filter(u => !u.aiRole && !u.garrisoned).sort((a, b) => unitStrength(a) - unitStrength(b)).slice(0, 3).forEach(u => killEntity(u, null));
+    }
+    if (tr < 2 || war < 3) return;
+  }
   for (const b of C.blds) {
     if (b.underConstruction || !b.def || !b.def.trains || b.subtype === 'dock' || b.subtype === 'market' || b.subtype === 'monastery') continue;
     if (b.trainQueue.length >= (floating ? 3 : 1)) continue;

@@ -204,6 +204,10 @@ function updateSelectionUI(panelOnly = false) {
     // Unitats i tecnologies de l'edifici (Centre, Caserna, Estable, Ferreria, magatzems)
     actionsEl.classList.add('compact');
     const T = PLAYER;
+    // Tecles d'entrenament: cada botó visible rep una lletra (el de l'aldeà, la C de sempre)
+    for (const k of Object.keys(TRAIN_KEY_MAP)) delete TRAIN_KEY_MAP[k];
+    trainKeyOwner = first;
+    let keyIdx = 0;
     for (const kind of buildingItems(first)) {
       const d = itemDef(kind);
       const tech = isTech(kind);
@@ -213,14 +217,23 @@ function updateSelectionUI(panelOnly = false) {
       const locked = (d.age || 0) > T.age;
       const cost = costFor(kind);
       const ic = tech ? `<span class="emo">${d.icon}</span>` : iconHTML(kind, d.icon);
+      let hk = '';
+      if (kind === 'villager') hk = 'C';
+      else if (keyIdx < TRAIN_KEYS.length) { const code = TRAIN_KEYS[keyIdx++]; TRAIN_KEY_MAP[code] = kind; hk = code.slice(3); }
+      // Clic: 1 · Shift+clic: 5 · clic dret (unitats): producció repetida
       const b = makeActionButton(locked ? `<span class="lockwrap">${ic}<i class="lock">🔒</i></span>` : ic, shortLabel(kind), costHTML(cost),
-        kind === 'villager' ? 'C' : '', () => queueUnit(first, kind), true);
+        hk, (ev) => queueMany(first, kind, ev && ev.shiftKey && !tech ? 5 : 1), true);
       b.dataset.item = kind;
+      if (!tech) {
+        if (first.autoQueue === kind) b.classList.add('auto');
+        b.addEventListener('contextmenu', (ev) => { ev.preventDefault(); toggleAutoQueue(first, kind); updateSelectionUI(); });
+      }
       if (tech) b.classList.add(d.ageUp ? 'age' : 'tech');   // fons diferent del de les unitats
       if (tech && (d.upgradeTo || d.elite || d.ageUp)) b.insertAdjacentHTML('beforeend', '<span class="upg">⬆</span>');
       b.title = tech
         ? `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
-        : `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`;
+        : `${d.name} — ${costText(cost)} · ${d.time}s\n${d.desc || ''}\n❤ ${d.hp} · ⚔ ${d.attack} · 🛡 ${d.armor.join('/')}${d.range ? ' · 🎯 ' + d.range : ''}${locked ? `\nRequereix: ${CONFIG.AGES[d.age].name}` : ''}`
+          + `\nShift+clic: 5 · Clic dret: producció repetida ${first.autoQueue === kind ? '(activa)' : ''}`;
       actionsEl.appendChild(b);
     }
     if (first.subtype === 'market') {
@@ -391,6 +404,16 @@ function sellRate(team) {
   const r = civOf(team).mods.marketFee || 0.7;
   return teamOf(team).mods.guilds ? 1 - (1 - r) / 2 : r;   // Gremis: meitat de comissió
 }
+/* Els preus del Mercat tornen a poc a poc al valor inicial (1 punt cada 4 s): vendre o comprar molt
+   no deixa el mercat trencat per sempre (a les partides llargues, la IA i el jugador s'hi encallaven) */
+const MARKET_BASE = { food: 100, wood: 100, stone: 130 };
+function marketRecover() {
+  if (Math.round(state.elapsed) % 4) return;              // (del rellotge de la partida: igual després de carregar)
+  for (const id of GAME.players) {
+    const P = teamOf(id).prices;
+    for (const [r, base] of Object.entries(MARKET_BASE)) if (P[r] !== base) P[r] += P[r] < base ? 1 : -1;
+  }
+}
 function marketTrade(team, r, buy) {
   const T = teamOf(team), R = T.res, price = T.prices[r];
   if (buy) {
@@ -446,6 +469,20 @@ function shortLabel(kind) {
   if (SHORT[kind]) return SHORT[kind];
   if (d && d.upgradeTo) return SHORT[d.upgradeTo] || CONFIG.UNITS[d.upgradeTo].name;
   return d.name.length > 11 ? d.name.split(' ')[0] : d.name;
+}
+/* Tecles d'entrenament per als edificis (no fan servir WASD, que mouen la càmera, ni les tecles globals) */
+const TRAIN_KEYS = ['KeyQ', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyF', 'KeyG', 'KeyZ', 'KeyV', 'KeyN', 'KeyI', 'KeyO', 'KeyJ', 'KeyK', 'KeyL'];
+const TRAIN_KEY_MAP = {};
+let trainKeyOwner = null;           // (l'edifici per al qual valen les tecles)
+/* Posa n a la cua (s'atura quan no hi ha recursos o la cua és plena) */
+function queueMany(b, kind, n) {
+  for (let i = 0; i < n; i++) if (!queueUnit(b, kind)) break;
+}
+/* Producció repetida (com l'auto-cua de l'AoE II DE): en acabar la cua, en torna a fer una */
+function toggleAutoQueue(b, kind) {
+  b.autoQueue = b.autoQueue === kind ? null : kind;
+  if (b.isOwn) toast(b.autoQueue ? `🔁 Producció repetida: ${itemDef(kind).name}` : '🔁 Producció repetida desactivada');
+  if (b.autoQueue && !b.trainQueue.length) queueUnit(b, kind);
 }
 function makeActionButton(icon, label, cost, hotkey, onClick, small = false) {
   const btn = document.createElement('button');

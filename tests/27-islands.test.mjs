@@ -14,7 +14,8 @@ export default async ({ open, assert, log }) => {
         const mine = (n) => R.landZoneAt(n.position, 4) === zones[k];
         const c = (sub) => S.resourceNodes.filter(n => n.subtype === sub && mine(n)).length;
         const berries = S.resourceNodes.filter(n => n.subtype === 'berries' && n.position.distanceTo(tc.position) < 30).length;
-        return { gold: c('gold'), stone: c('stone'), tree: c('tree'), berries };
+        const tree = S.resourceNodes.filter(n => n.subtype === 'tree' && n.position.distanceTo(tc.position) < 80).length;
+        return { gold: c('gold'), stone: c('stone'), tree, berries };
       });
       const relicsOnLand = S.relics.every(r => R.waterCell(r.position.x, r.position.z) !== 1 && R.landZoneAt(r.position, 3) > 0);
       return { zones, per, relics: S.relics.length, relicsOnLand, fish: S.resourceNodes.filter(n => n.subtype === 'fish').length };
@@ -23,6 +24,8 @@ export default async ({ open, assert, log }) => {
     assert(new Set(g.zones).size === g.zones.length && g.zones.every(z => z > 0), `${layout}: cada jugador hauria de tenir la seva illa`);
     assert(g.per.every(p => p.gold >= 5 && p.stone >= 2 && p.tree >= 250 && p.berries >= 6), `${layout}: falten recursos a alguna illa`);
     assert(g.per.every(p => p.gold === g.per[0].gold && p.stone === g.per[0].stone), `${layout}: les illes no tenen el mateix or i pedra`);
+    const trees = g.per.map(p => p.tree);
+    assert(Math.max(...trees) <= Math.min(...trees) * 1.15, `${layout}: les illes no tenen la mateixa fusta`);
     assert(g.relics === 5 && g.relicsOnLand, `${layout}: relíquies a l'aigua`);
     assert(g.fish >= 16, `${layout}: massa pocs peixos`);
   }

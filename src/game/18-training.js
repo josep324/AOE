@@ -313,9 +313,15 @@ function cancelQueued(building, idx) {
 }
 
 const CONSCRIPTION_AT = new Set(['barracks', 'archeryrange', 'stable', 'castle']);
+let autoQueueTimer = 0;
 function updateTraining(dt) {
   // Població i límit de cada equip: es compten un sol cop per pas (no per a cada edifici amb cua)
   const used = {}, cap = {};
+  // Producció repetida: la cua buida en torna a fer una (si es pot pagar; si no, ho torna a provar)
+  if ((autoQueueTimer += dt) >= 0.5) {
+    autoQueueTimer = 0;
+    for (const b of state.buildings) if (b.autoQueue && !b.trainQueue.length && !b.underConstruction && !b.dead && !itemBlockReason(b.autoQueue, b.team)) queueUnit(b, b.autoQueue);
+  }
   for (const b of state.buildings) {
     if (!b.trainQueue || !b.trainQueue.length) continue;
     const item = b.trainQueue[0];

@@ -122,6 +122,28 @@ canvas.addEventListener('wheel', (e) => {
   camState.targetDist = THREE.MathUtils.clamp(camState.targetDist * factor, CONFIG.CAM.minDist, CONFIG.CAM.maxDist);
 }, { passive: false });
 
+/* Ctrl+lletra → edifici */
+const JUMP_KEYS = { KeyB: 'barracks', KeyS: 'stable', KeyA: 'archeryrange', KeyK: 'siegeworkshop', KeyC: 'castle', KeyD: 'dock', KeyM: 'market',
+  KeyY: 'monastery', KeyI: 'blacksmith', KeyU: 'university', KeyH: 'towncenter' };
+const jumpIdx = {};
+function jumpToBuilding(type) {
+  const list = state.buildings.filter(b => b.isOwn && b.subtype === type && !b.dead);
+  if (!list.length) { toast(`No tens cap ${(CONFIG.BUILDINGS[type] || { name: type }).name}`); return; }
+  const i = jumpIdx[type] = ((jumpIdx[type] ?? -1) + 1) % list.length;
+  setSelection([list[i]]);
+  centerOn(list[i].position);
+}
+/* Velocitat de la partida (com a l'AoE II DE: normal, ràpida…) */
+const GAME_SPEEDS = [0.5, 1, 1.5, 2, 3];
+function setGameSpeed(dir) {
+  const i = GAME_SPEEDS.indexOf(CONFIG.TIME_SCALE);
+  const next = GAME_SPEEDS[Math.max(0, Math.min(GAME_SPEEDS.length - 1, (i < 0 ? 1 : i) + dir))];
+  CONFIG.TIME_SCALE = next;
+  const el = document.getElementById('speed');
+  if (el) el.textContent = '×' + next;
+  toast(`⏩ Velocitat ×${next}`);
+}
+document.getElementById('speed').addEventListener('click', () => setGameSpeed(CONFIG.TIME_SCALE >= GAME_SPEEDS[GAME_SPEEDS.length - 1] ? -99 : 1));
 window.addEventListener('keydown', (e) => {
   if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const code = e.code;
@@ -136,7 +158,20 @@ window.addEventListener('keydown', (e) => {
     handleControlGroup(Number(digit[1]), e);
     return;
   }
+  // Ctrl+lletra: salta al següent edifici d'un tipus (Quarter, Estable…), com a l'AoE II
+  if ((e.ctrlKey || e.metaKey) && JUMP_KEYS[code]) { e.preventDefault(); jumpToBuilding(JUMP_KEYS[code]); return; }
   if (e.ctrlKey || e.metaKey) return;
+  // Velocitat de la partida: + i −
+  if (code === 'NumpadAdd' || code === 'Equal') { setGameSpeed(1); return; }
+  if (code === 'NumpadSubtract' || code === 'Minus') { setGameSpeed(-1); return; }
+  // Edifici seleccionat: lletres d'entrenament (Shift: 5 de cop)
+  const selB = state.selected.length === 1 && state.selected[0].kind === 'building' && state.selected[0].isOwn ? state.selected[0] : null;
+  if (selB && selB === trainKeyOwner && TRAIN_KEY_MAP[code] && !placing.type) {
+    const kind = TRAIN_KEY_MAP[code];
+    queueMany(selB, kind, e.shiftKey && !isTech(kind) ? 5 : 1);
+    updateSelectionUI();
+    return;
+  }
 
   // Tab: pàgina següent del menú de construcció
   if (code === 'Tab' && builders().length) { e.preventDefault(); buildPage = (buildPage + 1) % 3; updateSelectionUI(); return; }
@@ -174,7 +209,10 @@ window.addEventListener('keydown', (e) => {
       break;
     case 'Delete': {
       const b = state.selected.length === 1 ? state.selected[0] : null;
-      if (b && b.kind === 'building') demolishBuilding(b);
+      if (b && b.kind === 'building') { demolishBuilding(b); break; }
+      // Unitats pròpies: s'eliminen (com a l'AoE II, p. ex. per fer lloc a la població)
+      const own = state.selected.filter(u => u.kind === 'unit' && u.isOwn && !u.dead);
+      if (own.length) { own.forEach(u => killEntity(u, null)); clearSelection(); onSelectionChanged(); toast(`🗑️ ${own.length} unitats eliminades`); }
       break;
     }
     case 'KeyH': {

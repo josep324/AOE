@@ -71,6 +71,16 @@ function aiStartFerry(A, C, units, join, colonyTarget = null) {
   const landing = aiShoreSpot(foeZone, target.position);
   const shore = landing && aiShoreSpot(zone, landing, units[0].position, 110);
   if (!landing || !shore) return false;
+  // Escorta: amb més vaixells de guerra rivals que propis a la riba de sortida o d'arribada, no surt
+  // (els transports s'enfonsarien amb tothom a dins); primer la flota va a netejar el pas
+  const fleet = C.ships.filter(w => w.isMilitary && !w.dead);
+  const threat = state.units.filter(u => u.naval && u.isMilitary && !u.dead && !u.garrisoned && hostile(u.team, A.team)
+    && (hDist(u.position, landing) < 60 || hDist(u.position, shore) < 60)).length;
+  if (threat > fleet.length) {
+    const idle = fleet.filter(w => w.state === STATE.IDLE);
+    if (idle.length >= threat) commandAttackMove(idle, fitToMedium(landing, true));
+    return false;
+  }
   const cap = garrisonCap(ships[0]);
   const use = ships.slice(0, Math.ceil(units.length / cap));
   const load = units.filter(u => u.category !== 'siege' || (CONFIG.UNITS[u.unitKind].line || u.unitKind) === 'ram').slice(0, use.length * cap);
@@ -262,7 +272,11 @@ function aiNaval(A, C) {
   const built = docks.filter(b => !b.underConstruction);
   const fishers = C.ships.filter(u => u.subtype === 'fishingship'), fleet = C.ships.filter(u => u.isMilitary);
   const transports = aiTransports(C);
-  const fleetMax = D === DIFFICULTY.easy ? 2 : D.micro >= 2 ? (over ? 12 : 7) : (over ? 7 : 4);
+  // Flota rival a prop de casa: si en té més, primer galeres (i no pesquers, que s'enfonsarien)
+  const foeFleet = state.units.filter(u => u.naval && u.isMilitary && !u.dead && !u.garrisoned && hostile(u.team, T)
+    && (hDist(u.position, C.home) < 130 || docks.some(d => hDist(u.position, d.position) < 70))).length;
+  const outgunned = foeFleet > fleet.length;
+  const fleetMax = D === DIFFICULTY.easy ? 2 : Math.max(D.micro >= 2 ? (over ? 12 : 7) : (over ? 7 : 4), Math.min(15, foeFleet + 2));
   // Transports: prou per portar l'exèrcit que es reuneix (fins a 3), a partir de l'Edat Feudal
   const wantTr = over && C.age >= 1 ? Math.min(4, 1 + Math.floor(aiHomeArmy(A, C).length / 10) + (A.attackCount ? 1 : 0) + (C.age >= 2 ? 1 : 0)) : 0;
   for (const dock of built) {
@@ -276,7 +290,9 @@ function aiNaval(A, C) {
     const fishLeft = state.resourceNodes.some(n => n.subtype === 'fish' || n.subtype === 'deepfish');
     // (els pesquers no es tornen a fer mentre hi ha vaixells de guerra rivals a prop: els enfonsarien)
     const danger = state.units.some(u => u.naval && u.isMilitary && hostile(u.team, T) && !u.dead && hDist(u.position, dock.position) < 45);
-    if (transports.length + queued('transport') < wantTr && !itemBlockReason('transport', T)) queueUnit(dock, 'transport');
+    const warship = () => queueUnit(dock, C.age >= 2 && fleet.length % 3 === 2 && !itemBlockReason('fireship', T) ? 'fireship' : 'galley');
+    if (outgunned && C.age >= 1 && fleet.length + queued('galley') < fleetMax) warship();
+    else if (transports.length + queued('transport') < wantTr && !itemBlockReason('transport', T)) queueUnit(dock, 'transport');
     else if (fishLeft && !danger && fishers.length + queued('fishingship') < (D.micro >= 2 ? (over ? 8 : 6) : (over ? 6 : 4))) queueUnit(dock, 'fishingship');
     else if (C.age >= 1 && fleet.length + queued('galley') < fleetMax) {
       queueUnit(dock, C.age >= 2 && fleet.length % 3 === 2 && !itemBlockReason('fireship', T) ? 'fireship' : 'galley');

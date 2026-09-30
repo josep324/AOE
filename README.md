@@ -93,6 +93,14 @@ l'enemic (o l'ataquen), les companyes properes també s'hi llancen. La IA també
 **Límit de població** triable a l'inici (de 25 a 500; 200 per defecte). Comptador d'aldeans a la barra superior
 (amb el detall per recurs).
 
+**Controls com a l'AoE II DE:** velocitat de la partida amb <kbd>+</kbd>/<kbd>−</kbd> (×0,5 a ×3, també clicant l'indicador
+del rellotge) · amb un edifici seleccionat, cada botó té la seva lletra (<kbd>Q</kbd>, <kbd>E</kbd>, <kbd>R</kbd>…) i
+<kbd>Shift</kbd> n'entrena 5 · **clic dret** al botó d'una unitat: **producció repetida** (en torna a fer mentre hi hagi
+recursos; es desa amb la partida) · <kbd>Ctrl</kbd>+<kbd>B</kbd>/<kbd>S</kbd>/<kbd>A</kbd>/<kbd>K</kbd>/<kbd>C</kbd>/<kbd>D</kbd>/<kbd>M</kbd>/<kbd>Y</kbd>/<kbd>I</kbd>/<kbd>U</kbd>
+salta al Quarter, Estable, Galeria de tir, Taller de setge, Castell, Moll, Mercat, Monestir, Ferreria o Universitat
+(cada cop, al següent) · <kbd>Supr</kbd> elimina les unitats pròpies seleccionades. Els preus del **Mercat** tornen a poc
+a poc al valor inicial (1 punt cada 4 s).
+
 **Formacions** (<kbd>F</kbd> o botons): línia (cos a cos al davant i genets a les ales), quadrat (arquers, monjos i setge a dins),
 esglaonada (contra pedres i fletxes) i flancs (dos grups). Els grups marxen al pas de la unitat més lenta. No hi ha límit d'unitats seleccionades.
 
@@ -187,6 +195,7 @@ src/
     31 bucle         simulació a pas fix (60 passos/s) i renderitzat
 assets/models/      models 3D opcionals (.glb) que substitueixen els generats pel codi
 docs/MODELS.md      on trobar models gratuïts i com afegir-los
+docs/AUDITORIA.md   auditoria del codi, diferències amb l'AoE II DE i proposta de full de ruta
 scripts/publish.js  copia el fitxer compilat a index.html
 ```
 

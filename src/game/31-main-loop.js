@@ -38,7 +38,7 @@ function simulate(dt) {
   aiTimer += dt;
   if (aiTimer >= 0.5) { aiTimer = 0; aiTick(); }
   overTimer += dt;
-  if (overTimer >= 1) { overTimer = 0; statsTick(); checkGameOver(); }
+  if (overTimer >= 1) { overTimer = 0; statsTick(); checkGameOver(); marketRecover(); }
 }
 
 /* Quines unitats surten a la pantalla (només aquestes s'animen): prova de l'esfera contra el con de la càmera */
