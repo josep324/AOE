@@ -34,7 +34,7 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
   buildWorld, resetWorld, WORLD, WATER, updateFog, commandGather, canPlaceDock, findDockSpot, orderUnload, spawnUnit, orderAttack, orderGarrison, createAnimal, createFish, waterCell,
   commandAttackMove, TERRAIN, groundY, flattenArea, slopeIn, canPlace, hitDamage, pickGround, aiHighSpot, MAP_SIZE, MAP_SIZES, AIS, enableAIFor, aiReset, RNG, commandPatrol, commandFollow, commandStop, queueFarm, unqueueFarm, teamOf,
   TROOPS, STATS, statsScore, statsReset, setGateLocked, updateWallPlacement, wallCellClosed, createTree, rebuildNav,
-  aiStartFerry, aiObjective, landZoneAt, aiShoreSpot, aiContext, aiFreeTransports, orderConvert, orderHeal, orderPickRelic, orderDepositRelic, createRelic, convertEntity, checkGameOver, createKings, victoryCheck, issueRightClick, unitDropRelic, pickEntity };
+  aiStartFerry, aiObjective, aiAttacks, aiKnownDefense, landZoneAt, aiShoreSpot, aiContext, aiFreeTransports, orderConvert, orderHeal, orderPickRelic, orderDepositRelic, createRelic, convertEntity, checkGameOver, createKings, victoryCheck, issueRightClick, unitDropRelic, pickEntity };
 
 // Acció pendent després de canviar la mida del mapa (recàrrega): començar o carregar la partida
 {

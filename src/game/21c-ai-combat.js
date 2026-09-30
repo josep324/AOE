@@ -104,16 +104,40 @@ function aiRaidTarget(A, C) {
   }
   return best ? { position: best.clone() } : null;
 }
-/* Objectiu de l'exèrcit: edificis militars, torres i Centres coneguts (els més a prop) */
-function aiObjective(A, C, from) {
+/* Defensa coneguda al voltant d'un punt: torres, castells i Centres vistos i les tropes rivals vistes fa poc */
+function aiKnownDefense(A, pos, r = 22) {
+  let s = 0;
+  for (const { b } of A.seenBld.values()) if (!b.dead && hostile(b.team, A.team) && hDist(b.position, pos) <= r + (b.subtype === 'castle' ? 6 : 0)) s += buildingStrength(b);
+  for (const { u, t } of A.seen.values()) if (!u.dead && u.isMilitary && state.elapsed - t < 90 && hDist(u.position, pos) <= r * 1.5) s += unitStrength(u);
+  return s;
+}
+/* Objectiu de l'exèrcit: edificis militars, torres i Centres coneguts (els més a prop). Sense setge, els llocs
+   ben defensats (torres, castells) compten com si fossin molt més lluny: primer el que es pot guanyar */
+function aiObjective(A, C, from, army = null) {
+  const siege = army ? army.filter(u => u.category === 'siege').length : 0;
+  const str = army ? army.reduce((s, u) => s + unitStrength(u), 0) : 0;
   let best = null, bd = Infinity;
   for (const { b } of A.seenBld.values()) {
     if (b.dead || b.team !== A.foe || b.isWall || b.subtype === 'farm') continue;
     const pri = b.subtype === 'towncenter' ? 0.9 : (b.def && b.def.trains) ? 0.8 : buildingStrength(b) > 0 ? 0.85 : 1;
-    const d = hDist(b.position, from) * pri;
+    let d = hDist(b.position, from) * pri;
+    if (army) {
+      const def = aiKnownDefense(A, b.position, 20);
+      d += def * (siege >= 2 ? 3 : 10) + (def > str * 0.7 ? 400 : 0);
+    }
     if (d < bd) { bd = d; best = b; }
   }
   return best || nearestFoeTarget(A, from);
+}
+/* Objectiu en una urgència: la Meravella rival o el Monestir que guarda les relíquies */
+function aiUrgentObjective(A) {
+  const w = state.buildings.find(b => hostile(b.team, A.team) && b.subtype === 'wonder' && b.wonderEnd);
+  if (w) return { b: w, left: w.wonderEnd - state.elapsed };
+  if (state.relicWin && hostile(state.relicWin.team, A.team)) {
+    const m = state.buildings.find(b => !b.dead && allied(b.team, state.relicWin.team) && b.relics && b.relics.length);
+    return { b: m || null, left: state.relicWin.end - state.elapsed };
+  }
+  return null;
 }
 function aiAttacks(A, C) {
   const now = C.now, D = C.D;
@@ -168,17 +192,26 @@ function aiAttacks(A, C) {
   //  s'enfilava a 60 i després ja no n'hi havia prou mai)
   const need = Math.round((rush ? D.attackBase * 0.7 : D.attackBase + C.age * 3) + Math.min(A.attackCount, 8) * 2);
   const waitCastle = (A.strategy === 'fastcastle' || A.strategy === 'boom') && C.age < 2 && !A.urgent;
+  // Urgència (Meravella o relíquies del rival): s'hi va amb un exèrcit de debò; només al final del compte enrere
+  // s'hi llança tot el que hi ha (abans hi anaven grups de 4-10 cada mig minut, que les torres es menjaven)
+  const U = A.urgent ? aiUrgentObjective(A) : null;
+  const urgentNeed = !U ? Infinity : U.left < 75 ? 4 : now < A.nextAttackAt ? Infinity : Math.max(10, Math.round(need * 0.6));
+  const homeStr = homeArmy.reduce((s, u) => s + unitStrength(u), 0);
   // Rival a una altra illa: l'exèrcit hi va amb vaixells de transport (21d)
   aiFerryTick(A, C);
   aiFerryTick(A, C, 'colony');
   aiColonize(A, C);
-  if (C.overseas && !A.army && !A.ferry && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || (A.urgent && homeArmy.length >= 4))) {
+  if (C.overseas && !A.army && !A.ferry && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || homeArmy.length >= urgentNeed)) {
     aiStartFerry(A, C, homeArmy, false);
     return;
   }
-  if (!A.army && !C.overseas && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || (A.urgent && homeArmy.length >= 4))) {
-    const target = aiObjective(A, C, C.home);
-    if (target) {
+  if (!A.army && !C.overseas && ((homeArmy.length >= need && now >= A.nextAttackAt && !waitCastle) || homeArmy.length >= urgentNeed)) {
+    const target = (U && U.b) || aiObjective(A, C, C.home, homeArmy);
+    // (sense urgència: si fins i tot l'objectiu més fluix està més ben defensat que el que porta, espera i creix;
+    //  amb la població plena hi va igualment, amb el que té)
+    const full = popUsed(C.T) >= popCap(C.T) - 3;
+    if (target && !U && !full && aiKnownDefense(A, target.position, 20) > homeStr * 0.7) A.nextAttackAt = now + 20;
+    else if (target) {
       const dir = new THREE.Vector3(target.position.x - C.home.x, 0, target.position.z - C.home.z).normalize();
       const rally = clampToMap(aiHighSpot(C.home.clone().addScaledVector(dir, 24), 10));
       homeArmy.forEach(u => { u.aiRole = 'army'; u.speedCap = null; });
@@ -189,11 +222,12 @@ function aiAttacks(A, C) {
   const W = A.army;
   if (!W) return;
   W.units = W.units.filter(u => !u.dead && u.team === C.T && u.aiRole === 'army');
-  if (!W.units.length) { A.army = null; A.nextAttackAt = now + 40; return; }
+  if (!W.units.length) { A.army = null; A.nextAttackAt = now + 90; return; }
   if (W.phase === 'gather') {
     const ready = W.units.filter(u => hDist(u.position, W.rally) < 10).length;
     if (ready >= W.units.length * 0.85 || now - W.t0 > 40) {
-      const target = aiObjective(A, C, W.rally);
+      const U2 = A.urgent ? aiUrgentObjective(A) : null;
+      const target = (U2 && U2.b) || aiObjective(A, C, W.rally, W.units);
       if (!target) { aiRetreat(A, C, W); return; }
       W.target = target;
       const slow = Math.min(...W.units.map(u => u.speed));
@@ -212,15 +246,20 @@ function aiAttacks(A, C) {
   const reinf = homeArmy;
   // (els reforços hi van en grup, no un a un a mesura que surten dels edificis)
   // (a una altra illa, els reforços hi van en una altra travessia)
-  if (reinf.length >= Math.max(4, Math.round(need * 0.3))) {
-    if (!W.overseas) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
-    else if (!A.ferry) aiStartFerry(A, C, reinf, true);
-  }
   const near = W.units.filter(u => hDist(u.position, c) < 28);
   const myStr = near.reduce((s, u) => s + unitStrength(u), 0);
   const foeStr = aiFoeStrengthAt(A, c, 24);
-  // (desembarcats no es poden retirar: lluiten fins al final)
-  if (!A.urgent && !W.overseas && myStr < foeStr * 0.65) { aiRetreat(A, C, W); return; }
+  // (els reforços només s'hi afegeixen si, junts, poden guanyar; si no, es queden per a l'atac següent:
+  //  un grup de reforços que arriba sol a les torres es perd sense fer res)
+  const reinfStr = reinf.reduce((s, u) => s + unitStrength(u), 0);
+  if (reinf.length >= Math.max(6, Math.round(need * 0.4)) && myStr + reinfStr >= foeStr * 0.9) {
+    if (!W.overseas) { reinf.forEach(u => { u.aiRole = 'army'; }); commandAttackMove(reinf, c.clone()); W.units.push(...reinf); }
+    else if (!A.ferry) aiStartFerry(A, C, reinf, true);
+  }
+  // (desembarcats no es poden retirar: lluiten fins al final; en una urgència, només si és inútil i encara hi ha temps)
+  const U3 = A.urgent ? aiUrgentObjective(A) : null;
+  const lose = U3 ? U3.left > 75 && myStr < foeStr * 0.4 : myStr < foeStr * 0.65;
+  if (!W.overseas && lose) { aiRetreat(A, C, W); A.nextAttackAt = now + 75; return; }
   for (const u of W.units) {
     if (u.category !== 'siege') continue;
     const isRam = (CONFIG.UNITS[u.unitKind].line || u.unitKind) === 'ram';
@@ -231,7 +270,7 @@ function aiAttacks(A, C) {
   }
   const idle = W.units.filter(u => u.state === STATE.IDLE);
   if (idle.length) {
-    const t = aiObjective(A, C, idle[0].position);
+    const t = aiObjective(A, C, idle[0].position, W.units);
     if (t) commandAttackMove(idle, t.kind === 'unit' ? t.position.clone() : approachPoint(t, idle[0].position));
     else if (idle.length === W.units.length && !W.overseas) { aiRetreat(A, C, W); A.nextAttackAt = now + 30; }
   }
@@ -319,5 +358,6 @@ function aiSpecial(A, C) {
       && canAfford({ wood: 1300, gold: 1300, stone: 1100 }, C.T)) aiBuild(A, 'wonder', C.home, 16, 45, 8);
   // Contra una Meravella o totes les relíquies del rival: atac immediat
   A.urgent = (state.relicWin && hostile(state.relicWin.team, A.team)) || state.buildings.some(b => hostile(b.team, A.team) && b.subtype === 'wonder' && b.wonderEnd);
-  if (A.urgent) A.nextAttackAt = Math.min(A.nextAttackAt, C.now);
+  if (A.urgent && !A.wasUrgent) A.nextAttackAt = Math.min(A.nextAttackAt, C.now);   // (en començar la urgència)
+  A.wasUrgent = A.urgent;
 }

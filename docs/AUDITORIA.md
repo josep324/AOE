@@ -182,3 +182,14 @@ La IA puja a Feudal amb 19–24 aldeans, com a l'AoE II.
 JavaScript. La IA Normal/Difícil arriba a Feudal cap als 7–10 minuts reals (12–17 de joc), a Castells cap als 15–20 i a
 Imperial cap als 22–25, amb 60–90 aldeans al minut 30. Els «encallats» que quedaven eren miners amb el campament a
 tocar de la mina (van i tornen en poc espai), no unitats aturades.
+
+**Atacs de la IA contra torres (informe d'una partida de 60 min):** la IA enviava grups de ~10 unitats cada mig minut
+contra les torres del jugador (898 baixes contra 69). Causes i correccions:
+- Amb totes les relíquies o una Meravella del rival, la IA entrava en «urgència» i atacava amb només 4 unitats, sense
+  retirar-se mai. Ara hi va amb un exèrcit de debò (≥10 i el 60% del normal) contra el Monestir o la Meravella, es retira
+  si és inútil i només s'hi llança amb tot en el darrer minut i quart del compte enrere.
+- Les torres valien com 3 milícies. Ara compten les millores (Torre de guàrdia, Torre de l'homenatge) i la guarnició.
+- Sense setge, l'objectiu tria el que pot guanyar (un Quarter lluny de les torres abans que el Centre envoltat), i si
+  tot està més ben defensat que el que porta, espera i creix (o hi va amb la població plena).
+- Els reforços només s'afegeixen si, junts, poden guanyar; si no, esperen el proper atac. Després de perdre
+  l'exèrcit, espera 90 s.

@@ -222,10 +222,12 @@ function unitStrength(u) {
 function buildingStrength(b) {
   if (!b || b.dead || b.underConstruction) return 0;
   const g = b.garrison ? b.garrison.length : 0;
-  if (b.subtype === 'towncenter') return 3 + g * 0.5;
-  if (b.subtype === 'castle') return 14 + g * 0.5;
-  if (b.subtype === 'watchtower') return 2.5 + g * 0.5;
-  if (b.subtype === 'bombardtower') return 5 + g * 0.5;
+  // (una torre millorada mata un grup petit sense setge: abans valia com 3 milícies i la IA hi llançava grups de 10)
+  const lvl = teamOf(b.team).mods.towerLevel || 0;
+  if (b.subtype === 'towncenter') return 5 + g * 0.6;
+  if (b.subtype === 'castle') return 18 + g * 0.6;
+  if (b.subtype === 'watchtower') return 4 + lvl * 2 + g * 0.6;
+  if (b.subtype === 'bombardtower') return 8 + g * 0.6;
   return 0;
 }
 
