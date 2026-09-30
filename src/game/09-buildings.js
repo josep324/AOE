@@ -241,7 +241,7 @@ function updateConstruction(dt) {
     let n = 0;
     for (const u of state.units) if (u.state === STATE.BUILDING && u.buildTarget === b) n++;
     if (!n) continue;
-    b.progress = Math.min(1, b.progress + (dt / b.def.time) * n * 3 / (n + 2) * teamOf(b.team).mods.buildSpeed);
+    b.progress = Math.min(1, b.progress + (dt / b.def.time) * n * 3 / (n + 2) * teamOf(b.team).mods.buildSpeed * CONFIG.PACE);
     applyConstructionVisual(b);
     if (b.progress >= 1) completeBuilding(b);
   }

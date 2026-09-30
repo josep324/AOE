@@ -117,7 +117,12 @@ Castells es poden construir més **Centres de Ciutat** (275 fusta, 100 pedra).
 ⚔️ soldats inactius (<kbd>,</kbd>) · 🌱 **cua de granges** al Molí (es paguen ara i es resembren soles).
 **Arquers** com a l'AoE II: abast de 4-5 caselles (+1 per Plomes, Punta perforant i Braçal), +3 contra llancers, punteria
 (poden fallar i les unitats que corren de costat esquiven les fletxes; les que carreguen les reben).
-**Ritme de combat** com a la velocitat normal de l'AoE II DE (les recàrregues de les dades, ×1,7 en temps real).
+**Ritme de l'AoE II DE** (velocitat Normal, 1,7 segons de joc per segon real): temps d'entrenament, investigació i
+construcció, velocitats (aldeà 0,8 caselles/s), ritme de recol·lecció i recàrregues són els de l'AoE II. Al menú es pot
+triar el ritme **Ràpid ×1,5**, que només accelera l'economia i la producció (recol·lectar, entrenar, investigar, construir):
+el moviment i el combat queden igual. **Or i pedra com a l'AoE II:** a casa, una veta d'or de 5.600, dues de 3.200 i pedra de
+1.750 i 1.400; les neutrals, 3.200 d'or i 1.400 de pedra. **Comerç** amb la fórmula de l'AoE II DE (0,46 × caselles ×
+(caselles / mida del mapa + 0,3) a cada mercat).
 Tecnologies: Anell del polze (no fallen i disparen més de pressa), Balística (apunten on anirà l'objectiu), Llinatges,
 Ramaderia, Escuders, Muralla fortificada i Heretgia.
 

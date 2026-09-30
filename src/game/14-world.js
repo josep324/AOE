@@ -160,9 +160,11 @@ function createStartingBase(team) {
     }
     const a = randRange(0, Math.PI * 2); used.push(a); return a;
   };
-  for (const [fn, dist] of [[createGoldMine, randRange(18, 21)], [createGoldMine, randRange(22, 26)], [createStoneMine, randRange(20, 24)]]) {
-    const p = freeSpot(B, dist, pickAngle(0.95), 0.3, 3.5);
-    if (p) fn(p[0], p[1]);
+  // (com a l'AoE II: la veta d'or gran a prop, dues de petites més enllà i dues de pedra)
+  for (const [fn, dist, amount, sep] of [[createGoldMine, randRange(18, 21), MINES.goldMain, 0.95], [createGoldMine, randRange(22, 26), MINES.gold, 0.95],
+    [createStoneMine, randRange(20, 24), MINES.stoneMain, 0.95], [createGoldMine, randRange(30, 34), MINES.gold, 0.55], [createStoneMine, randRange(30, 34), MINES.stone, 0.55]]) {
+    const p = freeSpot(B, dist, pickAngle(sep), 0.3, 3.5);
+    if (p) fn(p[0], p[1], amount);
   }
   // Baies i ovelles
   const bp = freeSpot(B, randRange(14, 17), pickAngle(0.8), 0.3, 3);
@@ -323,7 +325,7 @@ const GENERATORS = {
         createForest(B.x + Math.cos(a) * d, B.z + Math.sin(a) * d, Math.min(55, 320 - have + 5), { elong: randRange(1.6, 2.4), angle: a + Math.PI / 2 });
         have = onIsle();
       }
-      for (const [fn, dist] of [[createGoldMine, 36], [createGoldMine, 40], [createGoldMine, 46], [createGoldMine, 50], [createStoneMine, 38], [createStoneMine, 48]]) {
+      for (const [fn, dist] of [[createGoldMine, 40], [createGoldMine, 48], [createStoneMine, 44]]) {
         const p = freeSpot(B, Math.min(R - 10, dist), randRange(0, Math.PI * 2), 1.2, 4);
         if (p) fn(p[0], p[1]);
       }

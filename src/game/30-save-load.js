@@ -8,7 +8,7 @@ function serializeGame() {
   const add = (e, data) => { idx.set(e, ents.length); ents.push(data); };
   for (const n of state.resourceNodes) {
     if (n.subtype === 'farm') continue;
-    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, scale: r2(n.group.scale.x), killed: !!n.killed, dense: n.dense || undefined,
+    add(n, { k: 'res', sub: n.subtype, x: r2(n.position.x), z: r2(n.position.z), amount: n.amount, max: n.maxAmount, scale: r2(n.group.scale.x), killed: !!n.killed, dense: n.dense || undefined,
              hp: n.animal ? r2(n.hp) : undefined, alive: n.animal ? n.alive : undefined });
   }
   const farms = state.resourceNodes.filter(n => n.subtype === 'farm');
@@ -45,7 +45,7 @@ function serializeGame() {
     v: 1, date: new Date().toISOString(), elapsed: state.elapsed, victory: state.victory, map: WORLD.type, mapSeed: WORLD.seed, mapSize: MAP_SIZE, rng: RNG.s,
     relicWin: state.relicWin ? { team: state.relicWin.team, left: r2(state.relicWin.end - state.elapsed) } : null,
     teams: Object.fromEntries(GAME.players.map(id => [id, team(TEAMS[id])])),
-    layout: GAME.layout, defeated: [...GAME.defeated], popCap: CONFIG.POP_CAP,
+    layout: GAME.layout, defeated: [...GAME.defeated], popCap: CONFIG.POP_CAP, pace: CONFIG.PACE,
     ai: { diff: diffKey(AI.diff), strategy: AI.strategy, attackCount: AI.attackCount, nextAttackAt: AI.nextAttackAt },
     ais: serializeAIs(idx),
     stats: statsSerialize(),
@@ -96,6 +96,7 @@ function loadGame(data) {
   // Jugadors i equips de la partida (les desades abans de la fase 20 són 1 contra 1)
   setLayout(data.layout || '1v1');
   CONFIG.POP_CAP = data.popCap || 200;
+  CONFIG.PACE = data.pace || 1;
   for (const t of data.defeated || []) GAME.defeated.add(t);
   WORLD.layout = GAME.layout;
   setupBases();
@@ -122,8 +123,8 @@ function loadGame(data) {
     let e = null;
     if (d.k === 'res') {
       if (d.sub === 'tree') { e = createTree(d.x, d.z, d.scale); if (d.dense) e.dense = true; }
-      else if (d.sub === 'gold') e = createGoldMine(d.x, d.z);
-      else if (d.sub === 'stone') e = createStoneMine(d.x, d.z);
+      else if (d.sub === 'gold') e = createGoldMine(d.x, d.z, d.max);
+      else if (d.sub === 'stone') e = createStoneMine(d.x, d.z, d.max);
       else if (d.sub === 'berries') e = createBerryBush(d.x, d.z);
       else if (ANIMALS[d.sub]) {
         e = createAnimal(d.sub, d.x, d.z);

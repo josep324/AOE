@@ -6,6 +6,7 @@ import { BUILD_KEYS } from '@data/hotkeys.js';
 import { BUILDINGS } from '@data/buildings.js';
 import { DIFFICULTY } from '@data/difficulty.js';
 import { CIVS } from '@data/civs.js';
+import { GAME_TEMPO, AOE_UNITS, AOE_TECHS, AOE_GATHER, MINES } from '@data/tempo.js';
 
 /* =====================================================================
    CONFIGURACIÓ GLOBAL
@@ -48,11 +49,11 @@ const CONFIG = {
     decel: 6,                // suavitat en frenar (lliscament)
     glide: 6,                // suavitat en centrar la càmera (H, Espai, grups…)
   },
-  VILLAGER: { speed: 5.5, radius: 0.45, hp: 25, attack: 3 },
+  VILLAGER: { speed: 0.8 * TILE * GAME_TEMPO, radius: 0.45, hp: 25, attack: 3 },
   GATHER: {
     capacity: 10,                         // càrrega màxima per viatge
-    // unitats per segon segons el tipus de recurs
-    rates: { tree: 1.25, gold: 0.95, stone: 0.9, berries: 0.85, sheep: 1.1, farm: 0.7, deer: 1.2, boar: 1.3, fish: 0.8, deepfish: 1.1 },
+    // unitats per segon (real) segons el tipus de recurs: els de l'AoE II a la velocitat Normal
+    rates: Object.fromEntries(Object.entries(AOE_GATHER).map(([k, v]) => [k, v * GAME_TEMPO])),
     reach: 0.75,                          // distància extra per començar a treballar
     autoSearchRadius: 32,                 // radi per buscar un recurs nou quan s'esgota
   },
@@ -73,9 +74,22 @@ const CONFIG = {
 
   BUILDINGS,
   TIME_SCALE: 1,             // velocitat de simulació (útil per depurar: RTS.CONFIG.TIME_SCALE = 3)
+  PACE: 1,                   // ritme de la partida (menú): 1 = AoE II DE; 1,5 = economia i producció més ràpides
   DOUBLE_CLICK_MS: 350,
   DRAG_THRESHOLD: 6,
 };
+
+/* Temps i velocitats de l'AoE II DE (segons de joc → segons reals, caselles/s → m/s) */
+for (const [k, [t, v]] of Object.entries(AOE_UNITS)) {
+  const d = UNITS[k]; if (!d) continue;
+  if (t) d.time = Math.round(t / GAME_TEMPO * 10) / 10;
+  d.speed = Math.round(v * TILE * GAME_TEMPO * 100) / 100;
+}
+for (const [k, t] of Object.entries(AOE_TECHS)) if (TECHS[k]) TECHS[k].time = Math.round(t / GAME_TEMPO);
+BUILDINGS.wonder.time = Math.round(3500 / GAME_TEMPO);
+/* Ritmes de partida: el Ràpid només accelera l'economia i la producció (recol·lectar, entrenar,
+   investigar, construir); el moviment i el combat queden igual, perquè no sigui ofegant */
+const PACES = { normal: { name: 'Normal (AoE II)', k: 1 }, fast: { name: 'Ràpid ×1,5', k: 1.5 } };
 
 const STATE = Object.freeze({ IDLE: 'IDLE', MOVING: 'MOVING', GATHERING: 'GATHERING', RETURNING: 'RETURNING', BUILDING: 'BUILDING',
                               ATTACKING: 'ATTACKING', GARRISONED: 'GARRISONED', TRADING: 'TRADING',

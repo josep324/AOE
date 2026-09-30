@@ -76,6 +76,21 @@ for (const n of [25, 50, 75, 100, 150, 200, 250, 300, 400, 500]) {
   });
   popChoices.appendChild(b);
 }
+/* ---------- Ritme: el de l'AoE II DE o un de més ràpid només per a l'economia i la producció ---------- */
+let chosenPace = 'normal';
+const paceChoices = document.getElementById('pace-choices');
+for (const [id, P] of Object.entries(PACES)) {
+  const b = document.createElement('button');
+  b.className = 'choice' + (id === chosenPace ? ' on' : '');
+  b.dataset.pace = id;
+  b.textContent = P.name;
+  b.title = id === 'normal' ? "Com l'AoE II DE a velocitat Normal" : 'Recol·lectar, entrenar, investigar i construir ×1,5; el moviment i el combat, igual';
+  b.addEventListener('click', () => {
+    chosenPace = id;
+    paceChoices.querySelectorAll('.choice').forEach(x => x.classList.toggle('on', x === b));
+  });
+  paceChoices.appendChild(b);
+}
 let chosenVictory = 'standard';
 document.querySelectorAll('#victory-choices .choice').forEach(btn => btn.addEventListener('click', () => {
   chosenVictory = btn.dataset.victory;
@@ -195,7 +210,7 @@ updateCivLabels();
 
 document.getElementById('start-btn').addEventListener('click', () => {
   if (chosenSize !== MAP_SIZE) {
-    reloadWithSize(chosenSize, { start: { map: chosenMap, civ: chosenCiv, enemyCiv: chosenSlotCiv[2], victory: chosenVictory, layout: chosenLayout, pop: chosenPop, slots: { ...chosenSlotCiv },
+    reloadWithSize(chosenSize, { start: { map: chosenMap, civ: chosenCiv, enemyCiv: chosenSlotCiv[2], victory: chosenVictory, layout: chosenLayout, pop: chosenPop, pace: chosenPace, slots: { ...chosenSlotCiv },
       diff: chosenDiff, fog: document.getElementById('fog-toggle').checked } });
     return;
   }
@@ -213,6 +228,7 @@ document.getElementById('start-btn').addEventListener('click', () => {
   updateCivLabels();
   state.victory = chosenVictory;
   CONFIG.POP_CAP = chosenPop;
+  CONFIG.PACE = PACES[chosenPace].k;
   if (state.victory === 'regicide') createKings();
   updateVictoryUI();
   // Una IA per a cada altre jugador (també per a l'aliat), totes amb la dificultat triada

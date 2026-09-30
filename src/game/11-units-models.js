@@ -180,9 +180,11 @@ function createTradeCart(x, z, team = PLAYER.id) {
 function markets(team) {
   return state.buildings.filter(b => b.subtype === 'market' && b.team === team && !b.underConstruction && !b.dead);
 }
+/* Or d'un viatge d'anada i tornada (fórmula de l'AoE II DE: 0,46 × caselles × (caselles / mida del mapa + 0,3)
+   a cada mercat; aquí es cobra tot en arribar carregat) */
 function tradeValue(a, b) {
-  const d = hDist(a.position, b.position);
-  return Math.round(d * 0.6 + d * d * 0.004);
+  const t = hDist(a.position, b.position) / TILE;
+  return Math.round(2 * 0.46 * t * (t / MAP_SIZES[MAP_SIZE].tiles + 0.3));
 }
 function orderTrade(u, dest) {
   const home = markets(u.team).filter(m => m !== dest).sort((a, b) => hDist(a.position, u.position) - hDist(b.position, u.position))[0];

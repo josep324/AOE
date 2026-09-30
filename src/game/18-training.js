@@ -334,7 +334,7 @@ function updateTraining(dt) {
       continue;
     }
     const TM = teamOf(b.team).mods;
-    item.t += dt * (!isTech(item.kind) ? (CONSCRIPTION_AT.has(b.subtype) ? TM.trainSpeed : 1) * (TM.trainAt[b.subtype] || 1) : 1);
+    item.t += dt * (!isTech(item.kind) ? (CONSCRIPTION_AT.has(b.subtype) ? TM.trainSpeed : 1) * (TM.trainAt[b.subtype] || 1) : 1) * CONFIG.PACE;
     if (item.t >= def.time) {
       b.trainQueue.shift();
       if (isTech(item.kind)) completeTech(b.team, item.kind);

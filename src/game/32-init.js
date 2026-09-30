@@ -47,6 +47,7 @@ window.RTS = { THREE, scene, camera, camState, renderer, state, CONFIG, queueVil
     pickChoice('diff-choices', 'diff', P.diff);
     if (P.layout) pickChoice('layout-choices', 'layout', P.layout);
     if (P.pop) pickChoice('pop-choices', 'pop', String(P.pop));
+    if (P.pace) pickChoice('pace-choices', 'pace', P.pace);
     if (P.slots) { Object.assign(chosenSlotCiv, P.slots); renderSlots(); }
     document.getElementById('fog-toggle').checked = P.fog !== false;
     document.getElementById('start-btn').click();

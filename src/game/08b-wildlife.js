@@ -5,9 +5,9 @@
    Peixos: bancs a la riba dels llacs i rius; els aldeans hi pesquen des de terra.
    ===================================================================== */
 const ANIMALS = {
-  deer: { name: 'Cérvol', icon: '🦌', hp: 5, food: 140, radius: 0.7, speed: 1.3, run: 6.2, attack: 0, reload: 2, armor: [0, 0] },
-  boar: { name: 'Senglar', icon: '🐗', hp: 75, food: 340, radius: 0.8, speed: 1.0, run: 5.0, attack: 4, reload: 2.0, armor: [1, 1] },
-  wolf: { name: 'Llop', icon: '🐺', hp: 25, food: 0, radius: 0.6, speed: 1.5, run: 6.4, attack: 3, reload: 1.4, armor: [0, 1] },
+  deer: { name: 'Cérvol', icon: '🦌', hp: 5, food: 140, radius: 0.7, speed: 0.7, run: 3.4, attack: 0, reload: 2, armor: [0, 0] },
+  boar: { name: 'Senglar', icon: '🐗', hp: 75, food: 340, radius: 0.8, speed: 0.55, run: 3.2, attack: 4, reload: 2.0, armor: [1, 1] },
+  wolf: { name: 'Llop', icon: '🐺', hp: 25, food: 0, radius: 0.6, speed: 0.8, run: 4.2, attack: 3, reload: 1.4, armor: [0, 1] },
 };
 const HUNT_RANGE = 3.6;       // distància a què un aldeà llança la llança
 const HUNT_DAMAGE = 5;

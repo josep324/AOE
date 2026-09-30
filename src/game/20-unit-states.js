@@ -377,7 +377,7 @@ function gatherTick(u, dt) {
   }
 
   u.gatherProgress += (CONFIG.GATHER.rates[node.subtype] ?? 1) * (aiOf(u.team)?.diff.gather ?? 1) * (u.naval ? 1.4 * teamOf(u.team).mods.shipGather : 1)
-    * (teamOf(u.team).mods.gather[node.subtype] || 1) * dt;
+    * (teamOf(u.team).mods.gather[node.subtype] || 1) * CONFIG.PACE * dt;
   const cap = capOf(u);
   while (u.gatherProgress >= 1 && u.carry.amount < cap && node.amount > 0) {
     u.gatherProgress -= 1;
