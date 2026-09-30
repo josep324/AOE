@@ -168,7 +168,8 @@ function aiAgesAndTechs(A, C) {
   A.saving = false;
   A.reserve = A.campNeed ? { ...A.campNeed } : null;      // (campament d'una altra illa pendent: 21d)
   if (next <= 3 && !techQueued(C.T, 'age' + next)) {
-    const need = thr[C.age];
+    // (mai per sobre dels aldeans que vol tenir: a Fàcil, 45 aldeans i l'Imperial en demanava 59, i no hi arribava mai)
+    const need = Math.min(thr[C.age], D.villagers - 3);
     const req = CONFIG.AGES[next].req;
     const pref = next === 1 ? ['barracks', 'mill', 'lumbercamp']
       : next === 2 ? (A.strategy === 'scoutrush' ? ['stable', 'blacksmith'] : A.strategy === 'archers' ? ['archeryrange', 'blacksmith'] : A.strategy === 'fastcastle' ? ['blacksmith', 'market'] : ['blacksmith', 'archeryrange'])
@@ -184,7 +185,8 @@ function aiAgesAndTechs(A, C) {
     // Amb un exèrcit rival clarament més fort a prop de casa, primer tropes i després l'edat
     // (o un exèrcit rival gran vist fa poc, més del doble del propi: primer els contraris, com a l'AoE II)
     const danger = (A.foeStr || 0) > (A.myStr || 0) * 1.2 + 2 || (A.foeComp && A.foeComp.mil >= 8 && C.army.length < A.foeComp.mil * 0.5);
-    const ready = vills >= need && distinctBuilt(C.T, req) >= 2 && !rushWait && !danger && (next < 3 || D !== DIFFICULTY.easy || vills >= need + 5);
+    const ready = vills >= need && distinctBuilt(C.T, req) >= 2 && !rushWait && !danger && (next < 3 || D !== DIFFICULTY.easy || vills >= Math.min(need + 5, D.villagers - 1))
+      && (D !== DIFFICULTY.easy || C.now >= [0, 480, 1080, 1800][next]);    // (Fàcil: edats més tard, com la IA fàcil de l'AoE II)
     if (ready) {
       if (C.age === 0 && D.micro > 0) aiTryTech(A, C, 'loom');
       A.saving = true;
