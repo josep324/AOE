@@ -177,3 +177,8 @@ moviment, les recàrregues i els projectils no canvien, perquè el combat i el m
 Efectes secundaris corregits: a 2,9 m/s un aldeà no podia travessar un grup de pastors (les empentes guanyaven);
 ara qui porta estona encallat hi passa pel mig. Les unitats d'una tropa ja no «s'encallen» per anar al pas del guia.
 La IA puja a Feudal amb 19–24 aldeans, com a l'AoE II.
+
+**Simulacions amb el ritme nou** (Aràbia 1v1, Illes 1v1, Llacs 2v2 i Bosc Negre 1v2; 25–30 minuts): 0 errors de
+JavaScript. La IA Normal/Difícil arriba a Feudal cap als 7–10 minuts reals (12–17 de joc), a Castells cap als 15–20 i a
+Imperial cap als 22–25, amb 60–90 aldeans al minut 30. Els «encallats» que quedaven eren miners amb el campament a
+tocar de la mina (van i tornen en poc espai), no unitats aturades.
