@@ -1,5 +1,5 @@
 /* Portes i muralles:
-   - la porta fa 4 cel·les i s'obre sola per a les unitats pròpies i les aliades, però no per a les enemigues
+   - la porta fa 4 caselles (8 m; cada tram de muralla, una casella de 2×2 m) i s'obre sola per a les unitats pròpies i les aliades, però no per a les enemigues
    - bloquejada, no hi passa ningú; desbloquejada, torna a deixar passar
    - traçar una muralla per dins d'un bosc només fa (i paga) els trams dels forats */
 export default async ({ open, assert, log }) => {
@@ -13,19 +13,22 @@ export default async ({ open, assert, log }) => {
     // Un lloc obert lluny de les bases
     let cx = 0, cz = 0;
     for (let k = 0; k < 4000; k++) {
-      cx = Math.round(Math.sin(k * 7.1) * 60); cz = Math.round(Math.cos(k * 3.3) * 60);
+      cx = Math.round(Math.sin(k * 7.1) * 30) * 2; cz = Math.round(Math.cos(k * 3.3) * 30) * 2;   // (parells: caselles alineades)
       if (S.resourceNodes.every(n => Math.hypot(n.position.x - cx, n.position.z - cz) > 22) && S.buildings.every(b => Math.hypot(b.position.x - cx, b.position.z - cz) > 30) && R.canPlace('house', cx, cz)) break;
     }
     // Recinte tancat de muralla amb una porta a la cara nord (z = cz + 6)
-    const h = 6;
-    for (let i = -h; i < h; i++) for (const [x, z] of [[cx + i, cz - h], [cx + i, cz + h], [cx - h, cz + i], [cx + h, cz + i]]) R.createBuilding('stonewall', x + 0.5, z + 0.5, true, P);
-    R.createBuilding('stonewall', cx + h + 0.5, cz + h + 0.5, true, P);
-    const snap = R.snapGateToWall(new V(cx, 0, cz + h + 0.5));
-    const walls = S.buildings.filter(b => b.isWall && Math.abs(b.position.z - snap.z) < 0.2 && Math.abs(b.position.x - snap.x) < 2);
+    // (caselles de 2 m amb el centre a cx ± 1, 3, 5…: el recinte va de cx − 6 a cx + 6; l'interior, de cx − 4 a cx + 4)
+    const h = 4, e = 5;
+    const ring = new Set();
+    for (let i = -e; i <= e; i += 2) for (const [x, z] of [[cx + i, cz - e], [cx + i, cz + e], [cx - e, cz + i], [cx + e, cz + i]]) ring.add(x + ',' + z);
+    for (const k of ring) { const [x, z] = k.split(',').map(Number); R.createBuilding('stonewall', x, z, true, P); }
+    const snap = R.snapGateToWall(new V(cx + 0.3, 0, cz + e));
+    const walls = S.buildings.filter(b => b.isWall && Math.abs(b.position.z - snap.z) < 0.2 && Math.abs(b.position.x - snap.x) < 4);
     walls.forEach(w => R.kill(w));
     const gate = R.createBuilding('gate', snap.x, snap.z, true, P, snap.rot);
     run(1);
     o.gateWidth = gate.footprint.hw * 2;
+    o.gateAt = [snap.x - cx, snap.z - cz, snap.rot, walls.length];
     const inside = (u) => Math.abs(u.position.x - cx) < h - 0.3 && Math.abs(u.position.z - cz) < h - 0.3;
     const trip = (team, n = 12) => {
       const us = Array.from({ length: n }, (_, i) => R.createSoldierAt('militia', cx - 3 + (i % 4) * 1.4, cz + h + 5 + Math.floor(i / 4) * 1.3, team));
@@ -79,7 +82,7 @@ export default async ({ open, assert, log }) => {
     return o;
   });
   log(JSON.stringify(r));
-  assert(r.gateWidth === 4, 'la porta no fa 4 cel·les');
+  assert(r.gateWidth === 8 && r.gateAt[0] === 0 && r.gateAt[3] === 4, 'la porta no fa 4 caselles o no s\'encaixa a la muralla');
   assert(r.own >= 10, 'les unitats pròpies no passen per la porta');
   assert(r.ally >= 10, 'les unitats aliades no passen per la porta');
   assert(r.enemy === 0, 'les unitats enemigues passen per la porta');

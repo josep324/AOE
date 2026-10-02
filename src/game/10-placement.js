@@ -34,7 +34,10 @@ function buildBlockReason(type, team = PLAYER.id) {
   if (!canAfford(costFor(type, team), team)) return `Recursos insuficients: cal ${costText(costFor(type, team))}`;
   return null;
 }
-const WALL_GHOST_GEO = new THREE.BoxGeometry(1, 2.2, 1).translate(0, 1.1, 0);
+/* Les muralles van per caselles de l'AoE II (2×2 m): centres a les coordenades senars */
+const WALL_TILE = 2;
+const wallSnap = (v) => Math.floor(v / WALL_TILE) * WALL_TILE + WALL_TILE / 2;
+const WALL_GHOST_GEO = new THREE.BoxGeometry(WALL_TILE, 2.6, WALL_TILE).translate(0, 1.3, 0);
 function startPlacement(type) {
   if (!builders().length) return;
   const reason = buildBlockReason(type);
@@ -94,16 +97,16 @@ function cancelPlacement() {
   placing.wall = false;
   placing.start = null;
 }
-/* Cel·les d'una línia recta entre dues cel·les (Bresenham) */
-function lineCells(x0, z0, x1, z1, max = 60) {
-  const out = [];
-  let i0 = Math.floor(x0), j0 = Math.floor(z0);
-  const i1 = Math.floor(x1), j1 = Math.floor(z1);
+/* Caselles d'una línia recta entre dues caselles de muralla (Bresenham) */
+function lineCells(x0, z0, x1, z1, max = 40) {
+  const out = [], T = WALL_TILE;
+  let i0 = Math.floor(x0 / T), j0 = Math.floor(z0 / T);
+  const i1 = Math.floor(x1 / T), j1 = Math.floor(z1 / T);
   const di = Math.abs(i1 - i0), dj = Math.abs(j1 - j0);
   const si = i0 < i1 ? 1 : -1, sj = j0 < j1 ? 1 : -1;
   let err = di - dj;
   for (;;) {
-    out.push([i0 + 0.5, j0 + 0.5]);
+    out.push([(i0 + 0.5) * T, (j0 + 0.5) * T]);
     if ((i0 === i1 && j0 === j1) || out.length >= max) break;
     const e2 = 2 * err;
     if (e2 > -dj) { err -= dj; i0 += si; }
@@ -111,13 +114,15 @@ function lineCells(x0, z0, x1, z1, max = 60) {
   }
   return out;
 }
-/* La cel·la ja és impassable per si mateixa (troncs i farciment del bosc, penya-segat…) */
+/* La casella ja és impassable per si mateixa (troncs i farciment del bosc, penya-segat…): totes les cel·les */
 function wallCellClosed(x, z) {
-  const i = navCell(x), j = navCell(z);
-  return i >= 0 && j >= 0 && i < NAV.N && j < NAV.N && NAV.walk[j * NAV.N + i] === 1;
+  const h = WALL_TILE / 2 - 0.01;
+  for (let j = navCell(z - h); j <= navCell(z + h); j++) for (let i = navCell(x - h); i <= navCell(x + h); i++)
+    if (NAV.walk[j * NAV.N + i] !== 1) return false;
+  return true;
 }
 function updateWallPlacement(p) {
-  const cur = [snapToGrid(p.x, 1), snapToGrid(p.z, 1)];
+  const cur = [wallSnap(p.x), wallSnap(p.z)];
   const cells = placing.start ? lineCells(placing.start[0], placing.start[1], cur[0], cur[1]) : [cur];
   const def = CONFIG.BUILDINGS[placing.type];
   const res = resOf(PLAYER.id);
@@ -211,7 +216,7 @@ function canPlace(type, x, z, rot = 0) {
       if (!bv || (bv === 2 && wallLike)) continue;
       // Porta: la cel·la pot estar ocupada per un tram de muralla propi
       const cx = navCenter(i), cz = navCenter(j);
-      if (walls.some(w => Math.abs(w.position.x - cx) < 0.6 && Math.abs(w.position.z - cz) < 0.6)) continue;
+      if (walls.some(w => Math.abs(w.position.x - cx) < w.footprint.hw + 0.1 && Math.abs(w.position.z - cz) < w.footprint.hd + 0.1)) continue;
       return false;
     }
   // Tampoc a sobre de les ovelles ni de les relíquies (quedarien atrapades sota l'edifici)
@@ -225,7 +230,7 @@ function canPlace(type, x, z, rot = 0) {
 }
 /* Porta: si el cursor és a prop d'una muralla pròpia, s'orienta en la seva direcció i s'hi encaixa */
 function snapGateToWall(p) {
-  let near = null, bestD = 2.5;
+  let near = null, bestD = 3.5;
   for (const b of state.buildings) {
     if (!b.isWall || b.team !== PLAYER.id || b.dead) continue;
     const d = Math.hypot(b.position.x - p.x, b.position.z - p.z);
@@ -234,13 +239,16 @@ function snapGateToWall(p) {
   if (!near) return null;
   const at = (dx, dz) => state.buildings.some(b => b.isWall && b.team === PLAYER.id && !b.dead
     && Math.abs(b.position.x - (near.position.x + dx)) < 0.2 && Math.abs(b.position.z - (near.position.z + dz)) < 0.2);
-  const horiz = at(1, 0) || at(-1, 0), vert = at(0, 1) || at(0, -1);
+  const T = WALL_TILE;
+  const horiz = at(T, 0) || at(-T, 0), vert = at(0, T) || at(0, -T);
   if (horiz === vert) return null;
-  // Porta centrada a la muralla, sobre la mateixa línia
-  const w = CONFIG.BUILDINGS.gate.size[0];
+  // Porta centrada a la muralla, sobre la mateixa línia (ocupa caselles senceres: amb un nombre parell, el centre
+  // cau entre dues caselles)
+  const n = Math.round(CONFIG.BUILDINGS.gate.size[0] / T);
+  const along = (v) => n % 2 ? wallSnap(v) : Math.round(v / T) * T;
   return horiz
-    ? { rot: 0, x: snapToGrid(p.x, w), z: near.position.z }
-    : { rot: 1, x: near.position.x, z: snapToGrid(p.z, w) };
+    ? { rot: 0, x: along(p.x), z: near.position.z }
+    : { rot: 1, x: near.position.x, z: along(p.z) };
 }
 function updatePlacement() {
   if (!placing.type) return;

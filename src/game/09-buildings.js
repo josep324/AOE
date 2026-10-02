@@ -32,13 +32,15 @@ function makeBuildingModel(type, team = PLAYER.id, arch = null) {
     wrap.add(kit.model);
     return { model: wrap, height: kit.height * s };
   }
-  if (kit && type === 'gate') {
-    // Porta de 4 cel·les (com a l'AoE II): el model, pensat per a 3, s'eixampla
+  if (kit && (type === 'gate' || type === 'stonewall')) {
+    // Muralla d'una casella de l'AoE II (2×2 m) i porta de 4 caselles (8×2 m): els models, pensats per a 1×1 i 3×1,
+    // s'eixamplen (i s'alcen una mica, perquè no quedin rabassuts)
     const wrap = new THREE.Group();
-    kit.model.scale.x = 4 / 3;
+    const sy = 1.2;
+    kit.model.scale.set(type === 'gate' ? fw / 3 : fw, sy, fd);
     wrap.add(kit.model);
     wrap.userData = kit.model.userData;
-    return { model: wrap, height: kit.height };
+    return { model: wrap, height: kit.height * sy };
   }
   if (kit) return kit;
   const g = new THREE.Group();
@@ -102,6 +104,11 @@ function makeScaffold(w, d, h) {
   return g;
 }
 
+function wallGroundY(x, z, hw, hd) {
+  let lo = groundY(x, z);
+  for (const [dx, dz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd], [-hw, 0], [hw, 0], [0, -hd], [0, hd]]) lo = Math.min(lo, groundY(x + dx, z + dz));
+  return lo;
+}
 function sizeOf(type, rot = 0) {
   const [w, d] = CONFIG.BUILDINGS[type].size;
   return rot ? [d, w] : [w, d];
@@ -139,7 +146,8 @@ function createBuilding(type, x, z, complete = false, team = PLAYER.id, rot = 0)
     e.group.add(e.scaffold);
   }
   // Com a l'AoE II, l'edifici anivella el terreny on es construeix (el moll és a l'aigua)
-  e.group.position.set(x, def.dock ? 0 : flattenArea(x, z, sw / 2, sd / 2), z);
+  // (les muralles i portes no: segueixen el terreny, com a l'AoE II; s'enfonsen fins al punt més baix)
+  e.group.position.set(x, def.dock ? 0 : (def.wall || def.gate) ? wallGroundY(x, z, sw / 2, sd / 2) : flattenArea(x, z, sw / 2, sd / 2), z);
   e.finalize();
   state.buildings.push(e);
   if (!def.walkable) {

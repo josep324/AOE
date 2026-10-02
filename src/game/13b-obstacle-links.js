@@ -8,7 +8,8 @@
 const LINKS = { trees: false, walls: false };
 const TREE_LINK_DIST = 3.5;     // troncs a menys d'aquesta distància (centre a centre): no s'hi passa
 const TREE_HOLE_DIST = 6.6;     // fins aquí, si el forat és a dins del bosc (Bosc Negre: arbres més separats)
-const WALL_LINK_GAP = 1.4;      // forat màxim entre una muralla i el que té al costat que es tanca
+const WALL_LINK_GAP = 1.4;
+const WALL_LINK_GAP_TREE = 2.2;      // forat màxim entre una muralla i el que té al costat que es tanca
 
 function linkObstacle(ax, az, bx, bz, r, e1, e2, kind) {
   return { seg: true, ax, az, bx, bz, r, x: (ax + bx) / 2, z: (az + bz) / 2, ext: Math.hypot(bx - ax, bz - az) / 2 + r,
@@ -94,7 +95,8 @@ function rebuildWallLinks() {
       if (q === w || q.link || (q.entity && q.entity.mobile)) continue;
       if (isWallObs(q)) {
         // Dos trams en diagonal (es toquen per la cantonada): no s'hi pot esmunyir ningú
-        if (q.entity.id > w.entity.id && Math.abs(Math.abs(q.x - w.x) - 1) < 0.05 && Math.abs(Math.abs(q.z - w.z) - 1) < 0.05)
+        // (només entre trams: una porta en diagonal amb un tram quedava tallada per la meitat)
+        if (q.entity.id > w.entity.id && q.entity.isWall && w.entity.isWall && Math.abs(Math.abs(q.x - w.x) - (w.hw + q.hw)) < 0.05 && Math.abs(Math.abs(q.z - w.z) - (w.hd + q.hd)) < 0.05)
           out.push(linkObstacle(w.x, w.z, q.x, q.z, 0.3, w.entity, q.entity, 'wall'));
         continue;
       }
@@ -103,7 +105,10 @@ function rebuildWallLinks() {
       if (s.d > 3.5) continue;
       const qx = w.x - s.nx * s.d, qz = w.z - s.nz * s.d;
       const s2 = obstacleSurface(w, qx, qz);
-      if (s2.d < 0.15 || s2.d > WALL_LINK_GAP) continue;
+      // (amb un arbre, més marge: un tram de 2 m que no hi cap perquè el tronc el trepitja deixa un forat de fins a
+      //  2 m entre el tram veí i el tronc, i un bosc no té passos legítims tan estrets)
+      const isTree = (q.entity && q.entity.subtype === 'tree') || q.link === 'tree';
+      if (s2.d < 0.15 || s2.d > (isTree ? WALL_LINK_GAP_TREE : WALL_LINK_GAP)) continue;
       // Porta: només pels extrems (per la cara de pas, el farciment la tancaria)
       if (w.gateTeam !== undefined && w.gateTeam !== 0 && (w.hw > w.hd ? Math.abs(s2.nz) > Math.abs(s2.nx) : Math.abs(s2.nx) > Math.abs(s2.nz))) continue;
       out.push(linkObstacle(qx - s2.nx * s2.d, qz - s2.nz * s2.d, qx, qz, 0.3, w.entity, q.entity || null, 'wall'));

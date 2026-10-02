@@ -203,3 +203,9 @@ d'enviar reforços, que arribaven sols a les torres. Ara:
   s'ha partit, primer es reagrupa al nucli.
 - Els reforços només hi van si l'exèrcit encara conserva la meitat de la força i, junts, poden guanyar.
 Resultat en la mateixa simulació: atacs de 41, 70, 106 i 82 unitats en lloc d'onades de 10.
+
+**Muralles a la riba:** cada tram (1×1 m) aplanava el terreny amb una vora de 4 m; a la riba, la vora aixecava el fons
+del llac i en sortia una protuberància de terra. Ara els trams fan una casella de l'AoE II (2×2 m; la porta, 4
+caselles, 8×2 m, 2.750 de vida i 41 s), segueixen el terreny sense aplanar-lo, i l'aplanat de qualsevol edifici no
+toca mai el fons de l'aigua. Prova nova (30): abans, 20 trams a la riba canviaven 340 punts del terreny i 15 cases
+n'aixecaven 56 per sobre de l'aigua; ara, cap.

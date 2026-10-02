@@ -103,6 +103,10 @@ function flattenArea(x, z, hw, hd, apply = true) {
     const di = Math.max(i0 - i, i - i1, 0), dj = Math.max(j0 - j, j - j1, 0);
     const d = Math.max(di, dj);
     const k = j * T.n + i;
+    // (el fons de l'aigua no es toca: a la riba, aixecar-lo feia sortir terra dins del llac. La graella d'alçades
+    //  és de 2 m i la planta s'arrodoneix cap enfora, així que fins i tot els punts de la planta poden ser a l'aigua)
+    //  (la terra plana és a 0,02 m: només compta com a aigua si en té a tocar)
+    if (T.h[k] < 0.1 && level > T.h[k] && waterNear(T.x0 + i * T.hs, T.x0 + j * T.hs, 3)) continue;
     const w = d === 0 ? 1 : 1 - d / (ring + 1);
     T.h[k] = T.h[k] * (1 - w) + level * w;
   }

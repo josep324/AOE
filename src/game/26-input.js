@@ -45,7 +45,7 @@ canvas.addEventListener('mousedown', (e) => {
     if (e.button === 0) {
       if (placing.wall) {
         const p = pickGround(e.clientX, e.clientY);
-        if (p) placing.start = [snapToGrid(p.x, 1), snapToGrid(p.z, 1)];
+        if (p) placing.start = [wallSnap(p.x), wallSnap(p.z)];
       } else confirmPlacement(e.shiftKey);
     } else if (e.button === 2) cancelPlacement();
     return;

@@ -76,6 +76,8 @@ fora de les bases queden en clarianes unides als camins (si no, el bosc les tanc
 (als extrems s'hi pot pujar). Des de dalt es fa +25% de dany i des de baix −25%. Els edificis anivellen el terreny
 i no es poden fer en pendents massa forts. La IA reuneix l'exèrcit i fa torres i castells en terreny alt.
 **Natura**: cérvols que fugen, senglars que envesteixen (caça'ls amb uns quants aldeans), llops que ataquen i bancs de peixos a la riba. Traçar una muralla d'arbre a arbre només fa (i paga) els trams dels forats: dins del bosc ja no es pot passar.
+**Muralles com a l'AoE II:** cada tram és una casella (2×2 m) i la porta en fa quatre (8×2 m); segueixen el terreny
+sense aplanar-lo, i cap edifici aixeca el fons de l'aigua a la riba.
 La **porta** fa 4 cel·les, s'obre sola per a les teves unitats i les aliades (no per a les enemigues) i es pot
 **bloquejar** (🔒): llavors no hi passa ningú. Un fonament que ha quedat dins del bosc es pot seleccionar i enderrocar.
 **Reparar** (com a l'AoE II): clic dret amb aldeans sobre un edifici propi danyat (muralla, porta, torre, castell,

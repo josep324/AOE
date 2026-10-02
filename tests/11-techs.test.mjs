@@ -47,9 +47,9 @@ export default async ({ open, assert, log }) => {
     const isp = inf.speed; R.completeTech(P, 'squires');
     o.squires = +(inf.speed / isp).toFixed(2);
     // Muralla fortificada
-    const w = R.createBuilding('stonewall', -40.5, 40.5, true, P);
+    const w = R.createBuilding('stonewall', -41, 41, true, P);
     const whp = w.maxHp; R.completeTech(P, 'fortifiedwall');
-    const w2 = R.createBuilding('stonewall', -41.5, 40.5, true, P);
+    const w2 = R.createBuilding('stonewall', -43, 41, true, P);
     o.wall = [w.maxHp / whp, w2.maxHp / whp].map(x => +x.toFixed(2));
     // Heretgia: la unitat convertida mor
     R.completeTech(P, 'heresy');

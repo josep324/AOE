@@ -239,12 +239,14 @@ COMMON_BUILDERS.farm = (g) => {
   return 0.9;
 };
 COMMON_BUILDERS.palisade = (g) => {
-  for (const [sx, sz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
-    const h = 2.1 + ((sx + sz + 1) * 7919 % 3) * 0.12;
-    kcyl(g, 0.24, 0.26, h, 7, KM.bark, sx, h / 2, sz);
-    kcyl(g, 0, 0.24, 0.42, 7, KM.palewood, sx, h + 0.21, sz);
+  // Un tram d'una casella (2×2 m): una graella de troncs clavats, d'alçades una mica diferents
+  let k = 0;
+  for (const sz of [-0.64, 0, 0.64]) for (const sx of [-0.64, 0, 0.64]) {
+    const h = 2.4 + (k++ * 7919 % 5) * 0.1;
+    kcyl(g, 0.31, 0.33, h, 7, KM.bark, sx, h / 2, sz);
+    kcyl(g, 0, 0.31, 0.48, 7, KM.palewood, sx, h + 0.24, sz);
   }
-  return 2.7;
+  return 3.1;
 };
 
 /* ---------- Peces de setge (per als tallers) ---------- */
