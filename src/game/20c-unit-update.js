@@ -339,7 +339,8 @@ function updateUnit(u, dt) {
       u.arms[0].rotation.x = -s * 0.55;
       u.arms[1].rotation.x = s * 0.55;
     }
-    u.model.position.y = Math.abs(Math.cos(u.walkPhase)) * 0.09;
+    // (un balanceig petit: amb més, semblaven ninots saltant)
+    u.model.position.y = Math.abs(Math.cos(u.walkPhase)) * (u.legs.length === 4 ? 0.07 : 0.04);
     u.model.rotation.x *= (1 - k);
   } else if ((u.state === STATE.GATHERING && u.gatherNode) || (u.state === STATE.BUILDING && u.buildTarget)) {
     // Cop de destral / pic: pujada lenta i baixada ràpida

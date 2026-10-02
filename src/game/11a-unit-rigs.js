@@ -170,37 +170,63 @@ function arcGeo(r, tube, arc) {
 
 /* ---------- Cos humà ---------- */
 /* look: { skin, hair, top, top2, pants, boots, skirt (vestit llarg), sleeves, beard } */
+/* Proporcions d'adult (no de ninot): espatlles amples i cintura estreta, cuixa i canyella amb genoll, peu
+   allargat, cara amb mandíbula, nas, ulls, celles i orelles, braç amb colze i mà amb polze */
 function humanBody(rig, look) {
   const torso = rigPart(rig, 'torso');
-  const legL = rigPart(rig, 'legL', -0.14, 0.8, 0), legR = rigPart(rig, 'legR', 0.14, 0.8, 0);
-  const armL = rigPart(rig, 'armL', -0.35, 1.5, 0), armR = rigPart(rig, 'armR', 0.35, 1.5, 0);
+  const legL = rigPart(rig, 'legL', -0.13, 0.8, 0), legR = rigPart(rig, 'legR', 0.13, 0.8, 0);
+  const armL = rigPart(rig, 'armL', -0.36, 1.5, 0), armR = rigPart(rig, 'armR', 0.36, 1.5, 0);
   for (const leg of [legL, legR]) {
-    piece(leg, taper(0.11, 0.085, 0.64), look.pants, { y: -0.3 });
-    piece(leg, UG.box, look.boots, { y: -0.7, z: 0.04, sx: 0.19, sy: 0.17, sz: 0.3 });
+    piece(leg, taper(0.118, 0.092, 0.4, 10), look.pants, { y: -0.18 });          // cuixa
+    piece(leg, UG.sphere, look.pants, { y: -0.37, z: 0.01, sx: 0.088, sy: 0.08, sz: 0.09 });   // genoll
+    piece(leg, taper(0.085, 0.064, 0.32, 10), look.pants, { y: -0.52 });          // canyella
+    piece(leg, UG.sphere, look.pants, { y: -0.47, z: -0.03, sx: 0.08, sy: 0.12, sz: 0.075 });  // panxell
+    piece(leg, taper(0.074, 0.08, 0.16, 10), look.boots, { y: -0.68 });           // canya de la bota
+    piece(leg, UG.sphere, look.boots, { y: -0.745, z: 0.06, sx: 0.088, sy: 0.058, sz: 0.17 });  // peu
   }
   // Cadera / faldó de la túnica i tors
   if (look.skirt) {
-    piece(torso, taper(0.29, 0.36, 0.8, 12), look.skirt, { y: 0.52, sz: 0.86 });
-    piece(torso, taper(0.36, 0.37, 0.06, 12), look.pants || look.skirt, { y: 0.14, sz: 0.86 });   // vora del vestit
+    piece(torso, taper(0.27, 0.35, 0.8, 14), look.skirt, { y: 0.52, sz: 0.84 });
+    piece(torso, taper(0.35, 0.36, 0.06, 14), look.pants || look.skirt, { y: 0.14, sz: 0.84 });   // vora del vestit
   }
-  else piece(torso, taper(0.3, 0.36, 0.34, 12), look.top2 || look.top, { y: 0.95 });
-  piece(torso, taper(0.31, 0.27, 0.55, 12), look.top, { y: 1.3, sz: 0.78 });
-  piece(torso, UG.sphere, look.top, { y: 1.5, sx: 0.3, sy: 0.12, sz: 0.24 });
-  piece(torso, taper(0.3, 0.3, 0.09, 12), look.belt || LEATHER, { y: 1.08, sz: 0.8 });
+  else {
+    piece(torso, taper(0.27, 0.31, 0.32, 14), look.top2 || look.top, { y: 0.95, sz: 0.86 });
+    piece(torso, taper(0.315, 0.315, 0.04, 14), shadeHex(look.top2 || look.top, 0.75), { y: 0.8, sz: 0.86 });   // vora de la túnica
+  }
+  piece(torso, taper(0.34, 0.26, 0.56, 14), look.top, { y: 1.3, sz: 0.7 });       // pit (espatlles amples, cintura estreta)
+  piece(torso, UG.sphere, look.top, { y: 1.52, sx: 0.33, sy: 0.1, sz: 0.21 });
+  piece(torso, UG.box, shadeHex(look.top, 0.8), { y: 1.5, z: 0.14, sx: 0.16, sy: 0.05, sz: 0.06, rx: 0.3 });   // coll de la peça
+  piece(torso, taper(0.275, 0.275, 0.09, 14), look.belt || LEATHER, { y: 1.06, sz: 0.82 });
+  piece(torso, UG.box, 0x8a7a5a, { y: 1.06, z: 0.23, sx: 0.07, sy: 0.07, sz: 0.03, metal: true });   // sivella
   // Coll i cap
-  piece(torso, taper(0.075, 0.085, 0.14, 8), look.skin, { y: 1.63 });
-  piece(torso, UG.sphere, look.skin, { y: 1.82, sx: 0.185, sy: 0.215, sz: 0.2 });
-  piece(torso, UG.box, look.skin, { y: 1.8, z: 0.19, sx: 0.05, sy: 0.08, sz: 0.06 });
-  if (look.hair) piece(torso, UG.hemi, look.hair, { y: 1.84, z: -0.02, sx: 0.2, sy: 0.19, sz: 0.21, rx: -0.25 });
-  if (look.beard) piece(torso, UG.sphere, look.beard, { y: 1.7, z: 0.1, sx: 0.14, sy: 0.12, sz: 0.1 });
+  piece(torso, taper(0.066, 0.078, 0.15, 8), look.skin, { y: 1.63 });
+  piece(torso, UG.sphere, look.skin, { y: 1.83, sx: 0.172, sy: 0.205, sz: 0.188 });
+  piece(torso, UG.sphere, look.skin, { y: 1.745, z: 0.04, sx: 0.128, sy: 0.08, sz: 0.135 });   // mandíbula
+  piece(torso, UG.box, shadeHex(look.skin, 0.93), { y: 1.81, z: 0.185, sx: 0.04, sy: 0.075, sz: 0.05, rx: 0.15 });   // nas
+  for (const s of [-1, 1]) {
+    piece(torso, UG.sphere, 0x1c1612, { x: s * 0.062, y: 1.85, z: 0.164, sx: 0.022, sy: 0.018, sz: 0.012 });      // ulls
+    piece(torso, UG.box, look.hair || shadeHex(look.skin, 0.6), { x: s * 0.064, y: 1.882, z: 0.168, sx: 0.065, sy: 0.016, sz: 0.02, rz: s * -0.12 });   // celles
+    piece(torso, UG.sphere, shadeHex(look.skin, 0.94), { x: s * 0.168, y: 1.82, sx: 0.028, sy: 0.05, sz: 0.04 });   // orelles
+  }
+  if (look.hair) piece(torso, UG.hemi, look.hair, { y: 1.855, z: -0.025, sx: 0.185, sy: 0.18, sz: 0.2, rx: -0.3 });
+  if (look.beard) piece(torso, UG.sphere, look.beard, { y: 1.72, z: 0.08, sx: 0.135, sy: 0.11, sz: 0.11 });
   // Braços
   for (const [arm, s] of [[armL, -1], [armR, 1]]) {
-    piece(arm, UG.sphere, look.sleeves || look.top, { y: -0.02, sx: 0.095, sy: 0.1, sz: 0.1 });
-    piece(arm, taper(0.08, 0.066, 0.3), look.sleeves || look.top, { y: -0.16 });
-    piece(arm, taper(0.066, 0.055, 0.28), look.sleeves || look.top, { y: -0.43 });
-    piece(arm, UG.sphere, look.skin, { y: -0.58, sx: 0.075, sy: 0.085, sz: 0.075 });
+    const sl = look.sleeves || look.top;
+    piece(arm, UG.sphere, sl, { y: -0.02, sx: 0.1, sy: 0.11, sz: 0.105 });       // deltoide
+    piece(arm, taper(0.078, 0.063, 0.3, 10), sl, { y: -0.16 });
+    piece(arm, UG.sphere, sl, { y: -0.31, sx: 0.064, sy: 0.06, sz: 0.066 });     // colze
+    piece(arm, taper(0.063, 0.048, 0.26, 10), sl, { y: -0.44 });
+    piece(arm, taper(0.054, 0.054, 0.04, 10), shadeHex(sl, 0.75), { y: -0.55 });   // puny
+    piece(arm, UG.sphere, look.skin, { y: -0.605, z: 0.01, sx: 0.05, sy: 0.075, sz: 0.065 });   // mà
+    piece(arm, UG.sphere, look.skin, { x: -s * 0.04, y: -0.585, z: 0.04, sx: 0.022, sy: 0.04, sz: 0.022 });   // polze
   }
   return { torso, legL, legR, armL, armR };
+}
+/* Color més fosc o més clar (detalls de vores, punys, nas…) */
+function shadeHex(hex, f) {
+  const c = new THREE.Color(hex);
+  return new THREE.Color(Math.min(1, c.r * f), Math.min(1, c.g * f), Math.min(1, c.b * f)).getHex();
 }
 /* Accessoris de cap */
 const HATS = {
