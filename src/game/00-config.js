@@ -164,6 +164,12 @@ P3.civ = 'japanese';
 P4.civ = 'britons';
 const civOf = (team) => CIVS[teamOf(team).civ] || CIVS.franks;
 const archOf = (team) => (team && TEAMS[team] ? civOf(team).arch : 'western');
+/* Estil visual: la civilització (cada una té els seus materials, emblema i alguns edificis propis) sobre una de les
+   tres arquitectures. Una entitat convertida conserva el de la seva civilització d'origen (visArch). Les partides
+   antigues hi desaven el nom de l'arquitectura: també s'accepta */
+const styleOf = (team) => (team && TEAMS[team] && CIVS[teamOf(team).civ] ? teamOf(team).civ : 'franks');
+const archOfStyle = (s) => (CIVS[s] ? CIVS[s].arch : s || 'western');
+const civOfStyle = (s) => (CIVS[s] ? s : null);
 /* Bonificacions de civilització sobre els modificadors de l'equip (es criden en començar o carregar) */
 function applyCivMods(T) {
   const C = CIVS[T.civ];

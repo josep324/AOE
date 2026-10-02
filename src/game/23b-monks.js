@@ -155,7 +155,7 @@ function convertEntity(e, team) {
   if (e.kind === 'unit' && oldTeam && teamOf(oldTeam).techs.has('heresy')) { killEntity(e, null); return; }
   statsConverted(e, oldTeam, team);
   if (e.selected && !(team === PLAYER.id && state.selected.every(s => s === e))) { removeFromSelection(e); onSelectionChanged(); }
-  e.visArch = e.visArch || archOf(oldTeam);          // conserva l'aspecte de la seva civilització
+  e.visArch = e.visArch || styleOf(oldTeam);          // conserva l'aspecte de la seva civilització
   e.team = team;
   e.recolorSelection();
   if (e.kind === 'unit') {

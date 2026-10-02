@@ -145,7 +145,7 @@ function loadGame(data) {
         else { e.progress = d.progress; applyConstructionVisual(e); }
         if (d.sub === 'farm' && d.progress >= 1) { e.amount = d.amount; onNodeHarvested(e); }
       }
-      if (d.arch && d.arch !== archOf(d.team)) { e.visArch = d.arch; rebuildBuildingModel(e); }
+      if (d.arch && d.arch !== styleOf(d.team)) { e.visArch = d.arch; rebuildBuildingModel(e); }
       e.hp = d.hp;
       if (d.wonderEnd !== undefined) e.wonderEnd = data.elapsed + d.wonderEnd;
       if (d.locked) { e.locked = true; if (e.obstacle) e.obstacle.gateTeam = -1; }
@@ -157,7 +157,7 @@ function loadGame(data) {
       e = d.sub === 'villager' ? createVillager(d.x, d.z, d.team)
         : d.sub === 'tradecart' ? createTradeCart(d.x, d.z, d.team)
         : createSoldier(d.sub, d.x, d.z, d.team);
-      if (d.arch && d.arch !== archOf(d.team)) { e.visArch = d.arch; rebuildUnitModel(e); }
+      if (d.arch && d.arch !== styleOf(d.team)) { e.visArch = d.arch; rebuildUnitModel(e); }
       e.hp = d.hp;
       e.group.rotation.y = d.ry || 0;
       e.aiRole = d.aiRole || null;

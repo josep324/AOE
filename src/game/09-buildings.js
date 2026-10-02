@@ -19,11 +19,11 @@ const TC_SIZE = [13.5, 13.5];
 
 /* Retorna { model, height } per a cada tipus d'edifici. El model mira cap a +Z.
    Prioritat: model de la biblioteca (assets/models) → kit d'estil AoE II segons la civilització */
-function makeBuildingModel(type, team = PLAYER.id, arch = null) {
+function makeBuildingModel(type, team = PLAYER.id, style = null) {
   const [fw, fd] = type === 'towncenter' ? TC_SIZE : CONFIG.BUILDINGS[type].size;
   const lib = libraryModel('buildings/' + type, team, { w: fw * 0.96, d: fd * 0.96, maxH: LIB_MAX_HEIGHT[type] });
   if (lib) return { model: lib, height: lib.userData.height };
-  const kit = kitBuildingModel(type, team, arch);
+  const kit = kitBuildingModel(type, team, style);
   if (kit && type === 'watchtower' && teamOf(team).mods.towerLevel) {
     // Torres millorades: més grans (el contenidor manté l'escala mentre es construeix)
     const s = TOWER_LEVELS[teamOf(team).mods.towerLevel].scale;

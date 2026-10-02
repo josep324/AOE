@@ -4,9 +4,11 @@
 /* ---------- Plantilles i instàncies ---------- */
 const UNIT_TEMPLATES = new Map();
 const UNIT_VARIANTS = 4;
-function unitTemplate(kind, team, arch, variant) {
-  const key = `${kind}:${team}:${arch}:${variant}`;
+function unitTemplate(kind, team, style, variant) {
+  const key = `${kind}:${team}:${style}:${variant}`;
+  const arch = archOfStyle(style);
   if (!UNIT_TEMPLATES.has(key)) {
+    RIG_CIV = civOfStyle(style);
     let rig;
     const d = CONFIG.UNITS[kind];
     if (kind === 'villager') rig = buildVillagerRig(team, arch, variant % 2 === 1);
@@ -35,15 +37,16 @@ function unitTemplate(kind, team, arch, variant) {
       }
     }
     rig.traverse(o => { if (o.name === 'torso') refineHead(o); });
+    RIG_CIV = null;
     UNIT_TEMPLATES.set(key, bakeRig(rig));
   }
   return UNIT_TEMPLATES.get(key);
 }
 /* Crea el model d'una unitat i n'omple les referències d'animació (e.legs, e.arms, e.tool…) */
 function buildUnitVisual(e, kind, team) {
-  const arch = e.visArch || archOf(team);
+  const style = e.visArch || styleOf(team);
   const variant = Math.floor(unitRng() * UNIT_VARIANTS);
-  const model = cloneRig(unitTemplate(kind, team, arch, variant));
+  const model = cloneRig(unitTemplate(kind, team, style, variant));
   const get = (n) => model.getObjectByName(n);
   e.model = model;
   const d = CONFIG.UNITS[kind];

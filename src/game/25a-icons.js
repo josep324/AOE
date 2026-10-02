@@ -62,7 +62,7 @@ function renderIcon(key, makeObject, { zoom = 1, lift = 0, yaw = 0.55 } = {}) {
 }
 /* Imatge per a una unitat, edifici o recurs (null si no n'hi ha: es fa servir l'emoji) */
 function iconURL(kind, team = PLAYER.id, arch = null) {
-  const a = arch || archOf(team || PLAYER.id);
+  const a = arch || styleOf(team || PLAYER.id);
   const T = team || 0;
   if (CONFIG.UNITS[kind]) {
     const portrait = !['siege', 'trade'].includes(CONFIG.UNITS[kind].cat) && !CONFIG.UNITS[kind].mounted && CONFIG.UNITS[kind].cat !== 'cavalry';

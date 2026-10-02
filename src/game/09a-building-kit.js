@@ -235,7 +235,11 @@ const KIT_TILE = {
   planks: 1.4, darkplanks: 1.4, thatch: 1.6, kawara: 1.4, clay: 1.4, tile: 1.2, dirt: 3, soil: 2.2, wheat: 1, sprouts: 1, straw: 1, bark: 1.4, cloth: 1,
 };
 const BUMPY = { stone: 2.5, sandstone: 2, granite: 2.5, thatch: 1.2, planks: 1.2, darkplanks: 1.2, kawara: 2, clay: 1.6, bark: 2, adobe: 0.8 };
+/* Civilització de l'edifici que s'està construint: els seus materials substitueixen els de l'arquitectura (09e) */
+let KIT_CIV = null;
 function kitMat(name, extra = {}) {
+  const sw = KIT_CIV && CIV_MATS[KIT_CIV];
+  if (sw && sw[name]) name = sw[name];
   const key = 'kit:' + name + JSON.stringify(extra);
   if (!matCache.has(key)) {
     const tex = KIT_TEX[name];

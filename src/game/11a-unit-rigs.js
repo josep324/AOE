@@ -7,6 +7,8 @@
    hammerHead, carryMesh (i cargo al carro de comerç).
    ===================================================================== */
 const unitRng = mulberry32(0x5eed);
+/* Civilització de la unitat que s'està construint (detalls propis de cada una, 11e) */
+let RIG_CIV = null;
 const ur = (a, b) => a + (b - a) * unitRng();
 const upick = (arr) => arr[Math.floor(unitRng() * arr.length)];
 
@@ -216,6 +218,46 @@ const HATS = {
   spangen(t, wrap = 0xf0ece0) { piece(t, UG.cone, METAL, { y: 2.06, sx: 0.21, sy: 0.4, sz: 0.21, metal: true }); piece(t, UG.torus, wrap, { y: 1.93, rx: Math.PI / 2, sx: 0.2, sy: 0.2, sz: 0.2 }); piece(t, taper(0.22, 0.28, 0.24, 10), 0x777b82, { y: 1.72, z: -0.03, metal: true }); },
   kabuto(t, crest = GOLD) { piece(t, UG.hemi, 0x2a2622, { y: 1.9, sx: 0.23, sy: 0.22, sz: 0.23, metal: true }); piece(t, taper(0.26, 0.36, 0.14, 12), 0x2a2622, { y: 1.8, z: -0.04, metal: true }); piece(t, UG.box, crest, { y: 2.12, z: 0.14, sx: 0.36, sy: 0.12, sz: 0.02, rx: -0.3, metal: true }); },
   jingasa(t) { piece(t, UG.cone, 0x2a2622, { y: 2.05, sx: 0.4, sy: 0.16, sz: 0.4, metal: true }); },
+  // Propis de cada civilització
+  beret(t, c) { piece(t, UG.sphere, c, { y: 1.99, x: 0.03, sx: 0.25, sy: 0.07, sz: 0.25, rz: -0.18 }); },
+  barretina(t, c = 0xb0201a) { piece(t, taper(0.2, 0.21, 0.12, 12), c, { y: 1.95 }); piece(t, UG.cone, c, { y: 2.1, x: 0.08, rz: -0.95, sx: 0.17, sy: 0.38, sz: 0.17 }); },
+  pileus(t, c) { piece(t, UG.hemi, c, { y: 1.9, sx: 0.22, sy: 0.17, sz: 0.22 }); },
+  furhat(t, c) { piece(t, UG.cone, c, { y: 2.12, sx: 0.17, sy: 0.32, sz: 0.17 }); piece(t, UG.torus, 0x5a4030, { y: 1.96, rx: Math.PI / 2, sx: 0.2, sy: 0.2, sz: 0.36 }); piece(t, UG.sphere, 0xc42a1e, { y: 2.3, sx: 0.04, sy: 0.04, sz: 0.04 }); },
+  douli(t) { piece(t, UG.cone, 0xcfae62, { y: 2.03, sx: 0.58, sy: 0.15, sz: 0.58 }); },
+  kamilavka(t) { piece(t, taper(0.19, 0.19, 0.24, 12), 0x151210, { y: 2.0 }); piece(t, taper(0.23, 0.23, 0.03, 12), 0x151210, { y: 2.13 }); },
+  lamahat(t) { piece(t, UG.cone, 0xe0b030, { y: 2.12, sx: 0.2, sy: 0.42, sz: 0.2 }); piece(t, UG.box, 0xe0b030, { y: 2.08, z: -0.06, sx: 0.07, sy: 0.32, sz: 0.38, rx: -0.25 }); },
+  chinahelm(t, tassel = 0xc42a1e) { piece(t, UG.hemi, DARK_METAL, { y: 1.9, sx: 0.23, sy: 0.22, sz: 0.23, metal: true }); piece(t, taper(0.24, 0.3, 0.12, 12), 0x7a1c14, { y: 1.82, z: -0.04 }); piece(t, UG.cone, DARK_METAL, { y: 2.18, sx: 0.04, sy: 0.16, sz: 0.04, metal: true }); piece(t, UG.cone, tassel, { y: 2.12, sx: 0.09, sy: 0.12, sz: 0.09, rx: Math.PI }); },
+  futou(t) { piece(t, UG.hemi, 0x151210, { y: 1.9, sx: 0.21, sy: 0.2, sz: 0.21 }); piece(t, UG.box, 0x151210, { y: 1.98, z: -0.12, sx: 0.56, sy: 0.04, sz: 0.05 }); },
+  crest(t, c) { piece(t, UG.box, c, { y: 2.3, sx: 0.05, sy: 0.16, sz: 0.4 }); },
+};
+/* Senyal de la civilització sobre un escut (kite: cara cap a +Z; round: cara cap a −X) */
+function shieldMark(arm, shape) {
+  const C = RIG_CIV;
+  if (!C) return;
+  const at = (dx, dy, w, h, color, o = {}) => piece(arm, UG.box, color, shape === 'kite'
+    ? { x: -0.1 + dx, y: -0.25 + dy, z: 0.145, sx: w, sy: h, sz: 0.015, ...o }
+    : { x: -0.13, y: -0.36 + dy, z: 0.06 + dx, sx: w, sy: h, sz: 0.015, ry: Math.PI / 2, ...o });
+  if (C === 'franks') { at(0, 0.03, 0.04, 0.17, GOLD); at(0, -0.02, 0.15, 0.03, GOLD); for (const s of [-1, 1]) at(s * 0.06, 0.04, 0.03, 0.09, GOLD); }
+  else if (C === 'britons') for (const dy of [0.1, 0.02, -0.06]) at(0, dy, 0.15, 0.035, GOLD);
+  else if (C === 'catalans') { at(0, 0, 0.2, 0.3, 0xe8c040); for (const dx of [-0.075, -0.025, 0.025, 0.075]) at(dx, 0, 0.022, 0.3, 0xc42a1e, shape === 'kite' ? { z: 0.152 } : { x: -0.137 }); }
+  else if (C === 'byzantines') { at(0, 0.02, 0.045, 0.28, GOLD); at(0, 0.08, 0.22, 0.045, GOLD); }
+  else if (C === 'saracens') piece(arm, arcGeo(0.09, 0.02, Math.PI * 1.3), 0xf2ece0, shape === 'kite' ? { x: -0.1, y: -0.22, z: 0.145, rz: 0.9 } : { x: -0.13, y: -0.24, z: 0.06, ry: Math.PI / 2, rz: 0.9 });
+}
+/* Barrets de soldat propis de cada civilització (retorna true si n'hi ha posat un) */
+const CIV_SOLDIER_HAT = {
+  franks(t, base, tier) { if (base === 'archer' && !tier) { HATS.hood(t, 0x6a4a2a); return true; } return false; },
+  catalans(t, base, tier) { if ((base === 'spearman' || base === 'skirmisher' || base === 'archer') && !tier) { HATS.barretina(t); return true; } return false; },
+  byzantines(t, base, tier, T) {
+    if ((base === 'archer' || base === 'skirmisher' || base === 'cavarcher') && !tier) HATS.pileus(t, 0x6a4a30);
+    else { HATS.spangen(t, 0x9ca3ad); HATS.crest(t, base === 'knight' || tier >= 2 ? GOLD : T.color); }
+    return true;
+  },
+  mongols(t, base, tier, T) {
+    if (base === 'archer' || base === 'scout' || base === 'cavarcher' || base === 'skirmisher') HATS.furhat(t, T.color);
+    else { HATS.spangen(t, 0x5a4030); piece(t, UG.cone, 0xc42a1e, { y: 2.32, sx: 0.07, sy: 0.12, sz: 0.07, rx: Math.PI }); }
+    return true;
+  },
+  chinese(t, base, tier) { if ((base === 'archer' || base === 'skirmisher') && !tier) HATS.futou(t); else HATS.chinahelm(t); return true; },
 };
 /* Armes i escuts (a la mà) */
 const WEAPONS = {
@@ -313,10 +355,20 @@ function buildVillagerRig(team, arch, female) {
   if (arch === 'middleeast') look = { skin, hair: female ? null : hair, top: female ? T.colorDark : T.color, top2: T.color, skirt: upick(L.neutral), pants: upick(L.pants), boots: L.boots, sleeves: upick(L.neutral), belt: T.colorDark, beard: female ? null : hair };
   else if (arch === 'eastasian') look = { skin, hair, top: T.color, top2: T.colorDark, pants: upick(L.pants), boots: L.boots, skirt: female ? T.colorDark : null, belt: 0x2a2a2a };
   else look = { skin, hair, top: T.color, top2: T.colorDark, pants: upick(L.pants), boots: L.boots, skirt: female ? upick(L.neutral) : null, belt: LEATHER, beard: !female && unitRng() < 0.4 ? hair : null };
+  const C = RIG_CIV;
+  // Roba pròpia: deel mongol (abric llarg i faixa), túnica bizantina, jaqueta xinesa de coll creuat
+  if (C === 'mongols') look = { ...look, top: T.color, top2: T.colorDark, skirt: T.colorDark, sleeves: T.color, belt: 0xd8902a, pants: 0x4a3a2a, boots: 0x3a2616 };
+  else if (C === 'byzantines') look = { ...look, skirt: female ? T.colorDark : upick(L.neutral), sleeves: female ? T.color : look.sleeves, belt: GOLD };
+  else if (C === 'chinese') look = { ...look, skirt: T.colorDark, belt: 0x7a1c14 };
   const P = humanBody(rig, look);
-  if (arch === 'middleeast') (female ? HATS.coif(P.torso, T.colorDark) : HATS.turban(P.torso));
+  if (C === 'mongols') HATS.furhat(P.torso, female ? T.colorDark : T.color);
+  else if (C === 'byzantines') (female ? HATS.coif(P.torso, 0xefe8d8) : HATS.pileus(P.torso, 0x6a4a30));
+  else if (C === 'chinese') (female ? HATS.bun(P.torso, hair) : HATS.douli(P.torso));
+  else if (arch === 'middleeast') (female ? HATS.coif(P.torso, T.colorDark) : HATS.turban(P.torso));
   else if (arch === 'eastasian') (female ? HATS.bun(P.torso, hair) : HATS.kasa(P.torso));
   else if (female) { HATS.coif(P.torso, 0xefe8d8); piece(P.torso, UG.box, 0xefe8d8, { y: 0.8, z: 0.33, sx: 0.4, sy: 0.6, sz: 0.03 }); }
+  else if (C === 'franks') HATS.beret(P.torso, 0x2a3a5a);
+  else if (C === 'catalans') HATS.barretina(P.torso);
   else HATS.straw(P.torso);
   // Eina (visible només treballant) i càrrega
   const tool = rigPart(P.armR, 'tool', 0, -0.6, 0);
@@ -338,13 +390,29 @@ function buildMonkRig(team, arch) {
   if (arch === 'middleeast') look = { skin, hair: null, beard: 0xd8d4cc, top: 0xeee8d8, top2: 0xeee8d8, skirt: 0xe6dfcc, sleeves: 0xeee8d8, pants: 0xe6dfcc, boots: 0x6a4a2a, belt: T.color };
   else if (arch === 'eastasian') look = { skin, hair: null, top: 0xd8862a, top2: 0xc9761e, skirt: 0xc9761e, sleeves: 0xd8862a, pants: 0x8a5a2a, boots: 0x5a4632, belt: 0x6a4a2a };
   else look = { skin, hair: 0x6a5a48, top: 0x5a4030, top2: 0x5a4030, skirt: 0x503828, sleeves: 0x5a4030, pants: 0x4a3426, boots: 0x3a2616, belt: 0xd8cca8, beard: unitRng() < 0.5 ? 0x8a7a68 : null };
+  // Ordes propis: benedictins negres (Britons), cistercencs blancs (Catalans), franciscans marrons (Francs),
+  // monjos ortodoxos (Bizantins), lames (Mongols), budistes zen negres (Japonesos) i Shaolin safrà (Xinesos)
+  const C = RIG_CIV, robe = (a, b, c) => ({ ...look, top: a, top2: a, sleeves: a, skirt: b, pants: c || b });
+  if (C === 'britons') look = { ...robe(0x22201e, 0x1c1a18), belt: 0x8a7a68 };
+  else if (C === 'catalans') look = { ...robe(0xe8e2d4, 0xdcd4c2, 0x2a2622), belt: 0x2a2622 };
+  else if (C === 'byzantines') look = { ...robe(0x1c1a1a, 0x161414), beard: 0x9a9088, belt: GOLD };
+  else if (C === 'mongols') look = { ...robe(0x7a1e22, 0x6a1a1e), hair: null, beard: null, belt: 0xe0b030 };
+  else if (C === 'japanese') look = { ...robe(0x1c1a1a, 0x1c1a1a, 0x2a2622) };
   const P = humanBody(rig, look);
   const t = P.torso;
   // Estola amb el color de l'equip
   for (const sx of [-1, 1]) piece(t, UG.box, T.color, { x: sx * 0.11, y: 1.08, z: 0.27, sx: 0.08, sy: 0.9, sz: 0.03 });
-  if (arch === 'western') {
-    piece(t, UG.cone, 0x4a3426, { y: 1.72, z: -0.24, rx: -2.6, sx: 0.2, sy: 0.3, sz: 0.12 });   // caputxa abaixada
-    piece(t, taper(0.3, 0.34, 0.12, 12), 0x4a3426, { y: 1.58, sz: 0.85 });
+  if (C === 'byzantines') {
+    HATS.kamilavka(t);
+    piece(t, UG.box, GOLD, { y: 1.3, z: 0.3, sx: 0.04, sy: 0.2, sz: 0.02, metal: true });
+    piece(t, UG.box, GOLD, { y: 1.35, z: 0.3, sx: 0.14, sy: 0.04, sz: 0.02, metal: true });
+  } else if (C === 'mongols') {
+    HATS.lamahat(t);
+    piece(t, UG.box, 0xe0b030, { x: 0.12, y: 1.3, z: 0.02, sx: 0.5, sy: 0.12, sz: 0.62, rz: -0.8 });
+  } else if (arch === 'western') {
+    const hood = C === 'britons' ? 0x1c1a18 : C === 'catalans' ? 0x2a2622 : 0x4a3426;
+    piece(t, UG.cone, hood, { y: 1.72, z: -0.24, rx: -2.6, sx: 0.2, sy: 0.3, sz: 0.12 });   // caputxa abaixada
+    piece(t, taper(0.3, 0.34, 0.12, 12), hood, { y: 1.58, sz: 0.85 });
     piece(t, UG.box, GOLD, { y: 1.3, z: 0.3, sx: 0.04, sy: 0.18, sz: 0.02, metal: true });
     piece(t, UG.box, GOLD, { y: 1.34, z: 0.3, sx: 0.12, sy: 0.04, sz: 0.02, metal: true });
   } else if (arch === 'middleeast') {
@@ -357,10 +425,11 @@ function buildMonkRig(team, arch) {
   // Bàcul (a la mà dreta, vertical)
   const staff = P.armR;
   piece(staff, taper(0.03, 0.035, 2.2, 6), arch === 'eastasian' ? 0x2a2018 : WOOD, { y: -0.35, z: 0.14 });
-  if (arch === 'western') {
+  const staffKind = C === 'byzantines' ? 'western' : C === 'mongols' ? 'eastasian' : arch;
+  if (staffKind === 'western') {
     piece(staff, UG.box, GOLD, { y: 0.82, z: 0.14, sx: 0.05, sy: 0.34, sz: 0.05, metal: true });
     piece(staff, UG.box, GOLD, { y: 0.88, z: 0.14, sx: 0.24, sy: 0.05, sz: 0.05, metal: true });
-  } else if (arch === 'middleeast') {
+  } else if (staffKind === 'middleeast') {
     piece(staff, arcGeo(0.12, 0.022, Math.PI * 1.4), GOLD, { y: 0.84, z: 0.14, rz: -0.9, metal: true });
   } else {
     piece(staff, UG.torus, GOLD, { y: 0.82, z: 0.14, ry: Math.PI / 2, sx: 0.14, sy: 0.18, sz: 0.1, metal: true });
@@ -403,9 +472,17 @@ function soldierLook(arch, team, kind) {
     if (kind === 'archer' || kind === 'scout') return { ...base, top: T.color, top2: robe, sleeves: robe, beard: base.hair };
     return { ...base, top: T.color, top2: 0x8a9098, sleeves: 0x8a9098, skirt: robe, beard: base.hair };
   }
-  // Àsia oriental: armadura lacada i hakama
-  if (kind === 'archer') return { ...base, top: T.color, top2: 0x2a2622, sleeves: 0xe8e0d0 };
-  return { ...base, top: T.color, top2: 0x2a2622, sleeves: 0x2a2622 };
+  // Àsia oriental: armadura lacada (negra al Japó, vermella a la Xina) i hakama
+  const lac = RIG_CIV === 'chinese' ? 0x7a1c14 : 0x2a2622;
+  if (kind === 'archer') return { ...base, top: T.color, top2: lac, sleeves: 0xe8e0d0 };
+  return { ...base, top: T.color, top2: lac, sleeves: lac };
+}
+/* Roba pròpia per sobre de la de l'arquitectura */
+function civSoldierLook(look, team) {
+  const T = teamOf(team);
+  if (RIG_CIV === 'mongols') return { ...look, skirt: T.colorDark, sleeves: 0x7a5a38, belt: 0xd8902a, pants: 0x4a3a2a, boots: 0x3a2616 };
+  if (RIG_CIV === 'byzantines') return { ...look, skirt: look.skirt ? T.colorDark : null, belt: GOLD };
+  return look;
 }
 /* Detalls d'armadura sobre el tors */
 /* Aspecte base de cada unitat millorada (la línia) i nivell d'equipament */
@@ -431,9 +508,10 @@ function armorDetails(torso, arch, team, kind, tier = 0) {
     piece(torso, UG.box, T.color, { y: 1.25, z: 0.2, sx: 0.36, sy: 0.5, sz: 0.04 });
   }
   if (arch === 'eastasian' && kind !== 'archer' && kind !== 'mameluke' && kind !== 'throwingaxe' && kind !== 'skirmisher') {
-    // Dō lacat amb cordons de l'equip i faldons
-    for (let i = 0; i < 4; i++) piece(torso, taper(0.33 - i * 0.005, 0.34, 0.12, 12), i % 2 ? 0x2a2622 : T.colorDark, { y: 1.12 + i * 0.12, sz: 0.8, metal: i % 2 === 1 });
-    for (const s of [-1, 1]) piece(torso, UG.box, 0x2a2622, { x: s * 0.36, y: 1.48, sx: 0.2, sy: 0.08, sz: 0.3, rz: s * 0.3, metal: true });
+    // Dō lacat amb cordons de l'equip i faldons (lacat vermell a la Xina)
+    const lac = RIG_CIV === 'chinese' ? 0x7a1c14 : 0x2a2622;
+    for (let i = 0; i < 4; i++) piece(torso, taper(0.33 - i * 0.005, 0.34, 0.12, 12), i % 2 ? lac : T.colorDark, { y: 1.12 + i * 0.12, sz: 0.8, metal: i % 2 === 1 });
+    for (const s of [-1, 1]) piece(torso, UG.box, lac, { x: s * 0.36, y: 1.48, sx: 0.2, sy: 0.08, sz: 0.3, rz: s * 0.3, metal: true });
     piece(torso, UG.box, T.color, { y: 0.9, z: 0.28, sx: 0.4, sy: 0.3, sz: 0.04 });
   }
   // Nivells alts: espatlleres i braçals de metall
@@ -447,7 +525,7 @@ function buildSoldierRig(kind, team, arch) {
   const rig = new THREE.Group();
   const tier = UNIQUE_TIER[kind] ?? ((CONFIG.UNITS[kind] && CONFIG.UNITS[kind].tier) || 0);
   const base = VIS_BASE[kind] || kind;
-  const look = soldierLook(arch, team, base);
+  const look = civSoldierLook(soldierLook(arch, team, base), team);
   if (tier >= 2 && (base === 'militia' || base === 'knight')) look.sleeves = arch === 'eastasian' ? 0x2a2622 : 0x9ca3ad;
   const P = humanBody(rig, look);
   armorDetails(P.torso, arch, team, base, tier);
@@ -486,10 +564,11 @@ function buildSoldierRig(kind, team, arch) {
     return { rig, parts: P };
   }
   if (kind === 'almogaver') {
-    // Almogàver: gorra de cuir, samarreta curta, azcones a la mà i escut rodó amb els colors de l'equip
-    HATS.coif(t, 0x6a4a2a);
+    // Almogàver: barretina, samarreta curta, azcones a la mà i escut rodó amb els colors de l'equip
+    HATS.barretina(t);
     WEAPONS.javelins(P.armR);
     WEAPONS.round(P.armL, T.color, WOOD);
+    shieldMark(P.armL, 'round');
     piece(t, UG.box, 0xd8b830, { y: 1.15, z: 0.27, sx: 0.08, sy: 0.5, sz: 0.02 });   // franja groga (senyal)
     return { rig, parts: P };
   }
@@ -518,8 +597,10 @@ function buildSoldierRig(kind, team, arch) {
     }
     return { rig, parts: P };
   }
-  // Cap (millor casc com més alt és el nivell)
-  if (arch === 'western') {
+  // Cap (millor casc com més alt és el nivell); algunes civilitzacions en porten de propis
+  const civHat = RIG_CIV && CIV_SOLDIER_HAT[RIG_CIV];
+  if (civHat && civHat(t, base, tier, T)) { /* barret propi */ }
+  else if (arch === 'western') {
     if (base === 'archer') tier >= 2 ? HATS.kettle(t) : tier >= 1 ? HATS.coif(t, 0x7a6a4a) : HATS.hood(t, 0x4a5a30);
     else if (base === 'skirmisher') tier ? HATS.kettle(t) : HATS.coif(t, 0x8a7a5a);
     else if (base === 'cavarcher') tier ? HATS.nasal(t) : HATS.hood(t, 0x6a5a38);
@@ -540,15 +621,16 @@ function buildSoldierRig(kind, team, arch) {
   if (base === 'militia') {
     if (tier >= 3) WEAPONS.greatsword(P.armR, arch);
     else {
-      if (arch === 'eastasian') WEAPONS.katana(P.armR);
+      if (RIG_CIV === 'chinese') { WEAPONS.sword(P.armR, true); WEAPONS.round(P.armL, 0xb8944a, T.color); }   // dao i escut de vímet
+      else if (arch === 'eastasian') WEAPONS.katana(P.armR);
       else WEAPONS.sword(P.armR, arch === 'middleeast');
-      if (arch === 'western') WEAPONS.kite(P.armL, T.color);
-      else if (arch === 'middleeast') WEAPONS.round(P.armL, T.color);
+      if (arch === 'western') { WEAPONS.kite(P.armL, T.color); shieldMark(P.armL, 'kite'); }
+      else if (arch === 'middleeast') { WEAPONS.round(P.armL, T.color); shieldMark(P.armL, 'round'); }
     }
   } else if (base === 'spearman') {
     if (tier >= 2) WEAPONS.halberd(P.armR);
     else WEAPONS.spear(P.armR, arch === 'eastasian' || tier ? 3.2 : 2.4);
-    if (arch !== 'eastasian' && tier < 2) WEAPONS.round(P.armL, T.color, arch === 'western' ? WOOD : METAL);
+    if (arch !== 'eastasian' && tier < 2) { WEAPONS.round(P.armL, T.color, arch === 'western' ? WOOD : METAL); shieldMark(P.armL, 'round'); }
   } else if (base === 'archer') {
     if (tier >= 1) WEAPONS.crossbow(P.armL);
     else WEAPONS.bow(P.armL, arch === 'eastasian' ? 'yumi' : arch === 'middleeast' ? 'recurve' : 'long');
@@ -561,12 +643,12 @@ function buildSoldierRig(kind, team, arch) {
     WEAPONS.quiver(t);
   } else if (base === 'knight') {
     WEAPONS.spear(P.armR, 2.8, METAL);
-    if (arch === 'western') WEAPONS.kite(P.armL, T.color);
-    else if (arch === 'middleeast') WEAPONS.round(P.armL, T.color);
+    if (arch === 'western') { WEAPONS.kite(P.armL, T.color); shieldMark(P.armL, 'kite'); }
+    else if (arch === 'middleeast') { WEAPONS.round(P.armL, T.color); shieldMark(P.armL, 'round'); }
     if (tier >= 2) piece(t, UG.cone, GOLD, { y: 2.3, sx: 0.06, sy: 0.25, sz: 0.06, metal: true });
   } else if (base === 'scout') {
-    if (arch === 'eastasian') WEAPONS.katana(P.armR);
-    else WEAPONS.sword(P.armR, arch === 'middleeast' || tier >= 2);
+    if (arch === 'eastasian' && RIG_CIV !== 'chinese') WEAPONS.katana(P.armR);
+    else WEAPONS.sword(P.armR, arch !== 'western' || tier >= 2);
     if (tier >= 2 && arch === 'western') for (const s of [-1, 1]) piece(t, UG.box, 0xf2eee4, { x: s * 0.3, y: 1.9, z: -0.25, sx: 0.04, sy: 0.7, sz: 0.2, rx: -0.3, rz: s * 0.2 });
   } else if (base === 'camel') {
     WEAPONS.spear(P.armR, 2.6, METAL);

@@ -50,6 +50,7 @@ function kBanner(g, team, x, z, h = 3.6, rotY = 0) {
   kbox(b, 0.7, 0.05, 0.05, KM.timber, 0.3, h - 0.1, 0);
   kbox(b, 0.62, 1.1, 0.03, KM.team(team), 0.3, h - 0.72, 0);
   kbox(b, 0.62, 0.12, 0.035, KM.teamDark(team), 0.3, h - 1.2, 0);
+  kEmblem(b, 0.3, h - 0.66, 0.025, 0.5);
   g.add(b);
 }
 /* Nobori: bandera vertical japonesa */
@@ -60,6 +61,7 @@ function kNobori(g, team, x, z, h = 3.8, rotY = 0) {
   kbox(b, 0.5, 0.04, 0.04, KM.darkwood, 0.25, h - 0.08, 0);
   kbox(b, 0.46, h * 0.55, 0.02, KM.team(team), 0.25, h - 0.1 - h * 0.275, 0);
   kbox(b, 0.46, 0.2, 0.025, KM.cloth(0xf2eee4), 0.25, h - 0.35, 0);
+  kEmblem(b, 0.25, h - 0.95, 0.02, 0.4);
   g.add(b);
 }
 /* Gallardet triangular (Orient Mitjà) */
@@ -69,6 +71,7 @@ function kPennant(g, team, x, y, z, h = 1.6, rotY = 0) {
   kcyl(b, 0.03, 0.04, h, 6, KM.timber, 0, h / 2, 0);
   const s = new THREE.Shape(); s.moveTo(0, 0); s.lineTo(0.9, -0.22); s.lineTo(0, -0.45); s.closePath();
   kshape(b, s, KM.team(team), 0.02, h - 0.05, 0);
+  kEmblem(b, 0.28, h - 0.27, 0.03, 0.3);
   kcyl(b, 0.06, 0.06, 0.08, 8, KM.gold, 0, h + 0.03, 0);
   g.add(b);
 }
@@ -207,15 +210,17 @@ const COMMON_BUILDERS = {};   // edificis iguals per a totes les civilitzacions 
 const KIT_VARIANTS = { house: 3 };
 const kitCache = new Map();
 /* Model d'un edifici del kit segons la civilització de l'equip (null si el tipus no hi és) */
-function kitBuildingModel(type, team, archOverride = null) {
-  const arch = archOverride || archOf(team);
-  const build = COMMON_BUILDERS[type] || (ARCH[arch] && ARCH[arch][type]);
+function kitBuildingModel(type, team, styleOverride = null) {
+  const style = styleOverride || styleOf(team), arch = archOfStyle(style), civ = civOfStyle(style);
+  const build = COMMON_BUILDERS[type] || (civ && CIV_BUILDERS[civ] && CIV_BUILDERS[civ][type]) || (ARCH[arch] && ARCH[arch][type]);
   if (!build) return null;
   const variant = Math.floor(kitRng() * (KIT_VARIANTS[type] || 1));
-  const key = `${arch}:${type}:${team}:${variant}`;
+  const key = `${style}:${type}:${team}:${variant}`;
   if (!kitCache.has(key)) {
     const g = new THREE.Group();
-    const height = build(g, { team, variant, arch });
+    KIT_CIV = civ;
+    let height;
+    try { height = build(g, { team, variant, arch, civ }); } finally { KIT_CIV = null; }
     kitCache.set(key, { tpl: bakeTemplate(g), height });
   }
   const { tpl, height } = kitCache.get(key);
