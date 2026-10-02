@@ -170,12 +170,24 @@ function arcGeo(r, tube, arc) {
 
 /* ---------- Cos humà ---------- */
 /* look: { skin, hair, top, top2, pants, boots, skirt (vestit llarg), sleeves, beard } */
+/* Perfil del tors (radi, alçada): cintura estreta, pit, espatlles caigudes i arrencada del coll. Amb un cilindre
+   el tors semblava un barril de dalt pla (de ninot); off engruixeix el perfil per a la roba o l'armadura de sobre */
+const CHEST_PROFILE = [[0.262, 1.0], [0.255, 1.1], [0.285, 1.24], [0.33, 1.38], [0.335, 1.45], [0.3, 1.52], [0.2, 1.585], [0.085, 1.62]];
+function chestGeo(off = 0, y0 = 0, y1 = 9) {
+  const k = `chest${off}|${y0}|${y1}`;
+  if (!tapers.has(k)) {
+    const pts = CHEST_PROFILE.filter(([, y]) => y >= y0 - 1e-6 && y <= y1 + 1e-6).map(([r, y]) => new THREE.Vector2(r + off, y));
+    tapers.set(k, new THREE.LatheGeometry(pts, 14));
+  }
+  return tapers.get(k);
+}
 /* Proporcions d'adult (no de ninot): espatlles amples i cintura estreta, cuixa i canyella amb genoll, peu
    allargat, cara amb mandíbula, nas, ulls, celles i orelles, braç amb colze i mà amb polze */
 function humanBody(rig, look) {
   const torso = rigPart(rig, 'torso');
   const legL = rigPart(rig, 'legL', -0.13, 0.8, 0), legR = rigPart(rig, 'legR', 0.13, 0.8, 0);
-  const armL = rigPart(rig, 'armL', -0.36, 1.5, 0), armR = rigPart(rig, 'armR', 0.36, 1.5, 0);
+  const armL = rigPart(rig, 'armL', -0.35, 1.49, 0), armR = rigPart(rig, 'armR', 0.35, 1.49, 0);
+  armL.rotation.z = -0.1; armR.rotation.z = 0.1;                                   // (una mica separats del cos)
   for (const leg of [legL, legR]) {
     piece(leg, taper(0.118, 0.092, 0.4, 10), look.pants, { y: -0.18 });          // cuixa
     piece(leg, UG.sphere, look.pants, { y: -0.37, z: 0.01, sx: 0.088, sy: 0.08, sz: 0.09 });   // genoll
@@ -193,8 +205,7 @@ function humanBody(rig, look) {
     piece(torso, taper(0.27, 0.31, 0.32, 14), look.top2 || look.top, { y: 0.95, sz: 0.86 });
     piece(torso, taper(0.315, 0.315, 0.04, 14), shadeHex(look.top2 || look.top, 0.75), { y: 0.8, sz: 0.86 });   // vora de la túnica
   }
-  piece(torso, taper(0.34, 0.26, 0.56, 14), look.top, { y: 1.3, sz: 0.7 });       // pit (espatlles amples, cintura estreta)
-  piece(torso, UG.sphere, look.top, { y: 1.52, sx: 0.33, sy: 0.1, sz: 0.21 });
+  piece(torso, chestGeo(), look.top, { sz: 0.72 });                                // pit (espatlles caigudes, cintura estreta)
   piece(torso, UG.box, shadeHex(look.top, 0.8), { y: 1.5, z: 0.14, sx: 0.16, sy: 0.05, sz: 0.06, rx: 0.3 });   // coll de la peça
   piece(torso, taper(0.275, 0.275, 0.09, 14), look.belt || LEATHER, { y: 1.06, sz: 0.82 });
   piece(torso, UG.box, 0x8a7a5a, { y: 1.06, z: 0.23, sx: 0.07, sy: 0.07, sz: 0.03, metal: true });   // sivella
@@ -239,7 +250,7 @@ const HATS = {
   bun(t, c) { piece(t, UG.sphere, c, { y: 2.02, z: -0.06, sx: 0.1, sy: 0.09, sz: 0.1 }); },
   hachimaki(t, c) { piece(t, taper(0.2, 0.2, 0.05, 12), c, { y: 1.92 }); },
   nasal(t) { piece(t, UG.cone, METAL, { y: 2.02, sx: 0.215, sy: 0.3, sz: 0.215, metal: true }); piece(t, taper(0.215, 0.215, 0.12, 12), METAL, { y: 1.9, metal: true }); piece(t, UG.box, METAL, { y: 1.8, z: 0.2, sx: 0.04, sy: 0.16, sz: 0.03, metal: true }); },
-  kettle(t) { piece(t, UG.hemi, DARK_METAL, { y: 1.9, sx: 0.22, sy: 0.2, sz: 0.22, metal: true }); piece(t, taper(0.38, 0.38, 0.03, 16), DARK_METAL, { y: 1.92, metal: true }); },
+  kettle(t) { piece(t, UG.hemi, DARK_METAL, { y: 1.9, sx: 0.22, sy: 0.2, sz: 0.22, metal: true }); piece(t, taper(0.31, 0.34, 0.03, 16), DARK_METAL, { y: 1.92, metal: true }); },
   greathelm(t, team) { piece(t, taper(0.22, 0.23, 0.36, 12), METAL, { y: 1.86, metal: true }); piece(t, UG.box, 0x111111, { y: 1.9, z: 0.21, sx: 0.26, sy: 0.03, sz: 0.03 }); piece(t, UG.box, team, { y: 2.08, sx: 0.04, sy: 0.12, sz: 0.25 }); },
   spangen(t, wrap = 0xf0ece0) { piece(t, UG.cone, METAL, { y: 2.06, sx: 0.21, sy: 0.4, sz: 0.21, metal: true }); piece(t, UG.torus, wrap, { y: 1.93, rx: Math.PI / 2, sx: 0.2, sy: 0.2, sz: 0.2 }); piece(t, taper(0.22, 0.28, 0.24, 10), 0x777b82, { y: 1.72, z: -0.03, metal: true }); },
   kabuto(t, crest = GOLD) { piece(t, UG.hemi, 0x2a2622, { y: 1.9, sx: 0.23, sy: 0.22, sz: 0.23, metal: true }); piece(t, taper(0.26, 0.36, 0.14, 12), 0x2a2622, { y: 1.8, z: -0.04, metal: true }); piece(t, UG.box, crest, { y: 2.12, z: 0.14, sx: 0.36, sy: 0.12, sz: 0.02, rx: -0.3, metal: true }); },
@@ -525,13 +536,14 @@ function armorDetails(torso, arch, team, kind, tier = 0) {
   const T = teamOf(team);
   const heavy = kind === 'militia' || kind === 'knight' || kind === 'throwingaxe' || (tier >= 1 && kind !== 'archer' && kind !== 'skirmisher' && kind !== 'cavarcher');
   if (arch === 'western' && heavy) {
-    piece(torso, taper(0.32, 0.36, 0.5, 12), tier >= 3 ? 0xb4bac2 : 0x8a9098, { y: 1.28, sz: 0.8, metal: true });
-    piece(torso, taper(0.33, 0.37, 0.7, 12), T.color, { y: 1.02, sz: 0.84 });
+    piece(torso, chestGeo(0.025, 1.1), tier >= 3 ? 0xb4bac2 : 0x8a9098, { sz: 0.76, metal: true });                 // cota de malla
+    piece(torso, taper(0.29, 0.36, 0.42, 14), T.color, { y: 0.88, sz: 0.84 });                                       // gonella (faldons)
+    piece(torso, chestGeo(0.04, 1.0, 1.45), T.color, { sz: 0.74 });
     piece(torso, taper(0.332, 0.332, 0.05, 12), 0xd8cca8, { y: 0.69, sz: 0.85 });
   }
   if (arch === 'middleeast' && (heavy || kind === 'spearman' || kind === 'mameluke')) {
-    piece(torso, taper(0.32, 0.35, 0.46, 12), tier >= 3 ? 0xb4bac2 : 0x8a9098, { y: 1.3, sz: 0.8, metal: true });
-    piece(torso, UG.box, T.color, { y: 1.25, z: 0.2, sx: 0.36, sy: 0.5, sz: 0.04 });
+    piece(torso, chestGeo(0.025, 1.1), tier >= 3 ? 0xb4bac2 : 0x8a9098, { sz: 0.76, metal: true });
+    piece(torso, UG.box, T.color, { y: 1.27, z: 0.27, sx: 0.36, sy: 0.42, sz: 0.04 });   // (davant de la cota)
   }
   if (arch === 'eastasian' && kind !== 'archer' && kind !== 'mameluke' && kind !== 'throwingaxe' && kind !== 'skirmisher') {
     // Dō lacat amb cordons de l'equip i faldons (lacat vermell a la Xina)
@@ -544,7 +556,7 @@ function armorDetails(torso, arch, team, kind, tier = 0) {
   if (tier >= 2 && kind !== 'archer' && kind !== 'skirmisher') for (const s of [-1, 1]) {
     for (let i = 0; i < 3; i++) piece(torso, UG.box, arch === 'eastasian' ? 0x2a2622 : 0xa8adb5, { x: s * (0.34 + i * 0.02), y: 1.52 - i * 0.07, sx: 0.16, sy: 0.035, sz: 0.24, rz: s * -(0.45 + i * 0.1), metal: true });
   }
-  if (tier >= 1 && (kind === 'archer' || kind === 'skirmisher' || kind === 'cavarcher')) piece(torso, taper(0.31, 0.34, 0.4, 12), arch === 'eastasian' ? 0x3a3028 : 0x7a6a4a, { y: 1.3, sz: 0.8 });
+  if (tier >= 1 && (kind === 'archer' || kind === 'skirmisher' || kind === 'cavarcher')) piece(torso, chestGeo(0.02, 1.0, 1.52), arch === 'eastasian' ? 0x3a3028 : 0x7a6a4a, { sz: 0.75 });
 }
 function buildSoldierRig(kind, team, arch) {
   const T = teamOf(team);

@@ -8,7 +8,8 @@ export default async ({ open, assert, log }) => {
     R.AI.enabled = false;
     const civs = Object.keys(R.CIVS || {});
     // Firma d'un model: materials (textura) i nombre de vèrtexs
-    const sig = (obj) => { const mats = new Set(); let v = 0; obj.traverse(o => { if (o.isMesh) { v += o.geometry.attributes.position.count; mats.add((o.material.map && o.material.map.image ? o.material.map.image.width + ':' : '') + o.material.uuid); } }); return v + '|' + [...mats].sort().join(','); };
+    // (vèrtexs, materials i suma dels colors per vèrtex: dos models amb les mateixes peces però colors diferents són diferents)
+    const sig = (obj) => { const mats = new Set(); let v = 0, c = 0; obj.traverse(o => { if (o.isMesh) { v += o.geometry.attributes.position.count; mats.add(o.material.uuid); const col = o.geometry.attributes.color; if (col) for (let i = 0; i < col.array.length; i += 7) c += col.array[i]; } }); return v + '|' + c.toFixed(2) + '|' + [...mats].sort().join(','); };
     const out = { civs: civs.length, house: {}, wonder: {}, villager: {}, militia: {} };
     for (const c of civs) {
       R.setTeamCiv(R.PLAYER, c);
